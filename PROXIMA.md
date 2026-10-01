@@ -391,6 +391,20 @@ Proxima should have more diplomacy than Alpha Centauri. It's one of the gameplay
 - **Social axes shape relations:** each faction's choices for religion, values, economy, and politics affect how well it gets along with others. Matching choices make diplomacy easier, and opposing choices make it harder (see Social axes).
 - Still to decide: how long treaties last and what breaking one costs, whether AI factions remember betrayals, how espionage is carried out (spy units, a building, or diplomacy-screen actions), how to defend against it, and what happens to an alliance once its members are the last factions left with Allied Victory turned off (see the Allied Victory setting).
 
+## Multiplayer
+
+Proxima supports two multiplayer modes.
+
+- **Hotseat:** several players share one computer. Each plays their own faction, and they pass the device between turns.
+- **Online multiplayer:** players connect over the internet. Each controls their own faction, and turns alternate across the network.
+- **Same rules as single-player:** both modes use the six factions, social axes, diplomacy, the Allied Victory toggle, and every other start-menu setting.
+- AI factions fill any of the six factions that no human is playing, and they use the Game Options personalities.
+- Still to decide:
+  - The turn order for human players. Single-player always has the human go first, then the AIs in shuffled order.
+  - In hotseat, whether a handoff screen hides the map between turns so players can't see each other's view.
+  - For online play, whether games run through a host player or a server, how players find and join games, what happens when someone disconnects, whether there are turn timers, and how saving and loading work.
+  - Whether online diplomacy includes chat between players.
+
 ## Team / repo structure
 
 The work is split by folder so several chats or agents can work at the same time without merge conflicts:
@@ -466,3 +480,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Intro: added the six animation scenes (planet, approach, crash, escape pods, survivors scattering, factions emerging).
 - 2026-10-01: Intro revised: a "Play Introduction" button, the player advances the screens (no auto-play or timer), and an Exit button on every screen replaces skip-with-any-input.
 - 2026-10-01: Intro: added a Back button on every screen (disabled or hidden on the first screen).
+- 2026-10-01: Added the "Multiplayer" section (hotseat and online, with the same rules as single-player).
