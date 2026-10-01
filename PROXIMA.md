@@ -100,6 +100,20 @@ Like Alpha Centauri, players design their own military units from the technology
 - A unit's design sets its attack and defense strength, which feed into combat odds (see Combat).
 - Still to decide: the full list of parts, how a design's parts set its cost, whether existing units can be upgraded when new tech arrives, and whether factions can trade designs or capture them.
 
+## Scavenger patrols
+
+Proxima has no supply pods sitting visibly on the map, the way Alpha Centauri does. Instead, military units can be set to search the land automatically.
+
+- The player puts a unit into **patrol and search mode**, with no need to click individual tiles.
+- Units on patrol search random grid squares and can turn up random items and bonuses:
+  - Credits
+  - Minerals
+  - Technologies
+  - Free units
+- This fits the story: pieces of the ark were scattered across the planet in the crash.
+- Finds are random every game, which supports infinite replayability.
+- Still to decide: the odds and size of each find, whether there are risks such as ambushes, hazards, or losing the unit, whether finds run out over time, whether patrols can enter the day or night side, and whether players can choose an area to search.
+
 ## Factions (6)
 
 | # | Faction | Core idea |
@@ -208,3 +222,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Replaced the per-faction win conditions with one victory condition, military supremacy (capture every rival base). Faction aggression is set by the difficulty settings and social axes.
 - 2026-10-01: Added the "Combat" section (odds-based results with terrain modifiers).
 - 2026-10-01: Added the "Unit design" section (player-designed units built from researched parts).
+- 2026-10-01: Added the "Scavenger patrols" section (auto-search mode in place of map pods).
