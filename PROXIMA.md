@@ -41,6 +41,17 @@ Each faction gets its own win condition. All six are **TBD**.
 - Each faction has its own visual identity: colors, emblem, base and unit styles, and a leader or faction portrait.
 - Every art asset, name, and piece of text must be original. Take inspiration from the feel only, and never copy art or assets from Alpha Centauri or any other game.
 
+### Faction visual styles (tied to the module each faction came from in the crash)
+
+| Faction | Visual style |
+|---------|--------------|
+| Bridge Crew | Clean and ordered, with a command-bridge look |
+| Terraforming Bay | Organic and green, with a living-systems look |
+| Seed Vault | Biological and archival, with DNA-helix motifs |
+| Military Pod | Armored and tactical, with red accents |
+| Comms Array | Signal-wave patterns, with static and broadcast imagery |
+| Life-Support Core | Soft and bio-mechanical, almost medical |
+
 ## Team / repo structure
 
 The work is split by folder so several chats or agents can work at the same time without merge conflicts:
@@ -60,3 +71,4 @@ The work is split by folder so several chats or agents can work at the same time
 
 - 2026-10-01: Doc created. Renamed from the Planetfall concept to Proxima. Story, six factions, pillars, and team structure recorded.
 - 2026-10-01: Added the "Visuals and gameplay style" section (an Alpha Centauri-like feel with animated units, terrain, and faction visuals).
+- 2026-10-01: Added faction visual styles tied to the module each faction came from.
