@@ -412,7 +412,11 @@ Proxima's social system goes deeper than Alpha Centauri's. Each faction sets fou
 
 - Combining the axes creates distinct societies, such as a market-driven warlord state or a consensus-seeking seed cult.
 - Each combination shifts what a faction is good at.
-- Still to decide: the exact bonuses and penalties for each option and combination, any synergies or conflicts between options, and how changing an axis plays out (cost, unrest, transition time).
+- **Matching bonus:** each social-axis choice that matches a faction's strengths gives a 10 percent bonus to the related resource or stat for that faction.
+- **Switching an axis mid-game:**
+  - It costs credits. The starting value is 100 credits, which can be tuned later.
+  - It also causes a temporary stability hit that lasts several turns.
+- Still to decide: which resource or stat each option boosts, any penalties, synergies, or conflicts between options, and exactly how many turns the stability hit lasts and how strong it is.
 
 ## Diplomacy
 
@@ -514,3 +518,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added the "Map interface" section (map of the known planet on the main screen; fog of war, clearly marked twilight band, known terrain, resources, and units; pan and zoom).
 - 2026-10-01: City construction: set the penalty for traveling outside the twilight band. All units, terraformers included, take damage over time until they are destroyed.
 - 2026-10-01: Outside-band damage: Sealed Habitats / Geothermal Wells lets units travel outside the band without damage; the damage per turn is a tuning value for the builder.
+- 2026-10-01: Social axes: each matching choice gives a 10 percent bonus to the related resource or stat; switching an axis mid-game costs 100 credits (tunable) and causes a temporary stability hit lasting several turns.
