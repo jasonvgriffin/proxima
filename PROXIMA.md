@@ -70,7 +70,7 @@ The map is generated fresh every game, alongside the randomized starting locatio
 
 ## Victory condition
 
-**Military supremacy:** the game ends when one faction has captured every rival base or city.
+**Military supremacy:** the game ends when one faction has captured every rival base or city. Cities are taken by beating their defenders in combat (see City construction).
 
 - Not every faction chases it aggressively.
   - Some factions just want to be left in peace. They fight only to defend themselves.
@@ -108,7 +108,9 @@ As in Sid Meier's Alpha Centauri, players found new cities (bases) to grow their
 - Each new city extends the faction's territory around it.
 - Cities produce resources, research, and military units.
 - Where cities can go ties into the map. The twilight band is the easiest place to live, and the day and night sides are harsher until terraforming or technology opens them up.
-- Still to decide: what makes a tile suitable (terrain, minimum distance from other cities, water access), how city borders grow, city size and population limits, and whether cities can be captured, razed, or moved.
+- **Cities can be captured.** Another faction takes a city by defeating its defenders in combat, and the captured city then belongs to them.
+- Capturing cities drives the military supremacy victory. The game ends when one faction has captured every rival base or city (see Victory condition).
+- Still to decide: what makes a tile suitable (terrain, minimum distance from other cities, water access), how city borders grow, city size and population limits, what happens to a city's population, buildings, and loyalty when it is captured, and whether cities can be razed or moved.
 
 ## Scavenger patrols
 
@@ -236,3 +238,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added the "Scavenger patrols" section (auto-search mode in place of map pods).
 - 2026-10-01: Scavenger patrols: search is now a toggle on any ground or naval unit, not only military units.
 - 2026-10-01: Added the "City construction" section (settler units found cities that grow territory and produce resources, research, and units).
+- 2026-10-01: City construction: cities can be captured in combat, and capturing every rival city wins by military supremacy.
