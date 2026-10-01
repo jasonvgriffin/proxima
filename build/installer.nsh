@@ -1,13 +1,14 @@
 ; Extra uninstall cleanup for Proxima, included through build.nsis.include.
 ;
-; electron-builder's uninstaller already removes the install folder, the
-; shortcuts, the HKCU uninstall entry and its own Software\{guid} key, and
-; (deleteAppDataOnUninstall) %APPDATA%\Proxima. This macro removes everything
-; else the app may leave behind so a real uninstall leaves no trace.
+; Permanent rule: a newer Proxima-Setup-X.exe installed over an existing
+; install upgrades in place. It keeps the install directory, and it keeps
+; %APPDATA%\Proxima (saves, settings, logs) and HKCU\Software\Proxima.
+; A real uninstall still removes those, plus shortcuts and the install folder.
 ;
-; Everything here is skipped when ${isUpdated} is true: a newer build runs the
-; old uninstaller with --updated during an upgrade or reinstall, and saves in
-; %APPDATA%\Proxima\saves must survive that.
+; electron-builder runs this uninstaller with --updated during an upgrade.
+; ${isUpdated} is that switch. deleteAppDataOnUninstall in package.json is
+; also skipped by electron-builder's own ${ifNot} ${isUpdated} block.
+; Do not delete app data, saves, or these registry keys outside the guard.
 
 !macro customUnInstall
   ${ifNot} ${isUpdated}
