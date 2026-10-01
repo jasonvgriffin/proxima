@@ -100,6 +100,16 @@ Like Alpha Centauri, players design their own military units from the technology
 - A unit's design sets its attack and defense strength, which feed into combat odds (see Combat).
 - Still to decide: the full list of parts, how a design's parts set its cost, whether existing units can be upgraded when new tech arrives, and whether factions can trade designs or capture them.
 
+## City construction
+
+As in Sid Meier's Alpha Centauri, players found new cities (bases) to grow their faction.
+
+- A settler unit, such as a colony pod, is used up to found a new city on a suitable tile.
+- Each new city extends the faction's territory around it.
+- Cities produce resources, research, and military units.
+- Where cities can go ties into the map. The twilight band is the easiest place to live, and the day and night sides are harsher until terraforming or technology opens them up.
+- Still to decide: what makes a tile suitable (terrain, minimum distance from other cities, water access), how city borders grow, city size and population limits, and whether cities can be captured, razed, or moved.
+
 ## Scavenger patrols
 
 Proxima has no supply pods sitting visibly on the map, the way Alpha Centauri does. Instead, any ground or naval unit can be set to search automatically, not only military units.
@@ -225,3 +235,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added the "Unit design" section (player-designed units built from researched parts).
 - 2026-10-01: Added the "Scavenger patrols" section (auto-search mode in place of map pods).
 - 2026-10-01: Scavenger patrols: search is now a toggle on any ground or naval unit, not only military units.
+- 2026-10-01: Added the "City construction" section (settler units found cities that grow territory and produce resources, research, and units).
