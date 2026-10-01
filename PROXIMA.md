@@ -313,9 +313,10 @@ Terraforming works like Alpha Centauri: it's an action a unit performs on the ma
 - **Base times improve with tech.** Each terraforming type (planting trees, mining, building a mine, installing solar panels, and so on) has its own base time cost, and research can shorten those base times.
 - So the turns a tile takes depend on three things: the type of terraforming, how complex or energy-intensive that build is, and the terraformer's tech level.
 - **Better yields:** terraforming a tile improves what it produces, such as more nutrients, minerals, or energy, depending on the change made.
-- **Widening the twilight band:** over time, terraforming tiles at the edges of the twilight band can make them livable. This gradually pushes the band out toward the day side and night side and opens new land in the middle and late game.
+- **Send a terraformer anywhere:** like Alpha Centauri, a terraformer can be sent to any tile and start work there. It doesn't need a strip of already-converted tiles next to it, and there is no threshold to reach first.
+- **Widening the twilight band:** terraforming a tile improves its yields and, over time, can make that tile part of the expanding livable zone. The band grows tile by tile wherever players terraform, with no threshold effect blocking where terraformers can work.
 - Terraforming may cost the per-square credit fee described in Resources.
-- Still to decide: the list of terraforming actions (for example farms, mines, solar collectors, and atmosphere work), the exact number of turns each one takes, whether several terraformers can work one tile together to finish faster, and how many edge tiles need terraforming before the band moves.
+- Still to decide: the list of terraforming actions (for example farms, mines, solar collectors, and atmosphere work), the exact number of turns each one takes, whether several terraformers can work one tile together to finish faster.
 
 ## Gameplay pillars
 
@@ -424,7 +425,7 @@ The work is split by folder so several chats or agents can work at the same time
 - Default aggression for each faction, and how social-axis choices change it
 - Diplomacy systems beyond Alpha Centauri's
 - Resource types
-- Terraforming details (the list of actions, how long each takes, and how the twilight band widens)
+- Terraforming details (the list of actions, how long each takes, and how long a terraformed tile takes to become livable)
 
 ## Changelog
 
@@ -491,3 +492,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added the "Terraforming" section. Terraforming is a unit action like in Alpha Centauri: terraformer units, unlocked through the Terraforming Bay tech branch, each work one tile to improve its yields and can gradually widen the twilight band.
 - 2026-10-01: Terraforming: build time depends on what is being built on the tile (planting trees, mining, building a mine, installing solar panels, and so on). More complex or energy-intensive builds take longer.
 - 2026-10-01: Terraforming: build time also depends on the terraformer's tech level (advanced terraformers from later techs work faster). Each terraforming type has its own base time, which improves with tech.
+- 2026-10-01: Terraforming: removed the edge-strip threshold for widening the twilight band. Like Alpha Centauri, terraformers can work any tile, and each terraformed tile can join the livable zone over time.
