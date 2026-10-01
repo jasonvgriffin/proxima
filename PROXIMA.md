@@ -25,7 +25,7 @@ Each group decides what Proxima should become, and nobody is right by default. I
 
 ## Intro
 
-- **Play Intro button:** the start menu (home screen) has a Play Intro button.
+- **"Play Introduction" button:** the start menu (home screen) has a button labeled "Play Introduction". The intro starts only when the player clicks it. It never plays automatically.
 - **What it shows:** an animated sequence that tells the story (the ark crashing, the survivors scattering, and six factions waking with no shared memory) in six scenes:
   1. The planet Proxima b in space beside its star.
   2. The huge ark spaceship approaching and entering the atmosphere.
@@ -33,12 +33,13 @@ Each group decides what Proxima should become, and nobody is right by default. I
   4. Escape pods and smaller craft breaking away from the wreck.
   5. People leaving the ship and heading off in different directions across the land.
   6. The six factions appearing as separate groups in different places.
-- **On-screen text:** every screen of the intro shows text, so the story can be read.
-- **No audio for now:** the intro is read-only, with no voice narration and no sound. Audio can be added later.
-- **Skipping:** the player can skip the intro at any time by pressing any key or button or clicking the mouse.
-- **Afterward:** when the intro ends or is skipped, the player goes back to the start menu to set up the game and begin.
+- **On-screen text:** every screen shows text, so the story can be read.
+- **The player moves through it:** the intro never moves on by itself and has no timer. The player goes to the next screen with a Next button or a click.
+- **Exit button on every screen:** clicking it leaves the intro at any point and returns to the start menu.
+- **No audio for now:** no voice narration and no sound. Audio can be added later.
+- **Afterward:** after the last screen, or after Exit, the player is back on the start menu to set up the game and begin.
 - All art, animation, and text in the intro must be original, the same as every other asset.
-- Still to decide: whether the intro plays automatically the first time the game launches, how long it runs, and whether text advances on a timer or when the player clicks (clicking currently skips the whole intro).
+- Still to decide: whether there's a Back button to return to the previous screen, and how long the text on each screen should be.
 
 ## Starting locations
 
@@ -462,3 +463,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Intro: it can be skipped at any time with any key, button, or mouse click.
 - 2026-10-01: Intro revised: animation with on-screen text and no audio for now (narration removed); it can still be skipped.
 - 2026-10-01: Intro: added the six animation scenes (planet, approach, crash, escape pods, survivors scattering, factions emerging).
+- 2026-10-01: Intro revised: a "Play Introduction" button, the player advances the screens (no auto-play or timer), and an Exit button on every screen replaces skip-with-any-input.
