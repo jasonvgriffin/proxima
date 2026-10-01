@@ -106,7 +106,7 @@ Proxima has no supply pods sitting visibly on the map, the way Alpha Centauri do
 
 - **Search** is a toggle in each unit's settings. It works for every ground and naval unit, including colony pods, formers, and transports as well as military units.
 - With search on, the unit explores random grid squares by itself (naval units search water squares), and the player never has to click individual tiles.
-- Searching units and can turn up random items and bonuses:
+- Searching units can turn up random items and bonuses:
   - Credits
   - Minerals
   - Technologies
