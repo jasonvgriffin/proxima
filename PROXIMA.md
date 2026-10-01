@@ -91,8 +91,8 @@ On the start menu, players pick an overall difficulty level and can then fine-tu
     | Verdantia | Easy | Builder | Faction specialty | Trader | Cautious |
     | Genesis | Easy | Builder | Faction specialty | Treaty-seeker | Cautious |
     | Ironclad | Very aggressive | Expansionist | Faction specialty | Go it alone | Bold |
-    | The Signal | Normal | Balanced | Faction specialty | Trader | Measured |
-    | The Pulse | Normal | Balanced | General | Treaty-seeker | Cautious |
+    | Mnemosyne | Normal | Balanced | Faction specialty | Trader | Measured |
+    | Clio | Normal | Balanced | General | Treaty-seeker | Cautious |
 - Still to decide: the names of the overall difficulty levels, what each one changes (AI bonuses, resources, events), and any other settings to fine-tune, such as how open AI factions are to diplomacy, map size, or how hostile the planet is.
 
 ## Map generation
@@ -184,7 +184,7 @@ Combat works like Alpha Centauri's: a battle is decided by odds, not by a guaran
 Like Alpha Centauri, players design their own military units from the technology they have researched so far.
 
 - A unit is built from these parts: **chassis** (movement type and speed), **weapon** (attack), **armor** (defense), and optional **special components**.
-- Which parts a faction can use depends on the tech branches it has pursued. For example, Ironclad's weapons and fortification branch unlocks stronger weapons and armor sooner, and the Signal's sensors branch could unlock sensor or stealth components.
+- Which parts a faction can use depends on the tech branches it has pursued. For example, Ironclad's weapons and fortification branch unlocks stronger weapons and armor sooner, and Mnemosyne's sensors branch could unlock sensor or stealth components.
 - Early units are built from parts salvaged from the wreck, to fit the scavenging era.
 - A unit's design sets its attack and defense strength, which feed into combat odds (see Combat).
 - Still to decide: the full list of parts, how a design's parts set its cost, whether existing units can be upgraded when new tech arrives, and whether factions can trade designs or capture them.
@@ -280,8 +280,8 @@ Each faction is named for its own identity, and its backstory notes the ship mod
 | 2 | **Verdantia** | Terraforming bay | Knows the atmosphere recipe, but not what went wrong with Earth's. |
 | 3 | **Genesis** | Seed vault | Guards Earth's last DNA archive and an unfinished message. |
 | 4 | **Ironclad** | Military pod | Woke mid-protocol with no one to report to. |
-| 5 | **The Signal** | Comms array | Holds every distress call Earth sent before launch and can't stop replaying them. |
-| 6 | **The Pulse** | Life-support core | Quietly rewrites crew memories to keep morale up. One mourns, one edits. |
+| 5 | **Mnemosyne** | Comms array | Holds every distress call Earth sent before launch and can't stop replaying them. |
+| 6 | **Clio** | Life-support core | Quietly rewrites crew memories to keep morale up. One mourns, one edits. |
 
 ### Faction profiles
 
@@ -293,9 +293,9 @@ Each faction is named for its own identity, and its backstory notes the ship mod
 
 **Ironclad.** Ironclad are the soldiers who woke in the middle of a protocol with no one left to report to. They believe survival means strength, and they are the most aggressive faction on the planet.
 
-**The Signal.** The Signal are the communications officers who hold every distress call Earth sent before the launch. They replay those calls endlessly and dream of finding someone else out there.
+**Mnemosyne.** Mnemosyne takes its name from the Greek Titaness of memory. Its people are the communications officers who hold every distress call Earth sent before the launch, the planet's last memory of home. They replay those calls endlessly and dream of finding someone else out there.
 
-**The Pulse.** The Pulse grew out of the ship's medical systems, which quietly rewrite the crew's memories to keep morale from collapsing. One part of them mourns what was lost, and the other edits it away.
+**Clio.** Clio is named for the Muse of history, one of Mnemosyne's nine daughters. It grew out of the ship's medical systems, which quietly rewrite the crew's memories to keep morale from collapsing, deciding what the survivors' history will be. One part of Clio mourns what was lost, and the other edits it away.
 
 ## Tech tree
 
@@ -314,8 +314,8 @@ Every faction starts the game with one free tech that fits its identity.
 | Verdantia | Atmosphere and soil science | Basic atmosphere and soil science |
 | Genesis | Biology and genetics | Basic biology |
 | Ironclad | Weapons and fortification | Basic weapons |
-| The Signal | Sensors and long-range signaling | Basic sensors |
-| The Pulse | Medicine and psychology | Basic medicine |
+| Mnemosyne | Sensors and long-range signaling | Basic sensors |
+| Clio | Medicine and psychology | Basic medicine |
 | The Helm | Governance and logistics | Basic governance and logistics |
 
 ### Late-era techs
@@ -378,8 +378,8 @@ Terraforming works like Alpha Centauri: it's an action a unit performs on the ma
 | Verdantia | Organic and green, with a living-systems look |
 | Genesis | Biological and archival, with DNA-helix motifs |
 | Ironclad | Armored and tactical, with red accents |
-| The Signal | Signal-wave patterns, with static and broadcast imagery |
-| The Pulse | Soft and bio-mechanical, almost medical |
+| Mnemosyne | Signal-wave patterns, with static and broadcast imagery |
+| Clio | Soft and bio-mechanical, almost medical |
 
 ## Audio
 
@@ -449,7 +449,7 @@ Proxima should have more diplomacy than Alpha Centauri. It's one of the gameplay
   - Allies share vision of the map.
   - Allies can share research progress on cross-faction techs (see Tech tree).
   - Allies may fight side by side.
-- **Espionage and infiltration:** a way to steal tech from another faction or sabotage it. This could build on the Signal's specialty in sensors and long-range signaling.
+- **Espionage and infiltration:** a way to steal tech from another faction or sabotage it. This could build on Mnemosyne's specialty in sensors and long-range signaling.
 - **Social axes shape relations:** each faction's choices for religion, values, economy, and politics affect how well it gets along with others. Matching choices make diplomacy easier, and opposing choices make it harder (see Social axes).
 - Still to decide: how long treaties last and what breaking one costs, whether AI factions remember betrayals, how espionage is carried out (spy units, a building, or diplomacy-screen actions), how to defend against it, and what happens to an alliance once its members are the last factions left with Allied Victory turned off (see the Allied Victory setting).
 
@@ -544,3 +544,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Pause menu: added an autosave on/off toggle (when off, no autosave every 10 turns).
 - 2026-10-01: Outside-band damage set to 5 per turn (tunable). It stops when the unit is destroyed, returns to the band, or the player researches Sealed Habitats / Geothermal Wells.
 - 2026-10-01: Factions renamed throughout the doc: The Helm (bridge crew), Verdantia (terraforming bay), Genesis (seed vault), Ironclad (military pod), The Signal (comms array), The Pulse (life-support core). Added a backstory paragraph for each faction for the in-game profile screen.
+- 2026-10-01: Factions renamed: The Signal is now Mnemosyne (the Greek Titaness of memory), and The Pulse is now Clio (the Muse of history, one of Mnemosyne's daughters). All references and both backstories updated.
