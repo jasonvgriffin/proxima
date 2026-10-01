@@ -296,6 +296,17 @@ Every faction starts the game with one free tech that fits its identity.
 | Comms Array | Signal-wave patterns, with static and broadcast imagery |
 | Life-Support Core | Soft and bio-mechanical, almost medical |
 
+## Audio
+
+- **Music and soundtrack: on hold for now.** There are no plans yet for licensed or royalty-free music.
+- **Sound effects:** whoever builds the game should make original sound effects themselves where they can, for example:
+  - UI clicks and button presses
+  - Combat sounds
+  - Terraforming effects
+  - Ambient sounds of the planet, such as wind on the night side or heat on the day side
+- Like the art, every sound must be original. Never copy audio from Alpha Centauri or any other game.
+- Still to decide: when to revisit music, and whether there will be volume controls and a mute option for each sound type.
+
 ## Social axes
 
 Proxima's social system goes deeper than Alpha Centauri's. Each faction sets four axes:
@@ -382,3 +393,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Game Options: defined five editable AI traits (aggression, expansion priority, research focus, diplomacy style, risk tolerance).
 - 2026-10-01: Game Options: set default AI trait levels for all six factions.
 - 2026-10-01: Game Options: Seed Vault default diplomacy style changed to Treaty-seeker.
+- 2026-10-01: Added the "Audio" section (music on hold; the builder makes original sound effects).
