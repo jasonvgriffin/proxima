@@ -48,6 +48,20 @@ On the start menu, players pick an overall difficulty level and can then fine-tu
   - Works together with the early-game peace window. For example, Easy could stretch the window and Very aggressive could shorten it.
 - Still to decide: the names of the overall difficulty levels, what each one changes (AI bonuses, resources, events), and any other settings to fine-tune, such as how open AI factions are to diplomacy, map size, or how hostile the planet is.
 
+## Map generation
+
+The map is generated fresh every game, alongside the randomized starting locations, to serve the infinite-replayability principle.
+
+- **Varied terrain types:** flats, rocky ground, highlands, ridges, canyons, coastlines, and so on.
+- **Resource placement:** randomized each game, so no fixed "best spot" ever emerges.
+- **Biomes unique to Proxima, tied to the terraforming pillar:** each can be terraformed over time.
+  - Thin-atmosphere zones
+  - Toxic soil
+  - Frozen regions
+- **Natural barriers:** mountain ranges, toxic belts, ice fields, and similar terrain keep factions apart early on, which helps enforce the early-game peace window.
+- Idea for later: the real planet Proxima b is thought to be tidally locked, with one side always facing its star. That could inspire a hot day side, a frozen night side, and a livable twilight band in between.
+- Still to decide: map sizes, the full list of biomes, how much each biome affects movement and yields, and how the generator keeps every game fair (no starts that are hopeless or hemmed in).
+
 ## Factions (6)
 
 Each faction gets its own win condition. All six are **TBD**.
@@ -153,3 +167,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added the "Tech tree" section (scavenging era, faction branches, cross-faction techs).
 - 2026-10-01: Added the "Early-game peace window" section.
 - 2026-10-01: Added the "Difficulty and personality settings" section (opponent aggressiveness).
+- 2026-10-01: Added the "Map generation" section.
