@@ -149,11 +149,12 @@ Proxima's core resources support three of its gameplay pillars: civilization bui
   - *Rush production:* spend credits to finish a unit instantly.
   - *Terraforming fee:* terraforming a grid square may cost a set fee in credits, charged per square.
   - *City income (set):* every city earns a baseline amount of credits each turn, and the amount grows with the city's size or population. This is a main source of credits.
+    - Starting formula: **credits per turn = population + 2**. That is 1 credit per population point plus a flat 2 credits per city, so a size-5 city earns 7 credits a turn. The numbers may be tweaked later during balancing.
   - *Other sources of credits:*
     - Trading with other factions
     - Salvaging wreckage, such as ark debris and destroyed units
     - One-time finds from scavenger patrols
-- Still to decide: the exact yields for each biome, the rush-buy price formula, the exact city income formula, the fee per terraformed square (flat, or higher for harsher biomes), and whether rare strategic resources exist.
+- Still to decide: the exact yields for each biome, the rush-buy price formula, the fee per terraformed square (flat, or higher for harsher biomes), and whether rare strategic resources exist.
 
 ## Scavenger patrols
 
@@ -288,3 +289,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added the "Resources" section (minerals, energy/nutrients, research points; biome yields; terraforming).
 - 2026-10-01: Resources: split energy and nutrients into separate resources, and added credits (rush production, per-square terraforming fee, ways to earn them).
 - 2026-10-01: Resources: city credit income is now set (a baseline each turn that grows with city size).
+- 2026-10-01: Resources: set the starting city credit formula (1 per population point + 2 per city each turn).
