@@ -90,6 +90,17 @@ Combat works like Alpha Centauri's: a battle is decided by odds, not by a guaran
 - Show the odds to the player before they commit to an attack.
 - Still to decide: other modifiers (fortifying, base defenses, veteran experience, faction and social-axis bonuses), whether a battle runs in rounds that wear down health or is a single roll, and how the day side and night side affect combat.
 
+## Naval rules
+
+- **Movement:** ships move on water squares. They can sail along the coasts of the twilight band and out into open ocean.
+- **Hazardous seas:**
+  - Early in the game, the hot seas on the day side and the frozen seas on the night side are impassable or dangerous.
+  - Terraforming and technology gradually open new sea routes, the same way the twilight band widens on land.
+- **Coastlines:** coasts don't block land units. They can move along the shore.
+- **Transport:** naval units can carry land units, either to reach islands or to cross water.
+- **Naval combat:** works like land combat, using the same Alpha Centauri-style odds. Water terrain changes the odds (for example open ocean, coastal shallows, and hazardous seas).
+- Still to decide: how many units each transport can hold, whether ships can bombard the coast or attack land units, exactly what "dangerous" means for hot and frozen seas (damage per turn, or a chance of losing the ship), and whether submarines or aircraft carriers exist.
+
 ## Unit design
 
 Like Alpha Centauri, players design their own military units from the technology they have researched so far.
@@ -239,3 +250,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Scavenger patrols: search is now a toggle on any ground or naval unit, not only military units.
 - 2026-10-01: Added the "City construction" section (settler units found cities that grow territory and produce resources, research, and units).
 - 2026-10-01: City construction: cities can be captured in combat, and capturing every rival city wins by military supremacy.
+- 2026-10-01: Added the "Naval rules" section (water movement, hazardous seas, coastlines, transport, naval combat).
