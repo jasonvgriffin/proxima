@@ -307,13 +307,24 @@ Every faction starts the game with one free tech that fits its identity.
   - Terraforming effects
   - Ambient sounds of the planet, such as wind on the night side or heat on the day side
 - Like the art, every sound and every piece of music must be original. Never copy audio from Alpha Centauri or any other game.
-- **Pause menu (Escape key):** pressing Escape during play opens an in-game pause menu with audio controls:
-  - Turn background music on or off
-  - Turn sound effects on or off
-  - Volume sliders (for example master, music, effects, and ambient)
-  - Picking which music track plays
-  - A **Shuffle / Loop** toggle: Shuffle plays the tracks in random order, and Loop repeats the current track
-- Still to decide: what else goes in the pause menu (save, load, settings, quit).
+- **Audio controls** are in the Escape pause menu (see Pause menu).
+
+## Pause menu
+
+Pressing **Escape** during play opens the pause menu. It contains:
+
+1. **Audio controls**
+   - Music on or off
+   - Sound effects on or off
+   - Volume sliders (for example master, music, effects, and ambient)
+   - Choosing a music track (from the five original tracks)
+   - A Shuffle / Loop toggle: Shuffle plays tracks in random order, and Loop repeats the current track
+2. **Save game:** save to one of several save slots.
+3. **Load game:** load a game from a save slot.
+4. **New game:** start a fresh game.
+5. **Exit to desktop:** quit the game.
+
+- Still to decide: how many save slots there are, whether there's autosave, and whether New game and Exit to desktop ask "Are you sure?" or offer to save first.
 
 ## Social axes
 
@@ -406,3 +417,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Audio: the builder writes several original tracks the player can pick from, plus an Escape pause menu with music and sound toggles and volume sliders.
 - 2026-10-01: Audio: set the number of original music tracks to five.
 - 2026-10-01: Audio: added a Shuffle / Loop toggle to the pause menu audio controls.
+- 2026-10-01: Added the "Pause menu" section (audio controls, save, load, new game, exit to desktop); the audio controls moved there from Audio.
