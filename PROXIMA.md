@@ -133,8 +133,10 @@ Proxima's core resources support three of its gameplay pillars: civilization bui
 | Resource | Used for |
 |---|---|
 | Minerals | Building structures and units |
-| Energy / nutrients | City growth and terraforming |
+| Nutrients | Feeding cities and growing their population |
+| Energy | Powering terraforming and city facilities |
 | Research points | Discovering technologies |
+| Credits | Rush-buying units and paying terraforming fees |
 
 - **Where they come from:** cities and the terrain squares they work.
 - **Biomes change yields.** Proxima's own biomes produce more or less of each resource, for example:
@@ -143,7 +145,15 @@ Proxima's core resources support three of its gameplay pillars: civilization bui
   - Frozen regions on the night side
 - **Terraforming** raises a square's yield over time, and it helps unlock the harsh day and night sides.
 - Scavenger patrols can also turn up one-time bonuses of credits, minerals, or techs (see Scavenger patrols).
-- Still to decide: whether energy and nutrients stay one resource or split into two, how credits fit in (as a separate currency or as part of energy), the exact yields for each biome, and whether rare strategic resources exist.
+- **Credits:**
+  - *Rush production:* spend credits to finish a unit instantly.
+  - *Terraforming fee:* terraforming a grid square may cost a set fee in credits, charged per square.
+  - *How credits are earned (suggested):*
+    - Trading with other factions
+    - Salvaging wreckage, such as ark debris and destroyed units
+    - A small, steady income from each city
+    - One-time finds from scavenger patrols
+- Still to decide: the exact yields for each biome, the rush-buy price formula, the fee per terraformed square (flat, or higher for harsher biomes), and whether rare strategic resources exist.
 
 ## Scavenger patrols
 
@@ -276,3 +286,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Naval rules: added transport capacity (set by ship design) and shore bombardment.
 - 2026-10-01: Naval rules: bombardment can only weaken a city; capturing it still takes a land unit.
 - 2026-10-01: Added the "Resources" section (minerals, energy/nutrients, research points; biome yields; terraforming).
+- 2026-10-01: Resources: split energy and nutrients into separate resources, and added credits (rush production, per-square terraforming fee, ways to earn them).
