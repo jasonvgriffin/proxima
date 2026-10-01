@@ -224,4 +224,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added the "Combat" section (odds-based results with terrain modifiers).
 - 2026-10-01: Added the "Unit design" section (player-designed units built from researched parts).
 - 2026-10-01: Added the "Scavenger patrols" section (auto-search mode in place of map pods).
-\n- 2026-10-01: Scavenger patrols: search is now a toggle on any ground or naval unit, not only military units.\n
+- 2026-10-01: Scavenger patrols: search is now a toggle on any ground or naval unit, not only military units.
