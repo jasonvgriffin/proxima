@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CONFIG } from '../src/config';
-import { crisisBandDamage, crisisCreditTithe, crisisLevel, crisisWarned, crisisYieldFactor } from '../src/core/crisis';
+import { crisisTuning } from '../src/core/difficulty';
 import {
   acceptanceChance,
   blocksAttack,
@@ -159,14 +159,16 @@ describe('spy networks', () => {
 
 describe('the waking reactor', () => {
   it('stays quiet until the configured week, then ramps damage, tithe, and yield loss', () => {
-    expect(crisisWarned(CONFIG.crisis.startRound - 1)).toBe(false);
-    expect(crisisLevel(CONFIG.crisis.startRound)).toBe(0);
-    expect(crisisWarned(CONFIG.crisis.startRound)).toBe(true);
-    expect(crisisLevel(CONFIG.crisis.startRound + CONFIG.crisis.rampRounds)).toBe(1);
-    expect(crisisBandDamage(0)).toBe(0);
-    expect(crisisBandDamage(1)).toBe(CONFIG.crisis.maxBandDamage);
-    expect(crisisCreditTithe(1)).toBe(CONFIG.crisis.creditTithe);
-    expect(crisisYieldFactor(1)).toBeCloseTo(1 - CONFIG.crisis.maxYieldPenalty);
+    const quiet = crisisTuning(CONFIG.crisis.startRound - 1, 'normal');
+    const warning = crisisTuning(CONFIG.crisis.startRound, 'normal');
+    const full = crisisTuning(CONFIG.crisis.startRound + CONFIG.crisis.rampRounds, 'normal');
+    expect(quiet.level).toBe(0);
+    expect(warning.level).toBe(0);
+    expect(warning.startRound).toBe(CONFIG.crisis.startRound);
+    expect(full.level).toBe(1);
+    expect(full.damage).toBe(CONFIG.crisis.maxBandDamage);
+    expect(full.tithe).toBe(CONFIG.crisis.creditTithe);
+    expect(full.yieldFactor).toBeCloseTo(1 - CONFIG.crisis.maxYieldPenalty);
   });
 
   it('warns on the first crisis week and later hurts unanchored units in the band', () => {

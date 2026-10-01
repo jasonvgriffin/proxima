@@ -21,10 +21,10 @@ function v1Envelope() {
 }
 
 describe('save migration', () => {
-  it('loads a 0.1.0 version 1 save as version 2', () => {
+  it('loads a 0.1.0 version 1 save as the current schema', () => {
     const migrated = migrateSave(v1Envelope());
     expect(migrated.version).toBe(SAVE_VERSION);
-    expect(migrated.version).toBe(2);
+    expect(migrated.version).toBe(3);
     expect(migrated.gameVersion).toBe(1);
     expect(migrated.state.autosaveEnabled).toBe(true);
     expect(migrated.state.version).toBe(1);
@@ -33,10 +33,23 @@ describe('save migration', () => {
     expect(restored.unitsOf('helm').length).toBeGreaterThan(0);
   });
 
-  it('walks the chain and leaves a current save on version 2', () => {
+  it('gives a version 2 save empty tile history', () => {
+    const envelope = v1Envelope();
+    envelope.version = 2;
+    for (const tile of envelope.state.tiles) delete (tile as { history?: unknown }).history;
+    delete (envelope.state as { sight?: unknown }).sight;
+    const migrated = migrateSave(envelope);
+    expect(migrated.version).toBe(3);
+    expect(migrated.state.tiles.every((tile) => Array.isArray(tile.history) && tile.history.length === 0)).toBe(true);
+    expect(migrated.state.sight).toEqual({});
+    const restored = Game.fromState(migrated.state);
+    expect(restored.state.tiles.every((tile) => tile.history.length === 0)).toBe(true);
+  });
+
+  it('walks the chain and leaves a current save on the current version', () => {
     const once = migrateSave(v1Envelope());
     const twice = migrateSave(once);
-    expect(twice.version).toBe(2);
+    expect(twice.version).toBe(3);
     expect(twice.label).toBe(once.label);
     expect(twice.state.seed).toBe(once.state.seed);
   });

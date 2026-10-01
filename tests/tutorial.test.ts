@@ -14,6 +14,7 @@ const TOPICS = [
   'society',
   'diplomacy',
   'spies',
+  'events',
   'crisis',
 ] as const;
 
@@ -36,6 +37,8 @@ describe('pause tutorial', () => {
     expect(text).toContain('optional');
     expect(text).toContain('Escape');
     expect(text).toContain('Press M');
+    expect(text).toContain('pressing T');
+    expect(text).toContain('press I');
   });
 
   it('pages with Next and Back, and the last page closes instead of advancing', () => {
