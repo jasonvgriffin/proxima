@@ -23,6 +23,7 @@ interface ProximaBridge {
 
 interface ProximaDebug {
   spawnRaider(): { x: number; y: number; name: string } | null;
+  showRecap(): void;
   state(): unknown;
 }
 
