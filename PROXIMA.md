@@ -325,9 +325,12 @@ Pressing **Escape** during play opens the pause menu. It contains:
    - Save and Start New Game
    - Start New Game Without Saving
    - Cancel
-5. **Exit to desktop:** quit the game.
+5. **Exit to desktop:** quit the game. The same save-first popup appears, with three choices:
+   - Save and Exit
+   - Exit Without Saving
+   - Cancel
 
-- Still to decide: how many save slots there are, whether there's autosave, and whether Exit to desktop also offers to save first.
+- Still to decide: how many save slots there are and whether there's autosave.
 
 ## Social axes
 
@@ -422,3 +425,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Audio: added a Shuffle / Loop toggle to the pause menu audio controls.
 - 2026-10-01: Added the "Pause menu" section (audio controls, save, load, new game, exit to desktop); the audio controls moved there from Audio.
 - 2026-10-01: Pause menu: New game shows a popup offering to save first (Save and Start New Game, Start New Game Without Saving, Cancel).
+- 2026-10-01: Pause menu: Exit to desktop shows the save-first popup (Save and Exit, Exit Without Saving, Cancel).
