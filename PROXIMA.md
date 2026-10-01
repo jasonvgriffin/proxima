@@ -199,7 +199,9 @@ As in Sid Meier's Alpha Centauri, players found new cities (bases) to grow their
 - Where cities can go ties into the map. The twilight band is the easiest place to live, and the day and night sides are harsher until terraforming or technology opens them up. Founding cities outside the band takes the late-era Sealed Habitats / Geothermal Wells tech (see Tech tree).
 - **Units can travel anywhere.** Any unit, terraformers included, can move anywhere on the map, including the day side and night side outside the twilight band. Traveling outside the band carries a penalty, and that penalty is the only restriction on movement.
   - **The penalty is damage over time.** Any unit outside the twilight band, terraformers included, takes damage over time, and the damage continues until the unit is destroyed.
-  - Still to decide: how much damage per turn, and whether returning to the band or later techs (like Sealed Habitats / Geothermal Wells) stop or slow it.
+  - **Sealed Habitats / Geothermal Wells removes the damage.** Once a player researches this late-era Terraforming Bay tech, their units can travel outside the band without taking damage.
+  - The damage per turn is a tuning value for the builder to set.
+  - Still to decide: whether moving back into the band stops the damage for a unit that's already been hurt.
 - **City founding is limited to the twilight band.** Cities can only be founded inside the habitable twilight band, unless the player has researched the late-era Sealed Habitats / Geothermal Wells tech in the Terraforming Bay branch. That tech allows founding cities on the day side and night side.
 - **Cities can be captured.** Another faction takes a city by defeating its defenders in combat, and the captured city then belongs to them.
 - Capturing cities drives the military supremacy victory. The game ends when one faction has captured every rival base or city (see Victory condition).
@@ -305,6 +307,7 @@ Every faction starts the game with one free tech that fits its identity.
   - It's a technology, not a victory goal.
   - It lets players found cities on the day side and night side, outside the twilight band. Sealed habitats and geothermal heat protect those cities from the extreme temperatures.
   - It sits late in the game and needs a big investment of energy and research.
+  - It also lets the player's units travel outside the twilight band without taking damage (see City construction).
   - It belongs to the Terraforming Bay branch.
 
 ### Terraforming techs
@@ -510,3 +513,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: City construction: any unit, terraformers included, can travel anywhere on the map, with a penalty outside the twilight band as the only restriction. Cities can only be founded inside the band unless the player has the Sealed Habitats / Geothermal Wells tech.
 - 2026-10-01: Added the "Map interface" section (map of the known planet on the main screen; fog of war, clearly marked twilight band, known terrain, resources, and units; pan and zoom).
 - 2026-10-01: City construction: set the penalty for traveling outside the twilight band. All units, terraformers included, take damage over time until they are destroyed.
+- 2026-10-01: Outside-band damage: Sealed Habitats / Geothermal Wells lets units travel outside the band without damage; the damage per turn is a tuning value for the builder.
