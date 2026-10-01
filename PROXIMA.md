@@ -35,11 +35,12 @@ Each group decides what Proxima should become, and nobody is right by default. I
   6. The six factions appearing as separate groups in different places.
 - **On-screen text:** every screen shows text, so the story can be read.
 - **The player moves through it:** the intro never moves on by itself and has no timer. The player goes to the next screen with a Next button or a click.
+- **Back button on every screen:** sits alongside Next and Exit and returns to the previous screen. It's disabled or hidden on the first screen.
 - **Exit button on every screen:** clicking it leaves the intro at any point and returns to the start menu.
 - **No audio for now:** no voice narration and no sound. Audio can be added later.
 - **Afterward:** after the last screen, or after Exit, the player is back on the start menu to set up the game and begin.
 - All art, animation, and text in the intro must be original, the same as every other asset.
-- Still to decide: whether there's a Back button to return to the previous screen, and how long the text on each screen should be.
+- Still to decide: how long the text on each screen should be.
 
 ## Starting locations
 
@@ -464,3 +465,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Intro revised: animation with on-screen text and no audio for now (narration removed); it can still be skipped.
 - 2026-10-01: Intro: added the six animation scenes (planet, approach, crash, escape pods, survivors scattering, factions emerging).
 - 2026-10-01: Intro revised: a "Play Introduction" button, the player advances the screens (no auto-play or timer), and an Exit button on every screen replaces skip-with-any-input.
+- 2026-10-01: Intro: added a Back button on every screen (disabled or hidden on the first screen).
