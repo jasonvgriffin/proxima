@@ -198,10 +198,9 @@ As in Sid Meier's Alpha Centauri, players found new cities (bases) to grow their
 - Cities produce resources, research, and military units.
 - Where cities can go ties into the map. The twilight band is the easiest place to live, and the day and night sides are harsher until terraforming or technology opens them up. Founding cities outside the band takes the late-era Sealed Habitats / Geothermal Wells tech (see Tech tree).
 - **Units can travel anywhere.** Any unit, terraformers included, can move anywhere on the map, including the day side and night side outside the twilight band. Traveling outside the band carries a penalty, and that penalty is the only restriction on movement.
-  - **The penalty is damage over time.** Any unit outside the twilight band, terraformers included, takes damage over time, and the damage continues until the unit is destroyed.
+  - **The penalty is damage over time.** Any unit outside the twilight band, terraformers included, takes **5 damage per turn** (a starting value, tunable later).
+  - The damage continues until one of these happens: the unit is destroyed, the unit returns to the band, or the player researches Sealed Habitats / Geothermal Wells.
   - **Sealed Habitats / Geothermal Wells removes the damage.** Once a player researches this late-era Terraforming Bay tech, their units can travel outside the band without taking damage.
-  - The damage per turn is a tuning value for the builder to set.
-  - Still to decide: whether moving back into the band stops the damage for a unit that's already been hurt.
 - **City founding is limited to the twilight band.** Cities can only be founded inside the habitable twilight band, unless the player has researched the late-era Sealed Habitats / Geothermal Wells tech in the Terraforming Bay branch. That tech allows founding cities on the day side and night side.
 - **Cities can be captured.** Another faction takes a city by defeating its defenders in combat, and the captured city then belongs to them.
 - Capturing cities drives the military supremacy victory. The game ends when one faction has captured every rival base or city (see Victory condition).
@@ -401,7 +400,8 @@ Pressing **Escape** during play opens the pause menu. It contains:
    - Cancel
 
 - **Autosave:** the game saves automatically every 10 turns. It saves to the single autosave slot, which is one of the 10.
-- Still to decide: whether players can turn autosave off or protect a slot from being overwritten.
+- **Autosave toggle:** the pause menu has an autosave on/off toggle. When it's off, the game doesn't autosave every 10 turns.
+- Still to decide: whether players can protect a slot from being overwritten.
 
 ## Social axes
 
@@ -525,3 +525,5 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Social axes: each matching choice gives a 10 percent bonus to the related resource or stat; switching an axis mid-game costs 100 credits (tunable) and causes a temporary stability hit lasting several turns.
 - 2026-10-01: Resources: set the rush-buy price at 1 credit per remaining production point, minimum 10 credits per rush (tunable).
 - 2026-10-01: Terraforming: credit fees scale by biome. Standard tiles pay the base fee, and harsher biomes like toxic soil and frozen regions cost about 1.5 to 2 times that (tunable).
+- 2026-10-01: Pause menu: added an autosave on/off toggle (when off, no autosave every 10 turns).
+- 2026-10-01: Outside-band damage set to 5 per turn (tunable). It stops when the unit is destroyed, returns to the band, or the player researches Sealed Habitats / Geothermal Wells.
