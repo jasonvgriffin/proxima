@@ -79,6 +79,13 @@ The map is generated fresh every game, alongside the randomized starting locatio
   - The start-menu personality settings (Very aggressive, Normal, Easy)
   - Each faction's social-axis choices (religion, values, economy, politics). For example, Dominance values with Warlord politics leans violent, while Harmony with Consensus leans peaceful.
 
+## Turn structure
+
+- Turns strictly alternate. The player takes a full turn first, then each AI faction takes its full turn in order, and the cycle repeats.
+- No turns are taken at the same time.
+- One round means every faction has had one turn. Per-turn effects, such as city credit income and resource yields, happen on each faction's own turn.
+- Still to decide: whether the AI factions always go in the same order or the order is shuffled, and whether there's a turn limit or a game clock.
+
 ## Combat
 
 Combat works like Alpha Centauri's: a battle is decided by odds, not by a guaranteed outcome.
@@ -290,3 +297,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Resources: split energy and nutrients into separate resources, and added credits (rush production, per-square terraforming fee, ways to earn them).
 - 2026-10-01: Resources: city credit income is now set (a baseline each turn that grows with city size).
 - 2026-10-01: Resources: set the starting city credit formula (1 per population point + 2 per city each turn).
+- 2026-10-01: Added the "Turn structure" section (strictly alternating turns, none taken at the same time).
