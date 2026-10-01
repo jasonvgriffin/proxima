@@ -55,7 +55,16 @@ On the start menu, players pick an overall difficulty level and can then fine-tu
   - Under Game Options, the player can edit the AI personality of each rival faction.
   - Each rival starts with a default personality that fits its story and usual level of aggression.
   - The player can adjust any rival's personality before the game starts. The overall aggressiveness setting is the baseline, and a per-faction change overrides it for that faction.
-- Still to decide: which personality traits can be edited per faction (for example aggression, openness to diplomacy, trustworthiness, focus on expanding or on research), the names of the overall difficulty levels, what each one changes (AI bonuses, resources, events), and any other settings to fine-tune, such as how open AI factions are to diplomacy, map size, or how hostile the planet is.
+  - **Editable personality traits.** Each trait has a few levels to pick from; the levels shown are a starting proposal.
+
+    | Trait | What it controls | Levels |
+    |---|---|---|
+    | Aggression | How likely the faction is to attack | Very aggressive, Normal, Easy |
+    | Expansion priority | Founding new cities versus building up the ones it has | Expansionist, Balanced, Builder |
+    | Research focus | Which tech branch it leans toward | Faction specialty, Balanced, General |
+    | Diplomacy style | How it deals with other factions | Treaty-seeker, Trader, Go it alone |
+    | Risk tolerance | Caution in combat and exploration | Cautious, Measured, Bold |
+- Still to decide: the default trait levels for each rival faction, the names of the overall difficulty levels, what each one changes (AI bonuses, resources, events), and any other settings to fine-tune, such as how open AI factions are to diplomacy, map size, or how hostile the planet is.
 
 ## Map generation
 
@@ -360,3 +369,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added the "Random events" section and an on/off toggle for it on the start menu.
 - 2026-10-01: Random events: how often they happen and whether a warning comes first are both random.
 - 2026-10-01: Start menu: added a Game Options button with editable AI personalities for each rival faction (defaults match each faction).
+- 2026-10-01: Game Options: defined five editable AI traits (aggression, expansion priority, research focus, diplomacy style, risk tolerance).
