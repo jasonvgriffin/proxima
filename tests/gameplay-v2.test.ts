@@ -86,8 +86,10 @@ describe('random events', () => {
 
     const play = (seed: number) => {
       const game = Game.newGame({ seed, player: 'helm', randomEvents: true });
+      const settler = game.unitsOf('helm').find((unit) => unit.canFound)!;
+      game.foundCity(settler.id);
       const seen: string[] = [];
-      for (let n = 0; n < 24; n++) {
+      for (let n = 0; n < 36; n++) {
         const turned = game.endTurn();
         if (!turned.ok && game.state.events.prompt) {
           seen.push(game.state.events.prompt.kind);

@@ -1,3 +1,4 @@
+import { climateFromTerrain } from './geography';
 import type { FactionId, ImprovementId, TerraformEntry, Tile, TileSight } from './types';
 
 /** Newest entries stay. Older ones collapse into a single line. */
@@ -33,23 +34,44 @@ export function ensureTileRecords(state: { tiles?: unknown; sight?: unknown }): 
   if (!state.sight || typeof state.sight !== 'object' || Array.isArray(state.sight)) {
     state.sight = {};
   }
+  for (const value of Object.values(state.sight as Record<string, unknown>)) {
+    if (!value || typeof value !== 'object') continue;
+    const sight = value as Record<string, unknown>;
+    const terrain = typeof sight.terrain === 'string' ? sight.terrain : 'grass';
+    if (typeof sight.elevation !== 'number' || typeof sight.rainfall !== 'number' || typeof sight.temperature !== 'number') {
+      const climate = climateFromTerrain(terrain);
+      if (typeof sight.elevation !== 'number') sight.elevation = climate.elevation;
+      if (typeof sight.rainfall !== 'number') sight.rainfall = climate.rainfall;
+      if (typeof sight.temperature !== 'number') sight.temperature = climate.temperature;
+    }
+    if (typeof sight.river !== 'boolean') sight.river = false;
+    if (!('special' in sight)) sight.special = null;
+    if (!Array.isArray(sight.history)) sight.history = [];
+    delete sight.zone;
+    delete sight.livable;
+  }
 }
 
 export function sightFrom(tile: Tile, working: TileSight['working']): TileSight {
   return {
     terrain: tile.terrain,
-    zone: tile.zone,
+    elevation: tile.elevation,
+    rainfall: tile.rainfall,
+    temperature: tile.temperature,
+    river: tile.river,
     resource: tile.resource,
+    special: tile.special,
     improvement: tile.improvement,
-    livable: tile.livable,
     road: tile.road,
     scarred: tile.scarred,
-    history: tile.history.map((entry) => ({ ...entry })),
+    history: (tile.history ?? []).map((entry) => ({ ...entry })),
     working,
   };
 }
 
-export function improvementLines(sight: Pick<TileSight, 'improvement' | 'road' | 'livable' | 'zone' | 'scarred' | 'terrain'>): string[] {
+export function improvementLines(
+  sight: Pick<TileSight, 'improvement' | 'road' | 'scarred' | 'terrain' | 'river' | 'special'>,
+): string[] {
   const lines: string[] = [];
   if (sight.terrain === 'forest') lines.push('Forest');
   if (sight.improvement === 'farm') lines.push('Farm');
@@ -58,8 +80,9 @@ export function improvementLines(sight: Pick<TileSight, 'improvement' | 'road' |
   else if (sight.improvement === 'plant-trees') lines.push('Planted trees');
   else if (sight.improvement === 'atmosphere') lines.push('Atmosphere');
   if (sight.road) lines.push('Road');
+  if (sight.river) lines.push('River');
+  if (sight.special) lines.push(sight.special);
   if (sight.scarred) lines.push('Reactor scar');
-  if (sight.livable && sight.zone !== 'twilight') lines.push('Livable ground');
   return lines;
 }
 

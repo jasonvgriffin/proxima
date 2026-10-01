@@ -2,7 +2,8 @@ import { describe, expect, it } from 'vitest';
 import { CONFIG } from '../src/config';
 import { Game } from '../src/core/game';
 import { FACTION_IDS } from '../src/core/types';
-import { isSea, zoneForColumn } from '../src/core/rules';
+import { isHostileClimate } from '../src/core/geography';
+import { isSea } from '../src/core/rules';
 
 function newGame(seed = 3) {
   return Game.newGame({
@@ -16,23 +17,30 @@ function newGame(seed = 3) {
 }
 
 describe('a new game', () => {
-  it('starts every faction in the twilight band with a colony, a terraformer, and a scout', () => {
+  it('starts every faction on hospitable land with a colony, a terraformer, and a scout', () => {
     const game = newGame();
     expect(game.calendar()).toMatchObject({ year: 2460, week: 1 });
     expect(game.state.whoseTurn).toBe('helm');
+    const homes = [];
     for (const id of FACTION_IDS) {
       const units = game.unitsOf(id);
       expect(units.some((unit) => unit.canFound)).toBe(true);
       expect(units.some((unit) => unit.canTerraform)).toBe(true);
       const home = units[0];
       const tile = game.tile(home.x, home.y);
-      expect(tile.zone).toBe('twilight');
-      expect(zoneForColumn(home.x)).toBe('twilight');
       expect(isSea(tile.terrain)).toBe(false);
+      expect(isHostileClimate(tile.terrain)).toBe(false);
+      homes.push(home);
+    }
+    for (let i = 0; i < homes.length; i++) {
+      for (let j = i + 1; j < homes.length; j++) {
+        const dist = Math.max(Math.abs(homes[i].x - homes[j].x), Math.abs(homes[i].y - homes[j].y));
+        expect(dist).toBeGreaterThanOrEqual(4);
+      }
     }
   });
 
-  it('founds a city with a colony pod and refuses the day side without sealed habitats', () => {
+  it('founds a city with a colony pod and refuses hostile ground without sealed habitats', () => {
     const game = newGame(11);
     const settler = game.unitsOf('helm').find((unit) => unit.canFound)!;
     const founded = game.foundCity(settler.id);
@@ -45,8 +53,6 @@ describe('a new game', () => {
     pod.x = 1;
     const tile = other.tile(1, pod.y);
     tile.terrain = 'scorched';
-    tile.zone = 'day';
-    tile.livable = false;
     const denied = other.foundCity(pod.id);
     expect(denied.ok).toBe(false);
     other.state.factions.helm.techs.push('sealed-habitats');
@@ -54,13 +60,11 @@ describe('a new game', () => {
     expect(allowed.ok).toBe(true);
   });
 
-  it('charges a biome fee and keeps one terraformer on the tile without making a farm livable', () => {
+  it('charges a biome fee and keeps one terraformer on the tile until the work is done', () => {
     const game = newGame(5);
     const former = game.unitsOf('helm').find((unit) => unit.canTerraform)!;
     const tile = game.tile(former.x, former.y);
     tile.terrain = 'toxic';
-    tile.zone = 'day';
-    tile.livable = false;
     const before = game.state.factions.helm.credits;
     const started = game.startTerraform(former.id, 'farm');
     expect(started.ok).toBe(true);
@@ -77,45 +81,40 @@ describe('a new game', () => {
     former.terraform!.turnsLeft = 1;
     game.endTurn();
     const updated = game.tile(former.x, former.y);
-    expect(updated.livable).toBe(false);
     expect(updated.improvement).toBe('farm');
+    expect(updated.terrain).toBe('toxic');
   });
 
-  it('only atmosphere work pulls a tile into the livable zone', () => {
+  it('softens scorched ground when atmosphere work finishes', () => {
     const game = newGame(6);
     const former = game.unitsOf('helm').find((unit) => unit.canTerraform)!;
     const tile = game.tile(former.x, former.y);
     tile.terrain = 'scorched';
-    tile.zone = 'day';
-    tile.livable = false;
     game.state.factions.helm.techs.push('atmosphere');
     const started = game.startTerraform(former.id, 'atmosphere');
     expect(started.ok).toBe(true);
     former.terraform!.turnsLeft = 1;
     game.endTurn();
-    expect(game.tile(former.x, former.y).livable).toBe(true);
+    expect(game.tile(former.x, former.y).terrain).toBe('grass');
     expect(game.tile(former.x, former.y).improvement).toBe('atmosphere');
+    expect(game.tile(former.x, former.y).history.some((entry) => entry.change.includes('climate'))).toBe(true);
   });
 
-  it('damages units left outside the band and stops after Sealed Habitats', () => {
+  it('damages units left on harsh ground and stops after Sealed Habitats', () => {
     const game = newGame(8);
     const scout = game.unitsOf('helm').find((unit) => unit.role === 'scout')!;
     scout.x = 0;
     const tile = game.tile(0, scout.y);
-    tile.livable = false;
-    tile.zone = 'day';
     tile.terrain = 'scorched';
     const hp = scout.hp;
     game.endTurn();
     const survived = game.unitById(scout.id);
-    expect(survived?.hp).toBe(hp - CONFIG.outsideBand.damagePerTurn);
+    expect(survived?.hp).toBe(hp - CONFIG.exposure.damagePerTurn);
 
     const sealed = newGame(8);
     const unit = sealed.unitsOf('helm').find((entry) => entry.role === 'scout')!;
     unit.x = 0;
     const harsh = sealed.tile(0, unit.y);
-    harsh.livable = false;
-    harsh.zone = 'day';
     harsh.terrain = 'scorched';
     sealed.state.factions.helm.techs.push('sealed-habitats');
     const before = unit.hp;

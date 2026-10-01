@@ -5,8 +5,8 @@ import type { Difficulty } from './types';
  * The only difficulty tuning table.
  *
  * Easy, Normal, Hard, and Brutal change rival production, research, and
- * credits, how soon rivals attack, starting stockpiles, travel damage
- * outside the twilight band, and when and how hard the Waking Reactor hits.
+ * credits, how soon rivals attack, starting stockpiles, damage on
+ * hostile ground, and when and how hard the Waking Reactor hits.
  * Normal matches the baseline numbers in CONFIG. Other levels are offsets
  * from that baseline, written out here so they can be edited in one place.
  */
@@ -26,71 +26,71 @@ export interface DifficultyProfile {
   playerStarting: number;
   /** Multiplier on each AI stockpile at the start of a game. */
   aiStarting: number;
-  /** Damage a unit takes each of its turns outside the livable band. */
-  outsideBandDamage: number;
+  /** Damage a unit takes each of its turns on hostile ground. */
+  exposureDamage: number;
   /** Week the Waking Reactor begins. */
   crisisStartRound: number;
   /** Scales crisis damage, the credit tithe, yield loss, and scarring. */
   crisisStrength: number;
 }
 
-const bandDamage = CONFIG.outsideBand.damagePerTurn;
+const exposureBase = CONFIG.exposure.damagePerTurn;
 const crisisStart = CONFIG.crisis.startRound;
 
 export const DIFFICULTY_TABLE: Record<Difficulty, DifficultyProfile> = {
   easy: {
     id: 'easy',
     label: 'Easy',
-    blurb: 'Rivals produce, research, and earn less, and they wait longer to attack. You start richer. The wastes and the reactor are gentler.',
+    blurb: 'Rivals produce, research, and earn less, and they wait longer to attack. You start richer. Harsh ground and the reactor are gentler.',
     production: 0.7,
     research: 0.7,
     credits: 0.75,
     aggressionAdjust: 6,
     playerStarting: 1.4,
     aiStarting: 0.7,
-    outsideBandDamage: Math.max(1, bandDamage - 2),
+    exposureDamage: Math.max(1, exposureBase - 2),
     crisisStartRound: crisisStart + 12,
     crisisStrength: 0.65,
   },
   normal: {
     id: 'normal',
     label: 'Normal',
-    blurb: 'The baseline. Rival yards, the peace window, travel, and the Waking Reactor use the standard numbers.',
+    blurb: 'The baseline. Rival yards, the peace window, harsh ground, and the Waking Reactor use the standard numbers.',
     production: 1,
     research: 1,
     credits: 1,
     aggressionAdjust: 0,
     playerStarting: 1,
     aiStarting: 1,
-    outsideBandDamage: bandDamage,
+    exposureDamage: exposureBase,
     crisisStartRound: crisisStart,
     crisisStrength: 1,
   },
   hard: {
     id: 'hard',
     label: 'Hard',
-    blurb: 'Rivals run hotter yards, attack sooner, and start with more supplies. The band\'s edge bites harder, and the reactor comes early.',
+    blurb: 'Rivals run hotter yards, attack sooner, and start with more supplies. Harsh ground bites harder, and the reactor comes early.',
     production: 1.3,
     research: 1.3,
     credits: 1.35,
     aggressionAdjust: -4,
     playerStarting: 0.75,
     aiStarting: 1.35,
-    outsideBandDamage: bandDamage + 2,
+    exposureDamage: exposureBase + 2,
     crisisStartRound: Math.max(8, crisisStart - 8),
     crisisStrength: 1.3,
   },
   brutal: {
     id: 'brutal',
     label: 'Brutal',
-    blurb: 'Rival production, research, and credits surge. They close in fast, the wastes punish travel, and the reactor hits early and hard.',
+    blurb: 'Rival production, research, and credits surge. They close in fast, harsh ground punishes travel, and the reactor hits early and hard.',
     production: 1.65,
     research: 1.6,
     credits: 1.7,
     aggressionAdjust: -8,
     playerStarting: 0.5,
     aiStarting: 1.75,
-    outsideBandDamage: bandDamage + 5,
+    exposureDamage: exposureBase + 5,
     crisisStartRound: Math.max(8, crisisStart - 16),
     crisisStrength: 1.65,
   },
@@ -149,8 +149,8 @@ export function scaleStarting(amount: number, isHuman: boolean, difficulty: unkn
   return Math.round(amount * startingMultiplier(isHuman, difficulty));
 }
 
-export function outsideBandDamage(difficulty: unknown): number {
-  return difficultyProfile(difficulty).outsideBandDamage;
+export function exposureDamage(difficulty: unknown): number {
+  return difficultyProfile(difficulty).exposureDamage;
 }
 
 export interface CrisisTuning {
@@ -175,7 +175,7 @@ export function crisisTuning(round: number, difficulty: unknown): CrisisTuning {
   return {
     startRound: start,
     level,
-    damage: Math.round(level * CONFIG.crisis.maxBandDamage * strength),
+    damage: Math.round(level * CONFIG.crisis.maxPulseDamage * strength),
     tithe: Math.round(level * CONFIG.crisis.creditTithe * strength),
     yieldFactor: Math.max(0, 1 - level * CONFIG.crisis.maxYieldPenalty * strength),
     scarChance: CONFIG.crisis.scarChance * level * strength,

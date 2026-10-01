@@ -40,7 +40,7 @@ export const INTRO_SCENES: { title: string; text: string; visual: IntroVisual }[
   {
     title: 'Opened along her berths',
     visual: 'impact',
-    text: 'The shield did not hold the heat, and the rings that joined the modules tore over the dayside, where the ground is a furnace under a star that never sets. Fragments carried on into the night, where the ice has no morning. The boundary between those faces is only the place the light stops: wind, rime, and stone. Halcyon broke open along her berths, and the sections came down in pieces, each on its own stretch of ground.',
+    text: 'The shield did not hold the heat, and the rings that joined the modules tore over the dayside, where the ground is a furnace under a star that never sets. Fragments carried on into the night, where the ice has no morning. Between those faces the continents keep their own weather, and a person can stand where the climate allows: wind, rain, and stone. Halcyon broke open along her berths, and the sections came down in pieces, each on its own stretch of ground.',
   },
   {
     title: 'Beyond the horizon',

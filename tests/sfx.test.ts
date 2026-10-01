@@ -31,19 +31,19 @@ describe('terraforming and travel-damage cues', () => {
   it('keeps new log lines when the cap drops older ones', () => {
     const kept = line('still here', 'helm');
     const dropped = line('scrolled off', 'helm');
-    const added = line('Former finishes a farm. The tile joins the livable zone.', 'helm');
+    const added = line('Former finishes a farm.', 'helm');
     expect(freshLogLines([dropped, kept], [kept, added])).toEqual([added]);
   });
 
   it('plays travel damage for the player and ignores rivals, the reactor, and sealed travel', () => {
     const hits = cuesForLines(
       [
-        line('Scout takes 5 damage outside the twilight band.', 'helm'),
-        line('Rover takes 5 damage outside the twilight band.', 'ironclad'),
-        line('Walker is destroyed outside the livable zone.', 'helm'),
+        line('Scout takes 5 damage from the harsh ground.', 'helm'),
+        line('Rover takes 5 damage from the harsh ground.', 'ironclad'),
+        line('Walker is destroyed by the harsh ground.', 'helm'),
         line('Scout takes 4 from the reactor pulse.', 'helm'),
         line('Scout is lost to the Waking Reactor.', 'helm'),
-        line('The Waking Reactor will fray the twilight band.'),
+        line('The buried ark reactor wakes. The Waking Reactor will scar open ground.'),
       ],
       'helm',
     );
@@ -54,7 +54,7 @@ describe('terraforming and travel-damage cues', () => {
   });
 
   it('caps a stack of travel hits so one turn cannot hiss forever', () => {
-    const lines = [1, 2, 3, 4].map((n) => line(`Unit ${n} takes 5 damage outside the twilight band.`, 'helm'));
+    const lines = [1, 2, 3, 4].map((n) => line(`Unit ${n} takes 5 damage from the harsh ground.`, 'helm'));
     expect(cuesForLines(lines, 'helm')).toHaveLength(3);
   });
 
@@ -75,10 +75,10 @@ describe('terraforming and travel-damage cues', () => {
     ).toBe(2);
   });
 
-  it('routes completion and damage to cues, and reactor harm to the band sting', () => {
+  it('routes completion and damage to cues, and reactor harm to the pulse sting', () => {
     const played: string[] = [];
     const audio = {
-      play(kind: 'band') {
+      play(kind: 'pulse') {
         played.push(kind);
       },
       playCue(kind: CueKind, delay = 0) {
@@ -88,15 +88,15 @@ describe('terraforming and travel-damage cues', () => {
     const before = [line('older', 'helm')];
     const after = [
       ...before,
-      line('Former finishes a mine. The tile joins the livable zone.', 'helm'),
-      line('Scout takes 5 damage outside the twilight band.', 'helm'),
+      line('Former finishes a mine.', 'helm'),
+      line('Scout takes 5 damage from the harsh ground.', 'helm'),
       line('Scout takes 2 from the reactor pulse.', 'helm'),
-      line('Cutter takes 5 damage outside the twilight band.', 'verdantia'),
+      line('Cutter takes 5 damage from the harsh ground.', 'verdantia'),
     ];
     playLoggedCues(audio, before, after, 'helm');
     expect(played.some((entry) => entry.startsWith('terraform-complete'))).toBe(true);
     expect(played.some((entry) => entry.startsWith('travel-damage'))).toBe(true);
-    expect(played).toContain('band');
+    expect(played).toContain('pulse');
     expect(played.some((entry) => entry.includes('verdantia'))).toBe(false);
 
     const progress: string[] = [];
@@ -136,10 +136,10 @@ describe('terraforming and travel-damage cues', () => {
     const done = cuesForLines(freshLogLines(finishing, game.state.log), 'helm');
     expect(done.map((hit) => hit.kind)).toContain('terraform-complete');
     expect(terraformProgressDelays([{ id: still.id, turnsLeft: 1 }], snapshotTerraform(game.state.units, 'helm'))).toEqual([]);
-    expect(game.tile(still.x, still.y).livable).toBe(true);
+    expect(game.tile(still.x, still.y).improvement).toBe('farm');
   });
 
-  it('hears outside-band damage, destruction, and silence after Sealed Habitats', () => {
+  it('hears harsh-ground damage, destruction, and silence after Sealed Habitats', () => {
     const game = newGame(8);
     const units = game.unitsOf('helm');
     const scout = units.find((unit) => unit.role === 'scout')!;
@@ -149,24 +149,20 @@ describe('terraforming and travel-damage cues', () => {
     for (const unit of [scout, former]) {
       unit.x = 0;
       const tile = game.tile(0, unit.y);
-      tile.livable = false;
-      tile.zone = 'day';
       tile.terrain = 'scorched';
     }
     const before = game.state.log.slice();
     game.endTurn();
     const hits = cuesForLines(freshLogLines(before, game.state.log), 'helm');
     expect(hits.filter((hit) => hit.kind === 'travel-damage')).toHaveLength(2);
-    expect(game.unitById(scout.id)?.hp).toBe(scoutHp - CONFIG.outsideBand.damagePerTurn);
-    expect(game.unitById(former.id)?.hp).toBe(formerHp - CONFIG.outsideBand.damagePerTurn);
+    expect(game.unitById(scout.id)?.hp).toBe(scoutHp - CONFIG.exposure.damagePerTurn);
+    expect(game.unitById(former.id)?.hp).toBe(formerHp - CONFIG.exposure.damagePerTurn);
 
     const doomed = newGame(8);
     const victim = doomed.unitsOf('helm').find((unit) => unit.role === 'scout')!;
     victim.x = 0;
-    victim.hp = CONFIG.outsideBand.damagePerTurn;
+    victim.hp = CONFIG.exposure.damagePerTurn;
     const harsh = doomed.tile(0, victim.y);
-    harsh.livable = false;
-    harsh.zone = 'day';
     harsh.terrain = 'scorched';
     const prior = doomed.state.log.slice();
     doomed.endTurn();
@@ -178,8 +174,6 @@ describe('terraforming and travel-damage cues', () => {
     const safe = sealed.unitsOf('helm').find((unit) => unit.role === 'scout')!;
     safe.x = 0;
     const home = sealed.tile(0, safe.y);
-    home.livable = false;
-    home.zone = 'day';
     home.terrain = 'scorched';
     sealed.state.factions.helm.techs.push('sealed-habitats');
     const quiet = sealed.state.log.slice();

@@ -9,8 +9,6 @@ export const FACTION_IDS = [
 
 export type FactionId = (typeof FACTION_IDS)[number];
 
-export type Zone = 'day' | 'twilight' | 'night';
-
 export type TerrainId =
   | 'grass'
   | 'forest'
@@ -33,6 +31,9 @@ export type TerrainId =
   | 'frozen-sea';
 
 export type ResourceId = 'minerals' | 'nutrients' | 'energy' | 'ark-debris';
+
+/** Rare deposits. They sit on top of the base terrain yield. */
+export type SpecialId = 'crystal' | 'spores' | 'vent' | 'cache';
 
 export type ImprovementId =
   | 'plant-trees'
@@ -88,29 +89,70 @@ export interface TerraformEntry {
   change: string;
 }
 
-/** Last look at a tile, kept so fog can show remembered ground. */
+/** Last look at a tile, kept so the panel can show remembered ground. */
 export interface TileSight {
   terrain: TerrainId;
-  zone: Zone;
+  elevation: number;
+  rainfall: number;
+  temperature: number;
+  river: boolean;
   resource: ResourceId | null;
+  special: SpecialId | null;
   improvement: ImprovementId | null;
-  livable: boolean;
   road: boolean;
   scarred: boolean;
   history: TerraformEntry[];
   working: { project: ImprovementId; turnsLeft: number; unitName: string } | null;
 }
 
+export interface RecallCity {
+  id: number;
+  name: string;
+  factionId: FactionId;
+  population: number;
+}
+
+export interface RecallUnit {
+  id: number;
+  factionId: FactionId;
+  role: UnitRole;
+  domain: Domain;
+  name: string;
+}
+
+/** What a faction last saw on one tile. The map draws remembered works from this. */
+export interface Recall {
+  terrain: TerrainId;
+  elevation: number;
+  rainfall: number;
+  temperature: number;
+  river: boolean;
+  resource: ResourceId | null;
+  special: SpecialId | null;
+  improvement: ImprovementId | null;
+  road: boolean;
+  scarred: boolean;
+  working: boolean;
+  city: RecallCity | null;
+  units: RecallUnit[];
+}
+
 export interface Tile {
   x: number;
   y: number;
-  zone: Zone;
   terrain: TerrainId;
+  /** 0 (deep water) to 1 (high peak). */
+  elevation: number;
+  /** 0 dry to 1 wet. */
+  rainfall: number;
+  /** 0 cold to 1 hot. */
+  temperature: number;
+  river: boolean;
   resource: ResourceId | null;
+  special: SpecialId | null;
   improvement: ImprovementId | null;
-  livable: boolean;
   road: boolean;
-  /** The waking reactor has eaten the livable air off this tile. */
+  /** The waking reactor has torn this tile. */
   scarred: boolean;
   /** Completed terraform, removals, and event or reactor changes. Capped. */
   history: TerraformEntry[];
@@ -319,6 +361,11 @@ export interface GameState {
   nextUnitId: number;
   nextCityId: number;
   explored: Record<FactionId, boolean[]>;
+  /**
+   * Last-seen ground, cities, and units per faction. Missing on saves from
+   * before fog memory; loading fills it.
+   */
+  recall?: Record<FactionId, (Recall | null)[]>;
   log: LogEntry[];
   winner: Winner | null;
   alliances: [FactionId, FactionId][];
@@ -348,7 +395,8 @@ export interface GameState {
 export interface SaveEnvelope {
   /**
    * Save-file schema. 1 is a Proxima 0.1.0 file. 2 is the first 0.2.0 file.
-   * 3 adds per-tile terraform history. Loaders run the migration chain up to the current schema.
+   * 3 adds per-tile terraform history. 4 drops the climate stripe.
+   * Loaders run the migration chain up to the current schema.
    */
   version: number;
   /** Game-state schema copied from `state.version`. Omitted on 0.1.0 files. */

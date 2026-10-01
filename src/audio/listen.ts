@@ -4,7 +4,7 @@ import type { GameSfx } from './sfx';
 
 /** The slice of AudioBus these cues need. Mute and volume stay inside the bus. */
 export interface CueSink {
-  play(kind: 'band'): void;
+  play(kind: 'pulse'): void;
   playCue(kind: GameSfx, delay?: number): void;
   /** Optional so older cue mocks keep working. Combat and war raise the tension track. */
   stirTension?(): void;
@@ -29,8 +29,8 @@ export function snapshotTerraform(units: readonly WorkingUnit[], factionId: stri
 }
 
 /**
- * Plays terraform completion and outside-band damage for the player.
- * Reactor harm keeps the existing band sting.
+ * Plays terraform completion and harsh-ground damage for the player.
+ * Reactor harm keeps the pulse sting.
  */
 export function playLoggedCues(audio: CueSink, before: readonly LogLine[], after: readonly LogLine[], playerFaction: string) {
   const fresh = freshLogLines(before, after);
@@ -39,7 +39,7 @@ export function playLoggedCues(audio: CueSink, before: readonly LogLine[], after
     audio.playCue(hit.kind, base + hit.delay);
   }
   for (const line of fresh) {
-    if (isReactorHarm(line.text)) audio.play('band');
+    if (isReactorHarm(line.text)) audio.play('pulse');
   }
   if (fresh.some((line) => isCombatOrWar(line.text))) audio.stirTension?.();
 }

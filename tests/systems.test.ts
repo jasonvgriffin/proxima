@@ -63,8 +63,6 @@ describe('diplomacy ladder', () => {
     foe.y = scout.y;
     const tile = game.tile(foe.x, foe.y);
     tile.terrain = 'grass';
-    tile.zone = 'twilight';
-    tile.livable = true;
     tile.scarred = false;
     const blocked = game.confirmAttack(scout.id, foe.x, foe.y);
     expect(blocked.ok).toBe(false);
@@ -166,12 +164,12 @@ describe('the waking reactor', () => {
     expect(warning.level).toBe(0);
     expect(warning.startRound).toBe(CONFIG.crisis.startRound);
     expect(full.level).toBe(1);
-    expect(full.damage).toBe(CONFIG.crisis.maxBandDamage);
+    expect(full.damage).toBe(CONFIG.crisis.maxPulseDamage);
     expect(full.tithe).toBe(CONFIG.crisis.creditTithe);
     expect(full.yieldFactor).toBeCloseTo(1 - CONFIG.crisis.maxYieldPenalty);
   });
 
-  it('warns on the first crisis week and later hurts unanchored units in the band', () => {
+  it('warns on the first crisis week and later hurts unanchored units', () => {
     const game = Game.newGame({ seed: 14, player: 'helm' });
     game.state.round = CONFIG.crisis.startRound - 1;
     game.endTurn();
