@@ -50,6 +50,7 @@ On the start menu, players pick an overall difficulty level and can then fine-tu
 - **Victory conditions: Allied Victory** (on or off)
   - *On:* allies can win together. If an alliance between them captures every rival base or city, every member of the alliance wins.
   - *Off:* only one faction can win by military supremacy, which builds tension inside alliances.
+- **Random events** (on or off): turns random events on or off before the game starts (see Random events).
 - Still to decide: the names of the overall difficulty levels, what each one changes (AI bonuses, resources, events), and any other settings to fine-tune, such as how open AI factions are to diplomacy, map size, or how hostile the planet is.
 
 ## Map generation
@@ -182,6 +183,22 @@ Proxima has no supply pods sitting visibly on the map, the way Alpha Centauri do
 - This fits the story: pieces of the ark were scattered across the planet in the crash.
 - Finds are random every game, which supports infinite replayability.
 - Still to decide: the odds and size of each find, whether there are risks such as ambushes, hazards, or losing the unit, whether finds run out over time, whether patrols can enter the day or night side, and whether players can choose an area to search.
+
+## Random events
+
+Random events can shake up a game. Where possible, each one ties into the crash story or the planet itself.
+
+| Event | Ties into | Possible effect |
+|---|---|---|
+| Solar flare | The planet's nearby red dwarf star | Disrupts comms, sensors, or diplomacy for a few turns |
+| Intact ark wreckage found | The crash story | A one-time bonus of resources, a tech, or units |
+| Faction betrayal | Diplomacy | An ally or treaty partner turns on another faction |
+| Dust storm | The planet | Slows movement, cuts visibility, or lowers tile yields |
+| Seismic shift | The planet | Damages cities or changes terrain |
+
+- **Start-menu toggle:** random events can be turned on or off before a game begins (see Difficulty and personality settings).
+- Random events add to the guiding principle of infinite replayability.
+- Still to decide: how often events happen, whether they're good, bad, or mixed, whether they scale with difficulty, whether players get any warning or a choice in how to respond, and whether events are limited to certain map zones (for example, flares hit the day side harder).
 
 ## Factions (6)
 
@@ -334,3 +351,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Tech tree: each faction starts with one free tech that fits its identity.
 - 2026-10-01: Added the "Diplomacy" section (treaties, trade deals, alliances, espionage, diplomacy screen, social-axis influence).
 - 2026-10-01: Added the Allied Victory toggle to the start-menu settings (allies can share a win when it is on).
+- 2026-10-01: Added the "Random events" section and an on/off toggle for it on the start menu.
