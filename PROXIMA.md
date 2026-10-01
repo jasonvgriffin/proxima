@@ -298,13 +298,14 @@ Every faction starts the game with one free tech that fits its identity.
 
 ## Audio
 
-- **Music and soundtrack: on hold for now.** There are no plans yet for licensed or royalty-free music.
+- **Music and soundtrack:** there are no plans for licensed or royalty-free music at this stage.
+  - Original music the builder makes himself is welcome, even if it's simple, cheesy, or lo-fi. It can sit alongside the original sound effects.
 - **Sound effects:** whoever builds the game should make original sound effects themselves where they can, for example:
   - UI clicks and button presses
   - Combat sounds
   - Terraforming effects
   - Ambient sounds of the planet, such as wind on the night side or heat on the day side
-- Like the art, every sound must be original. Never copy audio from Alpha Centauri or any other game.
+- Like the art, every sound and every piece of music must be original. Never copy audio from Alpha Centauri or any other game.
 - Still to decide: when to revisit music, and whether there will be volume controls and a mute option for each sound type.
 
 ## Social axes
@@ -394,3 +395,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Game Options: set default AI trait levels for all six factions.
 - 2026-10-01: Game Options: Seed Vault default diplomacy style changed to Treaty-seeker.
 - 2026-10-01: Added the "Audio" section (music on hold; the builder makes original sound effects).
+- 2026-10-01: Audio: original music made by the builder (even cheesy or lo-fi) is welcome.
