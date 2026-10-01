@@ -2,8 +2,10 @@ import { CONFIG } from '../config';
 import { drawEmblem, drawPlanet, drawStar, drawStarfield } from '../art/draw';
 import { AudioBus, TRACKS } from '../audio/engine';
 import { playLoggedCues, playTerraformProgress, snapshotLog, snapshotTerraform } from '../audio/listen';
+import { difficultyLabel, difficultyProfile, normalizeDifficulty, outsideBandDamage } from '../core/difficulty';
 import { FACTIONS, SOCIAL_OPTIONS, defaultAxes, defaultPersonalities, DIFFICULTIES, PERSONALITY_LEVELS } from '../core/factions';
 import { Game, PROJECTS, projectLabel } from '../core/game';
+import { proposalLabel } from '../core/diplomacy';
 import { biomeClass, formatCalendar, terraformFee, terraformTurns } from '../core/rules';
 import { formerTechLevel, TECHS, techAvailable, techById } from '../core/tech';
 import { starterDesigns, CHASSIS, WEAPONS, ARMORS, SPECIALS, partKnown } from '../core/parts';
@@ -61,6 +63,7 @@ export class App {
         spawnRaider: () => this.spawnRaider(),
         showRecap: () => this.debugRecap(),
         state: () => this.game?.serialize() ?? null,
+        tilePoint: (x: number, y: number) => this.map?.clientPoint(x, y) ?? null,
       };
     }
     this.render();
@@ -97,10 +100,11 @@ export class App {
           <h1>Proxima</h1>
           <p class="tag">A single-player story of six factions on a tidally locked world. The twilight band is the only home, until someone changes that.</p>
           <div>
-            <p class="muted">Opponent aggressiveness</p>
+            <p class="muted">Difficulty</p>
             <div class="row" data-testid="difficulty">
               ${DIFFICULTIES.map((item) => `<button class="btn small ${this.setup.difficulty === item.id ? 'on' : ''}" data-action="difficulty" data-difficulty="${item.id}" data-testid="difficulty-${item.id}">${esc(item.label)}</button>`).join('')}
             </div>
+            <p class="muted" data-testid="difficulty-blurb">${esc(difficultyProfile(this.setup.difficulty).blurb)}</p>
           </div>
           <label class="row"><input type="checkbox" data-setting="allied" ${this.setup.allied ? 'checked' : ''}/> Allied Victory</label>
           <label class="row"><input type="checkbox" data-setting="events" ${this.setup.events ? 'checked' : ''}/> Random events (saved, not fired in this build)</label>
@@ -159,7 +163,7 @@ export class App {
         <div class="sheet-card">
           <p class="eyebrow">New expedition</p>
           <h2>Choose a faction</h2>
-          <p class="muted">Aggressiveness: ${esc(this.setup.difficulty)}. Seed ${this.setup.seed}.</p>
+          <p class="muted">Difficulty: ${esc(difficultyLabel(this.setup.difficulty))}. Seed ${this.setup.seed}.</p>
           <div class="stack" data-testid="faction-list">
             ${FACTION_IDS.map((id) => this.factionButton(id)).join('')}
           </div>
@@ -187,7 +191,7 @@ export class App {
         <div class="sheet-card" style="grid-column: 1 / -1">
           <p class="eyebrow">Game options</p>
           <h2>Rival personalities</h2>
-          <p class="muted">The aggressiveness setting on the start menu is the baseline. A change here overrides that rival.</p>
+          <p class="muted">Difficulty on the start menu sets how soon rivals attack. A change here overrides that rival's own temperament.</p>
           <table class="grid">
             <tr><th>Faction</th>${traits.map((trait) => `<th>${esc(trait)}</th>`).join('')}</tr>
             ${FACTION_IDS.map((id) => `<tr><td>${esc(FACTIONS[id].name)}</td>${traits.map((trait) => `<td><select data-personality="${id}" data-trait="${trait}">${PERSONALITY_LEVELS[trait].map((level) => `<option value="${level.id}" ${this.setup.personalities[id][trait] === level.id ? 'selected' : ''}>${esc(level.label)}</option>`).join('')}</select></td>`).join('')}</tr>`).join('')}
@@ -264,8 +268,12 @@ export class App {
           if (node) node.textContent = label;
         },
       );
-      const home = game.unitsOf(game.state.playerFaction)[0];
-      if (home) this.map.centerOn(home.x, home.y);
+      const placeCamera = () => {
+        const home = this.game?.unitsOf(this.game.state.playerFaction)[0];
+        if (home && this.map) this.map.centerOn(home.x, home.y);
+      };
+      placeCamera();
+      requestAnimationFrame(placeCamera);
       this.gameMounted = true;
     }
     this.refreshGame();
@@ -281,6 +289,7 @@ export class App {
     this.stage.querySelector('#topbar')!.innerHTML = `
       <strong class="brand">Proxima</strong>
       <div data-testid="calendar">${esc(cal.label)}</div>
+      <div data-testid="hud-difficulty">${esc(difficultyLabel(game.state.setup.difficulty))}</div>
       <div class="resources">
         <div class="chip"><span>Minerals</span><b>${rates.minerals}/t</b></div>
         <div class="chip"><span>Nutrients</span><b>${rates.nutrients}/t</b></div>
@@ -350,7 +359,7 @@ export class App {
         ${city.production ? `<p>${city.production.progress} / ${city.production.cost}</p><button class="btn" data-action="rush" data-city="${city.id}" data-testid="rush-buy">Rush-buy</button>` : ''}
         <p class="muted">Income is 1 credit per population plus 2, before social bonuses.</p>`;
     }
-    return `<h3>${esc(FACTIONS[game.state.playerFaction].name)}</h3><p class="muted">Select a unit or a city. The gold lines on the map are the edges of the twilight band. Outside it, units take ${CONFIG.outsideBand.damagePerTurn} damage a turn until Sealed Habitats / Geothermal Wells.</p>`;
+    return `<h3>${esc(FACTIONS[game.state.playerFaction].name)}</h3><p class="muted">Select a unit or a city. The gold lines on the map are the edges of the twilight band. Outside it, units take ${outsideBandDamage(game.state.setup.difficulty)} damage a turn until Sealed Habitats / Geothermal Wells.</p>`;
   }
 
   private onTile(x: number, y: number) {
@@ -419,7 +428,7 @@ export class App {
       this.screen = 'options';
       this.render();
     } else if (action === 'quit') void this.exitDesktop();
-    else if (action === 'difficulty') this.setup.difficulty = node.dataset.difficulty as Difficulty;
+    else if (action === 'difficulty') this.setup.difficulty = normalizeDifficulty(node.dataset.difficulty);
     else if (action === 'pick-faction') {
       this.setup.faction = node.dataset.faction as FactionId;
       this.setup.axes = defaultAxes(this.setup.faction);
@@ -483,14 +492,15 @@ export class App {
     else if (action === 'reject-offer') this.act(() => this.game!.rejectOffer(Number(node.dataset.id)), 'click');
     else if (action === 'recruit-spy') this.act(() => this.game!.recruitSpy(), 'click');
     else if (action === 'place-spy') {
-      const host = (this.overlay.querySelector('#spy-host') as HTMLSelectElement | null)?.value as FactionId;
-      this.act(() => this.game!.placeSpy(Number(node.dataset.id), host), 'click');
+      const host = (this.overlay.querySelector(`[data-spy-host="${node.dataset.id}"]`) as HTMLSelectElement | null)?.value as FactionId | undefined;
+      if (host) this.act(() => this.game!.placeSpy(Number(node.dataset.id), host), 'click');
     } else if (action === 'steal-tech') this.act(() => this.game!.stealTech(Number(node.dataset.id), node.dataset.tech ?? ''), 'click');
     else if (action === 'sabotage') this.act(() => this.game!.sabotage(Number(node.dataset.id)), 'click');
     else if (action === 'frame') {
-      const left = (this.overlay.querySelector('#frame-left') as HTMLSelectElement).value as FactionId;
-      const right = (this.overlay.querySelector('#frame-right') as HTMLSelectElement).value as FactionId;
-      this.act(() => this.game!.frameJob(Number(node.dataset.id), left, right), 'click');
+      const section = node.closest('section');
+      const left = (section?.querySelector('[data-frame="left"]') as HTMLSelectElement | null)?.value as FactionId | undefined;
+      const right = (section?.querySelector('[data-frame="right"]') as HTMLSelectElement | null)?.value as FactionId | undefined;
+      if (left && right) this.act(() => this.game!.frameJob(Number(node.dataset.id), left, right), 'click');
     } else if (action === 'sweep') this.act(() => this.game!.sweepSpies(), 'click');
     else if (action === 'switch-axis') this.act(() => this.game!.setSocial(node.dataset.axis as SocialAxis, node.dataset.option ?? ''), 'click');
     else if (action === 'research-pick') this.act(() => this.game!.chooseResearch(node.dataset.tech ?? ''), 'click');
@@ -657,14 +667,23 @@ export class App {
         <p class="eyebrow">Diplomacy</p>
         <h2>The ladder</h2>
         <p class="muted">War, then peace, then a non-aggression pact, then an alliance. Research and exploration treaties can sit beside peace or above. No unit has to make contact first.</p>
-        ${offers.map((offer) => `<p>${esc(FACTIONS[offer.from].name)} offers ${esc(offer.kind)}. <button class="btn small" data-action="accept-offer" data-id="${offer.id}">Accept</button> <button class="btn small" data-action="reject-offer" data-id="${offer.id}">Reject</button></p>`).join('')}
+        ${offers.map((offer) => `<p>${esc(FACTIONS[offer.from].name)} offers ${esc(proposalLabel(offer.kind))}. <button class="btn small" data-action="accept-offer" data-id="${offer.id}">Accept</button> <button class="btn small" data-action="reject-offer" data-id="${offer.id}">Reject</button></p>`).join('')}
         ${FACTION_IDS.filter((id) => id !== me).map((id) => {
           const rel = game.relation(me, id);
+          const standing = rel.stance === 'nap' ? 'non-aggression pact' : rel.stance;
+          const actions: [string, string][] = [
+            ['war', 'Declare war'],
+            ['peace', 'Offer peace'],
+            ['nap', 'Non-aggression'],
+            ['alliance', 'Alliance'],
+            ['research', 'Research treaty'],
+            ['exploration', 'Share maps'],
+          ];
           return `<section>
             <h3>${esc(FACTIONS[id].name)}</h3>
-            <p class="muted">Standing: ${esc(rel.stance)}. Grievance ${rel.memory}. Research treaty ${rel.research ? 'yes' : 'no'}. Exploration treaty ${rel.exploration ? 'yes' : 'no'}.</p>
+            <p class="muted">Standing: ${esc(standing)}. Grievance ${rel.memory}. Research treaty ${rel.research ? 'yes' : 'no'}. Exploration treaty ${rel.exploration ? 'yes' : 'no'}.</p>
             <div class="row">
-              ${['war', 'peace', 'nap', 'alliance', 'research', 'exploration'].map((kind) => `<button class="btn small" data-action="propose" data-target="${id}" data-kind="${kind}">${esc(kind)}</button>`).join('')}
+              ${actions.map(([kind, label]) => `<button class="btn small" data-action="propose" data-target="${id}" data-kind="${kind}">${esc(label)}</button>`).join('')}
             </div>
           </section>`;
         }).join('')}
@@ -689,14 +708,14 @@ export class App {
           const intel = spy.host ? game.intel(spy.host) : null;
           return `<section>
             <h3>Spy ${spy.id} ${spy.host ? `inside ${esc(FACTIONS[spy.host].name)}` : 'waiting'}</h3>
-            ${spy.host ? '' : `<div class="row"><select id="spy-host">${others.map((id) => `<option value="${id}">${esc(FACTIONS[id].name)}</option>`).join('')}</select><button class="btn small" data-action="place-spy" data-id="${spy.id}">Place</button></div>`}
+            ${spy.host ? '' : `<div class="row"><select data-spy-host="${spy.id}">${others.map((id) => `<option value="${id}">${esc(FACTIONS[id].name)}</option>`).join('')}</select><button class="btn small" data-action="place-spy" data-id="${spy.id}">Place</button></div>`}
             ${intel ? `<p>Credits ${intel.credits} · minerals ${intel.minerals} · nutrients ${intel.nutrients} · energy ${intel.energy} · research ${intel.researchPoints}${intel.researching ? ` toward ${esc(techById(intel.researching)?.name ?? intel.researching)}` : ''}</p><p class="muted">Known: ${esc(intel.techs.join(', '))}</p>` : ''}
             ${spy.host ? `<div class="stack">
               ${intel?.techs.filter((tech) => !game.state.factions[me].techs.includes(tech)).map((tech) => `<button class="btn small" data-action="steal-tech" data-id="${spy.id}" data-tech="${tech}">Steal ${esc(techById(tech)?.name ?? tech)}</button>`).join('') || '<p class="muted">No unknown tech to steal.</p>'}
               <button class="btn small" data-action="sabotage" data-id="${spy.id}">Sabotage</button>
               <div class="row">
-                <select id="frame-left">${others.filter((id) => id !== spy.host).map((id) => `<option value="${id}">${esc(FACTIONS[id].name)}</option>`).join('')}</select>
-                <select id="frame-right">${others.filter((id) => id !== spy.host).map((id) => `<option value="${id}">${esc(FACTIONS[id].name)}</option>`).join('')}</select>
+                <select data-frame="left">${others.filter((id) => id !== spy.host).map((id) => `<option value="${id}">${esc(FACTIONS[id].name)}</option>`).join('')}</select>
+                <select data-frame="right">${others.filter((id) => id !== spy.host).map((id) => `<option value="${id}">${esc(FACTIONS[id].name)}</option>`).join('')}</select>
                 <button class="btn small" data-action="frame" data-id="${spy.id}">Frame job</button>
               </div>
             </div>` : ''}
@@ -765,6 +784,7 @@ export class App {
       <div class="modal-back"><div class="modal narrow" data-testid="pause-menu">
         <p class="eyebrow">Paused</p>
         <h2>Proxima</h2>
+        <p data-testid="pause-difficulty">Difficulty: ${esc(difficultyLabel(this.game?.state.setup.difficulty))}. ${esc(difficultyProfile(this.game?.state.setup.difficulty).blurb)}</p>
         <h3>Audio</h3>
         <label class="row"><input type="checkbox" data-setting="music" ${this.audio.musicOn ? 'checked' : ''}/> Music</label>
         <label class="row"><input type="checkbox" data-setting="sfx" ${this.audio.sfxOn ? 'checked' : ''}/> Sound effects</label>
