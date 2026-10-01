@@ -31,9 +31,10 @@ Each group decides what Proxima should become, and nobody is right by default. I
   - The ark crashes on a tidally locked world.
   - The survivors scatter in every direction.
   - Six factions wake in the wreckage with no shared memory.
-- **Afterward:** when the intro ends, the player goes back to the start menu to set up the game and begin.
+- **Skipping:** the player can skip the intro at any time by pressing any key or button or clicking the mouse.
+- **Afterward:** when the intro ends or is skipped, the player goes back to the start menu to set up the game and begin.
 - All art, animation, narration, and music in the intro must be original, the same as every other asset.
-- Still to decide: whether the intro plays automatically the first time the game launches, whether it can be skipped, how long it runs, and who records the narration (the builder, a text-to-speech voice, or a voice actor).
+- Still to decide: whether the intro plays automatically the first time the game launches, how long it runs, and who records the narration (the builder, a text-to-speech voice, or a voice actor).
 
 ## Starting locations
 
@@ -454,3 +455,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added the "Calendar" section (Earth years, starting in 2460, one week per turn, shown on the main screen).
 - 2026-10-01: Pause menu: slots are now 9 manual plus 1 autosave (10 total), with the autosave listed first in Load game.
 - 2026-10-01: Added the "Intro" section (a Play Intro button on the start menu; a narrated crash sequence).
+- 2026-10-01: Intro: it can be skipped at any time with any key, button, or mouse click.
