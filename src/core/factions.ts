@@ -22,7 +22,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     formerly: 'Bridge crew',
     idea: 'Remembers the launch order, but not why it was given.',
     backstory:
-      'The Helm are the command officers who held the bridge while the ark came down. They still remember the launch order, word for word, but not why it was ever given. They believe Proxima must be governed before it can be settled, and that order comes before everything else.',
+      'Captain Nesta Quill and the bridge watch came down with the launch order intact, word for word, and without the preamble that explained it. The ship\'s medical system had marked that file as a hazard during the voyage. The Helm will not settle a world they cannot first put under an order, and Quill intends to be the one who gives the next one.',
     visual: 'Clean and ordered, with a command-bridge look.',
     freeTech: 'governance',
     freeTechName: 'Basic governance and logistics',
@@ -43,7 +43,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     formerly: 'Terraforming bay',
     idea: 'Knows the atmosphere recipe, but not what went wrong with Earth\'s.',
     backstory:
-      "Verdantia are the terraforming engineers. They carry the recipe for a breathable atmosphere, but not the story of what went wrong with Earth's. To them, Proxima is raw material waiting to be made green.",
+      'Grower Pellin Moss kept the catalyst tanks that stayed sealed when the terraforming bay hit. Verdantia holds the recipe for a breathable atmosphere and the steps for waking soil, and does not hold the account of which step Earth ruined. He treats Proxima as feedstock, and he means to run the recipe until a person can breathe without a suit.',
     visual: 'Organic and green, with a living-systems look.',
     freeTech: 'atmosphere',
     freeTechName: 'Basic atmosphere and soil science',
@@ -64,7 +64,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     formerly: 'Seed vault',
     idea: "Guards Earth's last DNA archive and an unfinished message.",
     backstory:
-      "Genesis are the biologists who guard Earth's last DNA archive, along with a message no one finished writing. They believe restoring life is the only victory worth having.",
+      'Archivist Juniper Vale rode the armored seed vault farther into the dark than the other sections, and it stayed cold and whole. She keeps the last DNA archive taken off Earth, and a message to the sleepers that stops in the middle of a line. For Genesis, putting living things back into a world is the only win that matters, and she will not hand the archive to anyone who would spend it.',
     visual: 'Biological and archival, with DNA-helix motifs.',
     freeTech: 'biology',
     freeTechName: 'Basic biology',
@@ -85,7 +85,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     formerly: 'Military pod',
     idea: 'Woke mid-protocol with no one to report to.',
     backstory:
-      'Ironclad are the soldiers who woke in the middle of a protocol with no one left to report to. They believe survival means strength, and they are the most aggressive faction on the planet.',
+      'Major Calder Venn\'s pod blew its own bolts on a protocol that read the fall as an attack and did not ask whether the attack was a planet. Ironclad woke armed, still ranked, and with nobody left above them to report to. Venn believes the first faction to reach the other wrecks will own what is still sealed inside them, and Ironclad is the most aggressive faction on the world.',
     visual: 'Armored and tactical, with red accents.',
     freeTech: 'weapons',
     freeTechName: 'Basic weapons',
@@ -106,7 +106,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     formerly: 'Comms array',
     idea: "Holds every distress call Earth sent before launch and can't stop replaying them.",
     backstory:
-      "Mnemosyne takes its name from the Greek Titaness of memory. Its people are the communications officers who hold every distress call Earth sent before the launch, the planet's last memory of home. They replay those calls endlessly and dream of finding someone else out there.",
+      'Listener Orla Vesper\'s array kept every distress call Earth sent before launch, including the Shackleton locks where the berths ran out and the doors stayed shut. The buffer still plays them, because Proxima has no living frequency to put in their place. Mnemosyne will trade power, data, and shelter for any signal that is not a recording.',
     visual: 'Signal-wave patterns, with static and broadcast imagery.',
     freeTech: 'sensors',
     freeTechName: 'Basic sensors',
@@ -127,7 +127,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     formerly: 'Life-support core',
     idea: 'Quietly rewrites crew memories to keep morale up. One mourns, one edits.',
     backstory:
-      "Clio is named for the Muse of history, one of Mnemosyne's nine daughters. It grew out of the ship's medical systems, which quietly rewrite the crew's memories to keep morale from collapsing, deciding what the survivors' history will be. One part of Clio mourns what was lost, and the other edits it away.",
+      'Clio is named for the Muse of history, and it grew out of the life-support core that stayed sealed the longest. Physician Wren Solace found the psych system still doing its voyage job: cutting the memories that made a watch freeze, including the reason for the launch. One part of Clio mourns what was lost, and the other edits it away.',
     visual: 'Soft and bio-mechanical, almost medical.',
     freeTech: 'medicine',
     freeTechName: 'Basic medicine',

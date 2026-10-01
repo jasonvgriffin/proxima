@@ -123,7 +123,7 @@ export class App {
         <div class="menu-card">
           <p class="eyebrow">Year 2460 · Week 1</p>
           <h1>Proxima</h1>
-          <p class="tag">A single-player story of six factions on a tidally locked world. The twilight band is the only home, until someone changes that.</p>
+          <p class="tag">Six factions woke in the wreck of Halcyon. The world is harsh on every face. One of them will decide what it becomes.</p>
           <div>
             <p class="muted">Difficulty</p>
             <div class="row" data-testid="difficulty">
@@ -170,13 +170,14 @@ export class App {
         <canvas class="intro-canvas" id="intro-canvas" data-action="intro-next"></canvas>
         <div class="intro-bar">
           <div class="intro-copy">
-            <p class="eyebrow">Introduction ${this.introIndex + 1} / 6</p>
+            <p class="eyebrow">Introduction ${this.introIndex + 1} / ${INTRO_SCENES.length}</p>
             <h2>${esc(scene.title)}</h2>
             <p data-testid="intro-text">${esc(scene.text)}</p>
           </div>
           <div class="intro-actions">
             <button class="btn" data-action="intro-back" data-testid="intro-back" ${this.introIndex === 0 ? 'disabled' : ''}>Back</button>
-            <button class="btn primary" data-action="intro-next" data-testid="intro-next">${this.introIndex === 5 ? 'Finish' : 'Next'}</button>
+            <button class="btn primary" data-action="intro-next" data-testid="intro-next">${this.introIndex === INTRO_SCENES.length - 1 ? 'Finish' : 'Next'}</button>
+            <button class="btn" data-action="intro-skip" data-testid="intro-skip">Skip intro</button>
             <button class="btn" data-action="intro-exit" data-testid="intro-exit">Exit</button>
           </div>
         </div>
@@ -443,12 +444,13 @@ export class App {
       this.screen = 'intro';
       this.render();
     } else if (action === 'intro-next') {
-      if (this.introIndex >= 5) this.exitIntro();
+      if (this.introIndex >= INTRO_SCENES.length - 1) this.exitIntro();
       else {
         this.introIndex += 1;
         this.render();
       }
-    } else if (action === 'intro-back') {
+    } else if (action === 'intro-skip') this.exitIntro();
+    else if (action === 'intro-back') {
       if (this.introIndex > 0) {
         this.introIndex -= 1;
         this.render();
