@@ -102,10 +102,11 @@ Like Alpha Centauri, players design their own military units from the technology
 
 ## Scavenger patrols
 
-Proxima has no supply pods sitting visibly on the map, the way Alpha Centauri does. Instead, military units can be set to search the land automatically.
+Proxima has no supply pods sitting visibly on the map, the way Alpha Centauri does. Instead, any ground or naval unit can be set to search automatically, not only military units.
 
-- The player puts a unit into **patrol and search mode**, with no need to click individual tiles.
-- Units on patrol search random grid squares and can turn up random items and bonuses:
+- **Search** is a toggle in each unit's settings. It works for every ground and naval unit, including colony pods, formers, and transports as well as military units.
+- With search on, the unit explores random grid squares by itself (naval units search water squares), and the player never has to click individual tiles.
+- Searching units and can turn up random items and bonuses:
   - Credits
   - Minerals
   - Technologies
@@ -223,3 +224,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added the "Combat" section (odds-based results with terrain modifiers).
 - 2026-10-01: Added the "Unit design" section (player-designed units built from researched parts).
 - 2026-10-01: Added the "Scavenger patrols" section (auto-search mode in place of map pods).
+\n- 2026-10-01: Scavenger patrols: search is now a toggle on any ground or naval unit, not only military units.\n
