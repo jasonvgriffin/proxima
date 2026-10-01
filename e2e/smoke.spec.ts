@@ -60,7 +60,7 @@ test('starts a game, moves, founds, terraforms, saves, and opens diplomacy', asy
   await expect(page.getByTestId('intro-skip')).toBeVisible();
   await shot(page, 'intro');
   await page.getByTestId('intro-next').click();
-  await expect(page.getByTestId('intro-text')).toContainText('Do not wait for revision');
+  await expect(page.getByTestId('intro-text')).toContainText('do not wait for revision');
   await page.getByTestId('intro-exit').click();
   await expect(page.getByTestId('start-menu')).toBeVisible();
 
