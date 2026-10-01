@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
@@ -47,5 +47,26 @@ describe('file saves', () => {
     expect(restored.citiesOf('verdantia')).toHaveLength(1);
     expect(readFileSync(join(dir, 'autosave.json'), 'utf8')).toContain('Verdantia');
     expect(readFileSync(join(dir, 'slot-3.json'), 'utf8')).toContain('manual');
+  });
+
+  it('keeps a .bak of the previous file before overwriting a slot', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'proxima-saves-'));
+    const store = createFileSaveStore(dir);
+    await store.write(1, { version: 1, label: 'first' });
+    await store.write(1, { version: 1, label: 'second' });
+    expect(readFileSync(join(dir, 'slot-1.json'), 'utf8')).toContain('second');
+    expect(readFileSync(join(dir, 'slot-1.json.bak'), 'utf8')).toContain('first');
+  });
+
+  it('does not crash on a corrupt file or a missing file', async () => {
+    const dir = mkdtempSync(join(tmpdir(), 'proxima-saves-'));
+    const store = createFileSaveStore(dir);
+    writeFileSync(join(dir, 'slot-2.json'), '{not json');
+    const read = store.read(2);
+    await expect(read).rejects.toThrow(/unreadable \(slot-2\.json\)/);
+    expect(await store.read(4)).toBeNull();
+    const list = await store.list();
+    expect(list[2]).toMatchObject({ slot: 2, corrupt: true });
+    expect(list[4]).toMatchObject({ slot: 4, empty: true });
   });
 });
