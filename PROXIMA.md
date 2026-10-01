@@ -478,12 +478,14 @@ The first test build is a real game in miniature: explore, build, fight, and win
 3. **The social axes** (religion, values, economy, and politics), so each run feels different.
 4. **Basic combat:** Alpha Centauri-style odds-based results with terrain modifiers (see Combat), so the player can fight something early.
 
+5. **Everything in "Version one additions"** below: sound effects, the always-visible autosave toggle, the social-axis recap screen, spy networks, the diplomacy ladder, the endgame crisis, start-menu difficulty settings, and the optional pop-up tutorial.
+
 - **Target timeline:** roughly one to two weeks for this first build.
 - Everything else in this doc comes in later builds, after Jason reviews the test build.
 
-## Version two scope (not for the first build)
+## Version one additions
 
-Everything below was brainstormed for **version two**. The builder (Sid) should focus only on version one for now and **not implement any of this** yet.
+There is no separate version two for now. Sid hasn't built version one yet, so everything below is **part of version one** and should be built along with the First test build scope.
 
 - **Sound effects** for terraforming and for travel damage outside the twilight band.
 - **Pause menu:** the autosave toggle is always visible.
@@ -603,3 +605,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added the "UI and player experience" section. The full UI and player-experience design is delegated to the builder (with Eve), and Jason reviews what is built and asks for changes.
 - 2026-10-01: Added the "First test build scope" section (core loop, six factions, social axes, basic combat; target of one to two weeks).
 - 2026-10-01: Added the "Version two scope" section (sound effects, always-visible autosave toggle, social-axis recap screen, spy networks, diplomacy ladder, endgame crisis, start-menu difficulty settings, optional tutorial). None of it is for the first build.
+- 2026-10-01: Folded the brainstormed version-two items into version one. The section is renamed "Version one additions", and Sid builds all of it as part of version one.
