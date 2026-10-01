@@ -79,6 +79,17 @@ The map is generated fresh every game, alongside the randomized starting locatio
   - The start-menu personality settings (Very aggressive, Normal, Easy)
   - Each faction's social-axis choices (religion, values, economy, politics). For example, Dominance values with Warlord politics leans violent, while Harmony with Consensus leans peaceful.
 
+## Combat
+
+Combat works like Alpha Centauri's: a battle is decided by odds, not by a guaranteed outcome.
+
+- The attacker's strength is compared with the defender's strength to get the odds, and the result is rolled from those odds. A weaker unit can sometimes win.
+- **Terrain changes the odds:**
+  - Defensive terrain, such as mountains, forests, and the ridges along the twilight band, improves the defender's odds.
+  - Open ground favors the attacker.
+- Show the odds to the player before they commit to an attack.
+- Still to decide: other modifiers (fortifying, base defenses, veteran experience, faction and social-axis bonuses), whether a battle runs in rounds that wear down health or is a single roll, and how the day side and night side affect combat.
+
 ## Factions (6)
 
 | # | Faction | Core idea |
@@ -185,3 +196,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added the "Map generation" section.
 - 2026-10-01: Made the tidally locked planet (day side, night side, twilight band) canon in the Story, Starting locations, and Map generation sections.
 - 2026-10-01: Replaced the per-faction win conditions with one victory condition, military supremacy (capture every rival base). Faction aggression is set by the difficulty settings and social axes.
+- 2026-10-01: Added the "Combat" section (odds-based results with terrain modifiers).
