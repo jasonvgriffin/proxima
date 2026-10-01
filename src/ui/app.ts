@@ -1,8 +1,11 @@
 import { APP_VERSION } from '../version';
 import { CONFIG } from '../config';
+import { paintArkCanvas } from '../art/ark';
 import { drawEmblem, drawPlanet, drawStar, drawStarfield } from '../art/draw';
 import { LEADERS, leaderGreeting } from '../art/leaders';
 import { drawPortrait } from '../art/portraits';
+import { unitContactSheetMarkup } from '../art/sheet';
+import { paintUnitIcon, unitIconTag, unitKindFor } from '../art/units';
 import { AudioBus, TRACKS } from '../audio/engine';
 import { playLoggedCues, playTerraformProgress, snapshotLog, snapshotTerraform } from '../audio/listen';
 import { difficultyLabel, difficultyProfile, normalizeDifficulty, outsideBandDamage } from '../core/difficulty';
@@ -76,6 +79,7 @@ export class App {
         spawnRaider: () => this.spawnRaider(),
         showRecap: () => this.debugRecap(),
         showPortraits: () => this.showPortraitSheet(),
+        showUnits: () => this.showUnitSheet(),
         seedDiplomacyOffer: () => this.seedDiplomacyOffer(),
         state: () => this.game?.serialize() ?? null,
         tilePoint: (x: number, y: number) => this.map?.clientPoint(x, y) ?? null,
@@ -314,7 +318,7 @@ export class App {
     this.stage.querySelector('#left')!.innerHTML = `
       <h3>Forces</h3>
       <div data-testid="unit-list">
-        ${units.map((unit) => `<button class="unit-btn ${unit.id === this.selectedUnit ? 'on' : ''}" data-action="select-unit" data-id="${unit.id}" data-testid="unit-${unit.id}" data-role="${unit.role}">${esc(unit.name)} · ${unit.hp}/${unit.maxHp} · ${unit.movesLeft} mp${unit.searching ? ' · search' : ''}${unit.terraform ? ' · working' : ''}</button>`).join('') || '<p class="muted">No units.</p>'}
+        ${units.map((unit) => `<button class="unit-btn ${unit.id === this.selectedUnit ? 'on' : ''}" data-action="select-unit" data-id="${unit.id}" data-testid="unit-${unit.id}" data-role="${unit.role}">${this.unitIcon(unit)}<span>${esc(unit.name)} · ${unit.hp}/${unit.maxHp} · ${unit.movesLeft} mp${unit.searching ? ' · search' : ''}${unit.terraform ? ' · working' : ''}</span></button>`).join('') || '<p class="muted">No units.</p>'}
       </div>
       <h3>Cities</h3>
       <div data-testid="city-list">
@@ -328,6 +332,27 @@ export class App {
       for (const [key, step] of game.reachable(this.selectedUnit)) if (step.cost > 0) this.reach.add(key);
     }
     if (game.state.winner && !this.overlay.innerHTML) this.openVictory();
+    this.paintEmblems();
+  }
+
+  private unitIcon(unit: Unit, large = false): string {
+    const faction = FACTIONS[unit.factionId];
+    const design = this.game?.findDesign(unit.factionId, unit.designId);
+    return unitIconTag({
+      role: unit.role,
+      domain: unit.domain,
+      chassis: design?.chassis,
+      specials: design?.specials,
+      name: unit.name,
+      color: faction.colors.main,
+      deep: faction.colors.deep,
+      hp: unit.hp,
+      maxHp: unit.maxHp,
+      selected: unit.id === this.selectedUnit,
+      working: !!unit.terraform,
+      large,
+      phase: 0.9,
+    });
   }
 
   private inspector(): string {
@@ -337,6 +362,7 @@ export class App {
     if (unit && unit.factionId === game.state.playerFaction) {
       const foe = this.adjacentFoe(unit);
       return `
+        ${this.unitIcon(unit, true)}
         <h3>${esc(unit.name)}</h3>
         <p class="muted">${esc(unit.role)} · atk ${unit.attack} · def ${unit.defense} · move ${unit.movesLeft}/${unit.maxMoves}</p>
         <div class="stack">
@@ -359,6 +385,9 @@ export class App {
       return `
         <h3>${esc(city.name)}</h3>
         <p class="muted">Population ${city.population}. Credits ${report?.credits ?? 0}/turn. Nutrients ${report?.yields.nutrients ?? 0} (need ${report?.need ?? 0}).</p>
+        <div class="build-list" data-testid="build-list">
+          ${designs.map((design) => `<button type="button" class="build-card ${city.production?.designId === design.id ? 'on' : ''}" data-action="set-production" data-city="${city.id}" data-design="${design.id}">${unitIconTag({ role: design.role, domain: design.domain, chassis: design.chassis, specials: design.specials, name: design.name, color: FACTIONS[city.factionId].colors.main, deep: FACTIONS[city.factionId].colors.deep })}<span>${esc(design.name)}</span></button>`).join('')}
+        </div>
         <label>Production
           <select data-city="${city.id}" data-setting="production">
             <option value="">Choose a design</option>
@@ -521,7 +550,9 @@ export class App {
     else if (action === 'switch-axis') this.act(() => this.game!.setSocial(node.dataset.axis as SocialAxis, node.dataset.option ?? ''), 'click');
     else if (action === 'research-pick') this.act(() => this.game!.chooseResearch(node.dataset.tech ?? ''), 'click');
     else if (action === 'save-design') this.saveDesign();
-    else if (action === 'rush') this.act(() => this.game!.rushBuy(Number(node.dataset.city)), 'click');
+    else if (action === 'set-production' && this.game) {
+      this.act(() => this.game!.setProduction(Number(node.dataset.city), node.dataset.design ?? ''), 'click');
+    } else if (action === 'rush') this.act(() => this.game!.rushBuy(Number(node.dataset.city)), 'click');
     else if (action === 'close') this.closeOverlay();
     else if (action === 'resume') this.closeOverlay();
     else if (action === 'pause-save') await this.runSave(() => this.openSave('manual'), 'Could not open the save list.');
@@ -529,6 +560,7 @@ export class App {
     else if (action === 'pause-tutorial' || action === 'tutorial-next' || action === 'tutorial-back') {
       const step = action === 'pause-tutorial' ? 0 : Number(node.dataset.step) + (action === 'tutorial-next' ? 1 : -1);
       this.overlay.innerHTML = renderTutorial(step);
+      this.paintEmblems();
     }
     else if (action === 'pause-new') this.askSaveFirst('new');
     else if (action === 'pause-exit') this.askSaveFirst('exit');
@@ -577,6 +609,7 @@ export class App {
       const design = target.value;
       if (design) this.act(() => this.game!.setProduction(Number(target.dataset.city), design), 'click');
     }
+    if (target.id === 'design-chassis') this.paintDesignPreview();
   }
 
   private onInput(event: Event) {
@@ -775,9 +808,11 @@ export class App {
     const techs = this.game!.state.factions[this.game!.state.playerFaction].techs;
     const options = (parts: { id: string; name: string; req: string | null }[]) =>
       parts.filter((part) => partKnown(part.req, techs)).map((part) => `<option value="${part.id}">${esc(part.name)}</option>`).join('');
+    const colors = FACTIONS[this.game!.state.playerFaction].colors;
     this.overlay.innerHTML = `
       <div class="modal-back"><div class="modal narrow">
         <h2>Design a unit</h2>
+        <canvas id="design-preview" class="design-preview" data-unit-icon data-kind="infantry" data-color="${colors.main}" data-deep="${colors.deep}" width="296" height="208"></canvas>
         <label>Name <input id="design-name" value="Field design"/></label>
         <label>Chassis <select id="design-chassis">${options(CHASSIS)}</select></label>
         <label>Weapon <select id="design-weapon">${options(WEAPONS)}</select></label>
@@ -786,6 +821,18 @@ export class App {
         <button class="btn primary" data-action="save-design">Save design</button>
         <button class="btn" data-action="close">Close</button>
       </div></div>`;
+    this.paintDesignPreview();
+  }
+
+  private paintDesignPreview() {
+    const canvas = this.overlay.querySelector('#design-preview') as HTMLCanvasElement | null;
+    const chassis = this.overlay.querySelector('#design-chassis') as HTMLSelectElement | null;
+    if (!canvas || !chassis || !this.game) return;
+    const colors = FACTIONS[this.game.state.playerFaction].colors;
+    canvas.dataset.kind = unitKindFor({ chassis: chassis.value });
+    canvas.dataset.color = colors.main;
+    canvas.dataset.deep = colors.deep;
+    paintUnitIcon(canvas);
   }
 
   private saveDesign() {
@@ -1083,6 +1130,8 @@ export class App {
       if (!ctx || !faction) return;
       drawPortrait(ctx, faction, canvas.width, canvas.height);
     });
+    root.querySelectorAll('canvas[data-unit-icon]').forEach((node) => paintUnitIcon(node as HTMLCanvasElement));
+    root.querySelectorAll('canvas[data-ark]').forEach((node) => paintArkCanvas(node as HTMLCanvasElement));
   }
 
   private showPortraitSheet() {
@@ -1099,6 +1148,14 @@ export class App {
           </figure>`;
         }).join('')}
       </div>`;
+    this.paintEmblems();
+  }
+
+  private showUnitSheet() {
+    this.stopMotion();
+    this.overlay.innerHTML = '';
+    this.screen = 'menu';
+    this.stage.innerHTML = unitContactSheetMarkup();
     this.paintEmblems();
   }
 

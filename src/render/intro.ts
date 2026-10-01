@@ -77,10 +77,16 @@ export class IntroPlayer {
       ctx.fill();
     } else if (scene === 3) {
       drawPlanet(ctx, w * 0.5, h * 0.78, 160, this.t);
-      drawArk(ctx, w * 0.42, h * 0.58, 1.1, 0.4, true);
+      drawArk(ctx, w * 0.42, h * 0.58, 1.1, 0.4, 'breakup');
       FACTION_IDS.forEach((id, i) => {
-        const angle = this.t * 0.4 + i;
-        drawPod(ctx, w * 0.42 + Math.cos(angle) * (40 + i * 14), h * 0.4 + Math.sin(angle) * 18, FACTIONS[id].colors.main);
+        const angle = this.t * 0.45 + i * 1.05;
+        const reach = 52 + i * 18;
+        drawPod(
+          ctx,
+          w * 0.42 + Math.cos(angle) * reach,
+          h * 0.34 + (i - 2.5) * 16 + Math.sin(angle) * 6,
+          FACTIONS[id].colors.main,
+        );
       });
     } else if (scene === 4) {
       ctx.fillStyle = '#1a2433';

@@ -1,4 +1,5 @@
 import { CONFIG } from '../config';
+import { UNIT_KIND_LABELS, unitIconTag, type UnitKind } from '../art/units';
 import { DIFFICULTY_TABLE } from '../core/difficulty';
 import { FACTIONS, SOCIAL_OPTIONS } from '../core/factions';
 import { formatCalendar } from '../core/rules';
@@ -138,6 +139,30 @@ export function tutorialIndex(step: number, count = tutorialPages().length): num
 }
 
 /** Markup for one page. The overlay is dismissible: Close, Done, and Escape leave it. */
+const TUTORIAL_ART: Record<string, { kind: UnitKind; faction: FactionId }[]> = {
+  cities: [{ kind: 'colony', faction: 'helm' }],
+  terraformers: [{ kind: 'terraformer', faction: 'verdantia' }],
+  combat: [
+    { kind: 'walker', faction: 'ironclad' },
+    { kind: 'infantry', faction: 'helm' },
+    { kind: 'rover', faction: 'mnemosyne' },
+    { kind: 'naval', faction: 'clio' },
+    { kind: 'transport', faction: 'genesis' },
+  ],
+};
+
+function tutorialArt(pageId: string): string {
+  const row = TUTORIAL_ART[pageId];
+  if (!row) return '';
+  const figures = row
+    .map(({ kind, faction }) => {
+      const colors = FACTIONS[faction].colors;
+      return `<figure>${unitIconTag({ kind, color: colors.main, deep: colors.deep, phase: 0.9 })}<figcaption>${esc(UNIT_KIND_LABELS[kind])}</figcaption></figure>`;
+    })
+    .join('');
+  return `<div class="tutorial-units">${figures}</div>`;
+}
+
 export function renderTutorialPage(page: TutorialPage, index: number, total: number): string {
   const last = index >= total - 1;
   const paragraphs = page.paragraphs.map((paragraph) => `<p>${esc(paragraph)}</p>`).join('');
@@ -145,6 +170,7 @@ export function renderTutorialPage(page: TutorialPage, index: number, total: num
       <div class="modal-back"><div class="modal tutorial-modal" data-testid="tutorial" data-tutorial-step="${index}" data-tutorial-id="${esc(page.id)}">
         <p class="eyebrow">Tutorial ${index + 1} / ${total}</p>
         <h2>${esc(page.title)}</h2>
+        ${tutorialArt(page.id)}
         <div class="tutorial-copy">${paragraphs}</div>
         <div class="row">
           <button class="btn" data-action="tutorial-back" data-testid="tutorial-back" data-step="${index}" ${index === 0 ? 'disabled' : ''}>Back</button>

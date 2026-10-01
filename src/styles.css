@@ -178,7 +178,41 @@ p { margin: 0; }
   border: 1px solid transparent;
   padding: 6px 4px;
 }
+.unit-btn {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+.unit-btn span { flex: 1; min-width: 0; }
+.unit-icon {
+  width: 52px;
+  height: 40px;
+  flex: none;
+  display: block;
+  background: #0c1018;
+}
+.unit-icon.lg { width: 148px; height: 104px; margin-bottom: 8px; }
 .unit-btn.on, .city-btn.on { border-color: var(--teal); }
+.build-list { display: flex; flex-wrap: wrap; gap: 6px; }
+.build-card {
+  width: calc(50% - 6px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  background: #0c1018;
+  border: 1px solid var(--line-dim);
+  padding: 4px;
+  text-align: center;
+  font-size: 12px;
+}
+.build-card.on { border-color: var(--teal); }
+.build-card canvas { width: 100%; height: 52px; background: transparent; }
+.tutorial-units { display: flex; flex-wrap: wrap; gap: 8px; }
+.tutorial-units figure { margin: 0; text-align: center; }
+.tutorial-units canvas { width: 88px; height: 64px; background: #0c1018; display: block; }
+.tutorial-units figcaption { color: var(--muted); font-size: 12px; }
+.design-preview { width: 148px; height: 104px; background: #0c1018; }
 
 .modal-back {
   position: absolute;
@@ -287,6 +321,29 @@ table.grid th, table.grid td { border-bottom: 1px solid var(--line-dim); padding
 }
 .portrait-sheet figure { margin: 0; }
 .portrait-sheet canvas { width: 240px; height: 312px; display: block; background: #0c1018; }
+
+.unit-sheet {
+  min-height: 100%;
+  background: #070910;
+  color: var(--text);
+  padding: 28px 32px 64px;
+  overflow: auto;
+}
+.unit-sheet h2 { margin: 18px 0 10px; }
+.unit-grid {
+  display: grid;
+  grid-template-columns: 140px repeat(6, 96px);
+  gap: 8px 10px;
+  align-items: center;
+}
+.unit-grid .unit-icon { width: 96px; height: 72px; }
+.sheet-label { color: var(--muted); font-size: 13px; }
+.unit-states { display: flex; flex-wrap: wrap; gap: 8px; }
+.unit-states .unit-icon { width: 96px; height: 72px; }
+.ark-row { display: flex; flex-wrap: wrap; gap: 16px; align-items: end; }
+.ark-card { margin: 0; }
+.ark-card canvas { display: block; background: #070910; }
+.ark-card figcaption { color: var(--muted); font-size: 13px; margin-top: 4px; }
 .portrait-sheet figcaption { display: flex; flex-direction: column; gap: 2px; padding-top: 8px; }
 .portrait-sheet strong { font-family: var(--display); }
 .portrait-sheet span, .portrait-sheet em { color: var(--muted); font-style: normal; font-size: 13px; }
