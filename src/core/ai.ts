@@ -4,7 +4,7 @@ import type { Game } from './game';
 import { isSea, attackThreshold, canFoundCity, peaceWindow, projectAllowed, tileIsLivable } from './rules';
 import { TECHS, techAvailable } from './tech';
 import { buildableDesigns } from './parts';
-import type { FactionId, ImprovementId, Unit } from './types';
+import type { FactionId, ImprovementId, Personality, Unit } from './types';
 
 function dist(a: { x: number; y: number }, b: { x: number; y: number }): number {
   return Math.max(Math.abs(a.x - b.x), Math.abs(a.y - b.y));
@@ -183,4 +183,44 @@ export function runAi(game: Game): void {
       return score;
     });
   }
+  considerPolitics(game, factionId, personality);
+}
+
+function considerPolitics(game: Game, factionId: FactionId, personality: Personality) {
+  const others = (Object.keys(game.state.factions) as FactionId[]).filter((id) => id !== factionId);
+  const windowTurns = peaceWindow(personality.aggression, game.state.setup.difficulty);
+  if (personality.diplomacy === 'alone' && personality.aggression === 'very-aggressive' && game.state.round > windowTurns) {
+    const target = others.slice().sort((a, b) => game.relation(factionId, b).memory - game.relation(factionId, a).memory)[0];
+    if (target && game.relation(factionId, target).stance !== 'war') game.propose(target, 'war');
+    return;
+  }
+  if (personality.diplomacy === 'treaty') {
+    const war = others.find((id) => game.relation(factionId, id).stance === 'war');
+    if (war) game.propose(war, 'peace');
+    else {
+      const peace = others.find((id) => game.relation(factionId, id).stance === 'peace');
+      if (peace) game.propose(peace, 'nap');
+      else {
+        const nap = others.find((id) => game.relation(factionId, id).stance === 'nap');
+        if (nap && personality.aggression !== 'very-aggressive') game.propose(nap, 'alliance');
+      }
+    }
+  } else if (personality.diplomacy === 'trader') {
+    const partner = others.find((id) => {
+      const rel = game.relation(factionId, id);
+      return rel.stance !== 'war' && !rel.research;
+    });
+    if (partner) game.propose(partner, 'research');
+  }
+  const faction = game.state.factions[factionId];
+  const owned = game.state.spies.filter((spy) => spy.owner === factionId);
+  if (
+    faction.credits > CONFIG.spies.recruitCost + 40 &&
+    owned.length < 1 &&
+    (personality.diplomacy === 'alone' || factionId === 'mnemosyne')
+  ) {
+    game.recruitSpy();
+  }
+  const idle = game.state.spies.find((spy) => spy.owner === factionId && !spy.host);
+  if (idle && others[0]) game.placeSpy(idle.id, others[0]);
 }

@@ -1,5 +1,21 @@
 import { CONFIG } from '../config';
 import { runAi } from './ai';
+import { crisisBandDamage, crisisCreditTithe, crisisLevel, crisisYieldFactor } from './crisis';
+import {
+  acceptanceChance,
+  applyWar,
+  axisOverlap,
+  blocksAttack,
+  canOfferTreaty,
+  canSetStance,
+  downgradeStance,
+  findRelation,
+  initialRelations,
+  proposalLabel,
+  sharesMaps,
+  sharesResearch,
+} from './diplomacy';
+import { frameBlame, missionCaught } from './spies';
 import { socialScale, tileYield, withTechFlats, type Yields } from './economy';
 import { FACTIONS, defaultAxes, defaultPersonalities, socialOption } from './factions';
 import { generateMap } from './mapgen';
@@ -37,6 +53,8 @@ import type {
   GameSetup,
   GameState,
   ImprovementId,
+  Proposal,
+  Relation,
   SocialAxes,
   SocialAxis,
   Tile,
@@ -113,6 +131,7 @@ export class Game {
         energy: CONFIG.starting.energy,
         customDesigns: [],
         designSerial: 1,
+        lastResearch: 0,
       };
       explored[id] = emptyExplored(map.width, map.height);
     }
@@ -139,6 +158,12 @@ export class Game {
       log: [],
       winner: null,
       alliances: [],
+      relations: initialRelations(ids),
+      spies: [],
+      offers: [],
+      nextSpyId: 1,
+      nextOfferId: 1,
+      axisHistory: [{ round: 1, axes: { ...factions[opts.player].axes } }],
     };
     const game = new Game(state);
     const designs = starterDesigns();
@@ -266,11 +291,12 @@ export class Game {
       } as Yields),
       faction.techs,
     );
+    const crisis = crisisYieldFactor(crisisLevel(this.state.round));
     const yields: Yields = {
-      minerals: Math.max(0, Math.round(raw.minerals * socialScale(faction, 'minerals') * this.aiYield(faction))),
-      nutrients: Math.max(0, Math.round(raw.nutrients * socialScale(faction, 'nutrients') * this.aiYield(faction))),
-      energy: Math.max(0, Math.round(raw.energy * socialScale(faction, 'energy') * this.aiYield(faction))),
-      research: Math.max(0, Math.round(raw.research * socialScale(faction, 'research') * this.aiYield(faction))),
+      minerals: Math.max(0, Math.round(raw.minerals * socialScale(faction, 'minerals') * this.aiYield(faction) * crisis)),
+      nutrients: Math.max(0, Math.round(raw.nutrients * socialScale(faction, 'nutrients') * this.aiYield(faction) * crisis)),
+      energy: Math.max(0, Math.round(raw.energy * socialScale(faction, 'energy') * this.aiYield(faction) * crisis)),
+      research: Math.max(0, Math.round(raw.research * socialScale(faction, 'research') * this.aiYield(faction) * crisis)),
     };
     const credits = this.creditIncome(city, faction);
     return { yields, credits, worked: worked.map((tile) => ({ x: tile.x, y: tile.y })), need: city.population * CONFIG.city.nutrientsPerPop };
@@ -446,6 +472,16 @@ export class Game {
     const preview = this.previewAttack(unitId, x, y);
     if (!preview.ok) return fail(preview.message);
     const unit = this.unitById(unitId)!;
+    const foeId = this.enemyFactionAt(unit.factionId, x, y);
+    if (foeId) {
+      const rel = this.relation(unit.factionId, foeId);
+      if (blocksAttack(rel.stance)) return fail('A pact holds. Break it before you attack.');
+      if (rel.stance === 'peace') {
+        Object.assign(rel, applyWar(rel));
+        this.syncAlliances();
+        this.say(`${FACTIONS[unit.factionId].name} breaks the peace with ${FACTIONS[foeId].name}.`, unit.factionId);
+      }
+    }
     const roll = this.rng.next();
     const win = attackerWins(preview.odds, roll);
     const tile = this.tile(x, y);
@@ -553,6 +589,7 @@ export class Game {
     faction.credits -= CONFIG.social.switchCost;
     faction.axes[axis] = optionId;
     faction.stabilityTurns = CONFIG.social.stabilityHitTurns;
+    this.state.axisHistory.push({ round: this.state.round, axes: { ...faction.axes } });
     this.say(`Society shifts. Stability is shaken for ${CONFIG.social.stabilityHitTurns} turns.`, faction.id);
     this.commit();
     return { ok: true, message: `Axis changed. ${CONFIG.social.switchCost} credits, stability shaken.` };
@@ -566,6 +603,254 @@ export class Game {
     faction.customDesigns.push(compiled.design);
     this.commit();
     return { ok: true, message: `Design saved: ${compiled.design.name}.` };
+  }
+
+  relation(a: FactionId, b: FactionId): Relation {
+    const found = findRelation(this.state.relations, a, b);
+    if (!found) throw new Error(`No relation between ${a} and ${b}`);
+    return found;
+  }
+
+  mapPartners(viewer: FactionId): FactionId[] {
+    const partners: FactionId[] = [];
+    for (const rel of this.state.relations) {
+      const other = rel.a === viewer ? rel.b : rel.b === viewer ? rel.a : null;
+      if (other && sharesMaps(rel)) partners.push(other);
+    }
+    for (const spy of this.state.spies) {
+      if (spy.owner === viewer && spy.host && !partners.includes(spy.host)) partners.push(spy.host);
+    }
+    return partners;
+  }
+
+  playerSees(x: number, y: number): boolean {
+    const viewer = this.state.playerFaction;
+    if (this.isExplored(viewer, x, y)) return true;
+    return this.mapPartners(viewer).some((id) => this.isExplored(id, x, y));
+  }
+
+  intel(host: FactionId): {
+    credits: number;
+    minerals: number;
+    nutrients: number;
+    energy: number;
+    researchPoints: number;
+    researching: string | null;
+    techs: string[];
+  } | null {
+    const viewer = this.state.whoseTurn;
+    const embedded = this.state.spies.some((spy) => spy.owner === viewer && spy.host === host);
+    if (!embedded) return null;
+    const faction = this.state.factions[host];
+    return {
+      credits: faction.credits,
+      minerals: faction.minerals,
+      nutrients: faction.nutrients,
+      energy: faction.energy,
+      researchPoints: faction.researchPoints,
+      researching: faction.researching,
+      techs: [...faction.techs],
+    };
+  }
+
+  propose(target: FactionId, kind: 'war' | Proposal, agreed = false): ActionResult {
+    const actor = this.state.whoseTurn;
+    if (this.state.winner) return fail('The game is over.');
+    if (actor === target) return fail('A faction cannot treat with itself.');
+    const rel = this.relation(actor, target);
+    if (kind === 'war') {
+      Object.assign(rel, applyWar(rel));
+      this.state.offers = this.state.offers.filter((offer) => !this.offerTouches(offer, actor, target));
+      this.syncAlliances();
+      this.say(`${FACTIONS[actor].name} declares war on ${FACTIONS[target].name}.`, actor);
+      this.commit();
+      return { ok: true, message: `War declared on ${FACTIONS[target].name}.` };
+    }
+    if (kind === 'peace' || kind === 'nap' || kind === 'alliance') {
+      const gate = canSetStance(rel.stance, kind);
+      if (!gate.ok) return fail(gate.reason);
+    } else {
+      const gate = canOfferTreaty(rel.stance);
+      if (!gate.ok) return fail(gate.reason);
+      if (kind === 'research' && rel.research) return fail('A research treaty is already in force.');
+      if (kind === 'exploration' && rel.exploration) return fail('An exploration treaty is already in force.');
+    }
+    const targetIsHuman = this.state.factions[target].isHuman;
+    const actorIsHuman = this.state.factions[actor].isHuman;
+    if (!agreed && targetIsHuman && !actorIsHuman) {
+      if (this.state.offers.some((offer) => offer.from === actor && offer.to === target && offer.kind === kind)) {
+        return fail('That offer is already waiting.');
+      }
+      this.state.offers.push({ id: this.state.nextOfferId++, from: actor, to: target, kind });
+      this.say(`${FACTIONS[actor].name} offers ${proposalLabel(kind)} to ${FACTIONS[target].name}.`, actor);
+      this.commit();
+      return { ok: true, message: 'Offer sent.' };
+    }
+    if (!agreed && !this.accepts(target, actor, kind)) {
+      rel.memory = Math.min(100, rel.memory + CONFIG.diplomacy.rejectMemory);
+      this.say(`${FACTIONS[target].name} refuses ${proposalLabel(kind)}.`, target);
+      this.commit();
+      return { ok: false, message: `${FACTIONS[target].name} refuses.` };
+    }
+    this.applyProposal(rel, kind);
+    this.syncAlliances();
+    this.say(`${FACTIONS[actor].name} and ${FACTIONS[target].name} agree on ${proposalLabel(kind)}.`, actor);
+    this.commit();
+    return { ok: true, message: `Agreed: ${proposalLabel(kind)}.` };
+  }
+
+  acceptOffer(offerId: number): ActionResult {
+    if (this.state.whoseTurn !== this.state.playerFaction) return fail('Not your turn.');
+    const offer = this.state.offers.find((entry) => entry.id === offerId && entry.to === this.state.playerFaction);
+    if (!offer) return fail('That offer is gone.');
+    const rel = this.relation(offer.from, offer.to);
+    if (offer.kind === 'peace' || offer.kind === 'nap' || offer.kind === 'alliance') {
+      const gate = canSetStance(rel.stance, offer.kind);
+      if (!gate.ok) return fail(gate.reason);
+    } else if (!canOfferTreaty(rel.stance).ok) return fail('The war has already closed that treaty.');
+    this.applyProposal(rel, offer.kind);
+    this.state.offers = this.state.offers.filter((entry) => entry.id !== offerId);
+    this.syncAlliances();
+    this.say(`${FACTIONS[this.state.playerFaction].name} accepts ${proposalLabel(offer.kind)} from ${FACTIONS[offer.from].name}.`, this.state.playerFaction);
+    this.commit();
+    return { ok: true, message: 'Offer accepted.' };
+  }
+
+  rejectOffer(offerId: number): ActionResult {
+    const offer = this.state.offers.find((entry) => entry.id === offerId);
+    if (!offer) return fail('That offer is gone.');
+    this.relation(offer.from, offer.to).memory = Math.min(100, this.relation(offer.from, offer.to).memory + CONFIG.diplomacy.rejectMemory);
+    this.state.offers = this.state.offers.filter((entry) => entry.id !== offerId);
+    this.say(`${FACTIONS[offer.to].name} rejects ${proposalLabel(offer.kind)}.`, offer.to);
+    this.commit();
+    return { ok: true, message: 'Offer rejected.' };
+  }
+
+  recruitSpy(): ActionResult {
+    if (this.state.winner) return fail('The game is over.');
+    const faction = this.state.factions[this.state.whoseTurn];
+    if (faction.credits < CONFIG.spies.recruitCost) {
+      return fail(`A spy costs ${CONFIG.spies.recruitCost} credits.`);
+    }
+    faction.credits -= CONFIG.spies.recruitCost;
+    this.state.spies.push({ id: this.state.nextSpyId++, owner: faction.id, host: null });
+    this.say(`${FACTIONS[faction.id].name} recruits a spy. No upkeep is due.`, faction.id);
+    this.commit();
+    return { ok: true, message: `Spy recruited for ${CONFIG.spies.recruitCost} credits.` };
+  }
+
+  placeSpy(spyId: number, host: FactionId): ActionResult {
+    const spy = this.ownedSpy(spyId);
+    if (!spy) return fail('That spy is not yours.');
+    if (host === spy.owner) return fail('A spy has to be placed in another faction.');
+    spy.host = host;
+    this.say(`A spy is inside ${FACTIONS[host].name}. Their map, stocks, and research are visible.`, spy.owner);
+    this.commit();
+    return { ok: true, message: `Spy placed in ${FACTIONS[host].name}.` };
+  }
+
+  stealTech(spyId: number, techId: string): ActionResult {
+    return this.resolveTheft(spyId, techId);
+  }
+
+  resolveTheft(spyId: number, techId: string, roll = this.rng.next()): ActionResult {
+    const spy = this.ownedSpy(spyId);
+    if (!spy?.host) return fail('Place the spy before they can steal.');
+    const host = this.state.factions[spy.host];
+    const owner = this.state.factions[spy.owner];
+    if (!host.techs.includes(techId)) return fail('They do not have that technology.');
+    if (owner.techs.includes(techId)) return fail('You already know it.');
+    if (missionCaught(roll, CONFIG.spies.theftCatch)) {
+      this.burnSpy(spy.id, `${FACTIONS[spy.host].name} catches a thief. The ${techId} notes are lost.`);
+      return { ok: false, message: 'The spy was caught.' };
+    }
+    owner.techs.push(techId);
+    this.say(`Stolen from ${FACTIONS[spy.host].name}: ${techId}.`, spy.owner);
+    this.commit();
+    return { ok: true, message: 'Technology stolen.' };
+  }
+
+  sabotage(spyId: number): ActionResult {
+    return this.resolveSabotage(spyId);
+  }
+
+  resolveSabotage(spyId: number, roll = this.rng.next()): ActionResult {
+    const spy = this.ownedSpy(spyId);
+    if (!spy?.host) return fail('Place the spy before they can sabotage.');
+    if (missionCaught(roll, CONFIG.spies.sabotageCatch)) {
+      this.burnSpy(spy.id, `${FACTIONS[spy.host].name} catches a saboteur.`);
+      return { ok: false, message: 'The saboteur was caught.' };
+    }
+    const improved = this.state.tiles.find(
+      (tile) => tile.improvement && this.citiesOf(spy.host!).some((city) => Math.max(Math.abs(city.x - tile.x), Math.abs(city.y - tile.y)) <= CONFIG.city.workRadius),
+    );
+    if (improved?.improvement) {
+      const what = improved.improvement;
+      improved.improvement = null;
+      this.say(`Sabotage ruins ${what} in ${FACTIONS[spy.host].name}'s territory.`, spy.owner);
+    } else {
+      const city = this.citiesOf(spy.host!)[0];
+      if (city) {
+        if (city.production) city.production.progress = 0;
+        city.defenseHp = Math.max(1, city.defenseHp - 3);
+        this.say(`Sabotage stalls the yards at ${city.name}.`, spy.owner);
+      } else {
+        this.say(`The spy finds nothing built to break in ${FACTIONS[spy.host].name}.`, spy.owner);
+      }
+    }
+    this.commit();
+    return { ok: true, message: 'Sabotage done.' };
+  }
+
+  frameJob(spyId: number, left: FactionId, right: FactionId): ActionResult {
+    return this.resolveFrame(spyId, left, right);
+  }
+
+  resolveFrame(spyId: number, left: FactionId, right: FactionId, roll = this.rng.next()): ActionResult {
+    const spy = this.ownedSpy(spyId);
+    if (!spy?.host) return fail('Place the spy before a frame job.');
+    if (left === right || left === spy.owner || right === spy.owner) return fail('A frame needs two other factions.');
+    const blame = frameBlame(missionCaught(roll, CONFIG.spies.frameCatch));
+    if (blame.againstOwner > 0) {
+      this.addMemory(spy.owner, left, blame.againstOwner);
+      this.addMemory(spy.owner, right, blame.againstOwner);
+      this.burnSpy(spy.id, `${FACTIONS[left].name} and ${FACTIONS[right].name} trace the forged evidence to ${FACTIONS[spy.owner].name}.`);
+      return { ok: false, message: 'The frame was exposed.' };
+    }
+    this.addMemory(left, right, blame.betweenTargets);
+    const rel = this.relation(left, right);
+    const next = downgradeStance(rel.stance);
+    if (next === 'war') Object.assign(rel, applyWar({ ...rel, memory: rel.memory }));
+    else rel.stance = next;
+    if (rel.stance === 'war') {
+      rel.research = false;
+      rel.exploration = false;
+    }
+    this.syncAlliances();
+    this.say(`${FACTIONS[left].name} and ${FACTIONS[right].name} blame each other. Neither names ${FACTIONS[spy.owner].name}.`, spy.owner);
+    this.commit();
+    return { ok: true, message: 'The frame landed.' };
+  }
+
+  sweepSpies(): { ok: boolean; message: string; removed: number } {
+    return this.resolveSweep();
+  }
+
+  resolveSweep(roll?: number): { ok: boolean; message: string; removed: number } {
+    const host = this.state.whoseTurn;
+    const enemies = this.state.spies.filter((spy) => spy.host === host && spy.owner !== host);
+    let removed = 0;
+    for (const spy of enemies) {
+      const chance = roll ?? this.rng.next();
+      if (missionCaught(chance, CONFIG.spies.sweepDetect)) {
+        this.state.spies = this.state.spies.filter((entry) => entry.id !== spy.id);
+        removed += 1;
+        this.say(`Counterintelligence roots out a spy from ${FACTIONS[spy.owner].name}.`, host);
+      }
+    }
+    if (!removed) this.say('The sweep finds no foreign spies.', host);
+    this.commit();
+    return { ok: true, message: removed ? `${removed} spy removed.` : 'No spies found.', removed };
   }
 
   endTurn(): EndTurnResult {
@@ -591,11 +876,103 @@ export class Game {
     }
     if (!this.state.winner) {
       this.state.round += 1;
+      this.applyCrisis();
       this.beginTurn(this.state.playerFaction);
     }
     this.commit();
     const label = this.calendar().label;
     return { ok: true, message: label, autosave, aiOrder: order };
+  }
+
+  private applyCrisis() {
+    const round = this.state.round;
+    if (round === CONFIG.crisis.startRound) {
+      this.say('The buried ark reactor wakes under the terminator. The Waking Reactor will fray the twilight band.');
+    }
+    const level = crisisLevel(round);
+    if (level <= 0) return;
+    const damage = crisisBandDamage(level);
+    const tithe = crisisCreditTithe(level);
+    for (const faction of Object.values(this.state.factions)) {
+      faction.credits = Math.max(0, faction.credits - tithe);
+    }
+    if (damage > 0) {
+      for (const unit of [...this.state.units]) {
+        if (this.state.factions[unit.factionId].techs.includes('sealed-habitats')) continue;
+        const tile = this.tile(unit.x, unit.y);
+        if (tile.zone !== 'twilight' || tile.scarred || tile.improvement || this.cityAt(unit.x, unit.y)) continue;
+        unit.hp -= damage;
+        if (unit.hp <= 0) {
+          this.removeUnit(unit);
+          this.say(`${unit.name} is lost to the Waking Reactor.`, unit.factionId);
+        } else if (unit.factionId === this.state.playerFaction) {
+          this.say(`${unit.name} takes ${damage} from the reactor pulse.`, unit.factionId);
+        }
+      }
+    }
+    for (const tile of this.state.tiles) {
+      if (tile.x !== CONFIG.map.bandStart && tile.x !== CONFIG.map.bandEnd) continue;
+      if (tile.scarred || tile.improvement || tile.road || this.cityAt(tile.x, tile.y)) continue;
+      if (this.rng.next() < CONFIG.crisis.scarChance * level) {
+        tile.scarred = true;
+        tile.livable = false;
+      }
+    }
+    this.say(`The Waking Reactor pulses (strength ${Math.round(level * 100)}%). Anchor tiles with terraforming.`);
+  }
+
+  private enemyFactionAt(attacker: FactionId, x: number, y: number): FactionId | null {
+    const unit = this.state.units.find((other) => other.x === x && other.y === y && other.factionId !== attacker);
+    if (unit) return unit.factionId;
+    const city = this.cityAt(x, y);
+    if (city && city.factionId !== attacker) return city.factionId;
+    return null;
+  }
+
+  private syncAlliances() {
+    this.state.alliances = this.state.relations
+      .filter((rel) => rel.stance === 'alliance')
+      .map((rel) => [rel.a, rel.b]);
+  }
+
+  private applyProposal(rel: Relation, kind: Proposal) {
+    if (kind === 'peace' || kind === 'nap' || kind === 'alliance') rel.stance = kind;
+    else if (kind === 'research') rel.research = true;
+    else rel.exploration = true;
+  }
+
+  private accepts(decider: FactionId, other: FactionId, kind: Proposal): boolean {
+    const personality = this.state.setup.personalities[decider];
+    const chance = acceptanceChance({
+      kind,
+      diplomacy: personality.diplomacy,
+      aggression: personality.aggression,
+      memory: this.relation(decider, other).memory,
+      axisMatches: axisOverlap(this.state.factions[decider].axes, this.state.factions[other].axes),
+    });
+    return this.rng.next() < chance;
+  }
+
+  private offerTouches(offer: { from: FactionId; to: FactionId }, a: FactionId, b: FactionId): boolean {
+    return (offer.from === a && offer.to === b) || (offer.from === b && offer.to === a);
+  }
+
+  private ownedSpy(spyId: number) {
+    return this.state.spies.find((spy) => spy.id === spyId && spy.owner === this.state.whoseTurn) ?? null;
+  }
+
+  private burnSpy(spyId: number, message: string) {
+    const spy = this.state.spies.find((entry) => entry.id === spyId);
+    if (!spy) return;
+    if (spy.host) this.addMemory(spy.owner, spy.host, CONFIG.spies.caughtMemory);
+    this.state.spies = this.state.spies.filter((entry) => entry.id !== spyId);
+    this.say(message, spy.owner);
+    this.commit();
+  }
+
+  private addMemory(a: FactionId, b: FactionId, amount: number) {
+    const rel = this.relation(a, b);
+    rel.memory = Math.min(100, rel.memory + amount);
   }
 
   private beginTurn(factionId: FactionId) {
@@ -678,7 +1055,15 @@ export class Game {
       }
       faction.credits += report.credits;
     }
-    faction.researchPoints += research;
+    let shared = 0;
+    for (const other of Object.keys(this.state.factions) as FactionId[]) {
+      if (other === factionId) continue;
+      if (sharesResearch(this.relation(factionId, other))) {
+        shared += Math.floor(this.state.factions[other].lastResearch * CONFIG.diplomacy.researchShare);
+      }
+    }
+    faction.lastResearch = research;
+    faction.researchPoints += research + shared;
     this.tryCompleteResearch(factionId);
   }
 
@@ -903,10 +1288,12 @@ export class Game {
   }
 
   private checkVictory() {
+    const stillFounding = this.state.units.filter((unit) => unit.canFound).map((unit) => unit.factionId);
     const winner = evaluateVictory(
       this.state.cities.map((city) => city.factionId),
       this.state.alliances,
       this.state.setup.alliedVictory,
+      stillFounding,
     );
     if (!winner) return;
     this.state.winner = winner;
