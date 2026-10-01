@@ -223,13 +223,39 @@ function cityGoal(game: Game, factionId: FactionId): number {
   );
 }
 
+/** Field a rifle replacement once coil, plasma, or doctrine weapons are known. */
+function ensureFieldDesign(game: Game, factionId: FactionId): void {
+  const faction = game.state.factions[factionId];
+  const weapon = faction.techs.includes('planetary-supremacy')
+    ? 'doctrine'
+    : faction.techs.includes('plasma-lance')
+      ? 'plasma'
+      : faction.techs.includes('coil-weapons')
+        ? 'coil'
+        : null;
+  if (!weapon) return;
+  if (faction.customDesigns.some((design) => design.chassis === 'infantry' && design.weapon === weapon)) return;
+  const names: Record<string, string> = {
+    coil: 'Coil Infantry',
+    plasma: 'Plasma Infantry',
+    doctrine: 'Doctrine Infantry',
+  };
+  game.createDesign({ name: names[weapon] ?? 'Field Infantry', chassis: 'infantry', weapon, armor: 'scrap', specials: [] });
+}
+
 /** What an AI city should build next. Called again after every completion. */
 export function chooseDesign(game: Game, factionId: FactionId): string | null {
   const faction = game.state.factions[factionId];
   const personality = game.state.setup.personalities[factionId];
   const difficulty = game.state.setup.difficulty;
+  ensureFieldDesign(game, factionId);
   const designs = buildableDesigns(faction.techs, faction.customDesigns);
-  const byRole = (role: string) => designs.find((design) => design.role === role);
+  const byRole = (role: string) => {
+    const list = designs.filter((design) => design.role === role);
+    const pool = role === 'military' ? list.filter((design) => design.cost <= 28) : list;
+    const ranked = (pool.length ? pool : list).slice().sort((a, b) => b.attack - a.attack || a.cost - b.cost);
+    return ranked[0];
+  };
   const transport = designs.find((design) => design.transport > 0);
   const gunboat = designs.find((design) => design.domain === 'sea' && design.attack > 0);
   const cities = game.citiesOf(factionId);
@@ -262,6 +288,8 @@ export function chooseDesign(game: Game, factionId: FactionId): string | null {
   if (coast && transports < 1 && transport) return transport.id;
   if (coast && fighting && armedShips < 1 && gunboat) return gunboat.id;
   if (personality.expansion === 'builder' && formers < formerTarget) return byRole('terraformer')?.id ?? null;
+  const powersLeft = FACTION_IDS.filter((id) => game.citiesOf(id).length > 0).length;
+  if (powersLeft <= 2 && fighting && cities.length > 0) return (byRole('military') ?? byRole('scout'))?.id ?? null;
   return null;
 }
 
@@ -304,11 +332,33 @@ interface Strike {
   score: number;
 }
 
+/** War opponent with the fewest cities. A leader focuses here so a long war can end. */
+function weakestWarOpponent(game: Game, factionId: FactionId): FactionId | null {
+  let weakest: FactionId | null = null;
+  let cities = 99;
+  for (const id of FACTION_IDS) {
+    if (id === factionId) continue;
+    if (game.relation(factionId, id).stance !== 'war') continue;
+    const count = game.citiesOf(id).length;
+    if (count <= 0 || count >= cities) continue;
+    weakest = id;
+    cities = count;
+  }
+  return weakest;
+}
+
 function strikeTarget(game: Game, factionId: FactionId, unit: Unit): Strike | null {
   let best: Strike | null = null;
   const consider = (x: number, y: number, score: number) => {
     if (!best || score > best.score) best = { x, y, score };
   };
+  const mine = game.citiesOf(factionId).length;
+  const bestOther = FACTION_IDS.reduce(
+    (best, id) => (id === factionId ? best : Math.max(best, game.citiesOf(id).length)),
+    0,
+  );
+  const leading = game.state.round > 100 && mine >= 3 && mine > bestOther;
+  const weakest = leading ? weakestWarOpponent(game, factionId) : null;
   for (const city of game.state.cities) {
     if (city.factionId === factionId) continue;
     const rel = game.relation(factionId, city.factionId);
@@ -324,6 +374,7 @@ function strikeTarget(game: Game, factionId: FactionId, unit: Unit): Strike | nu
     if (city.defenseHp < CONFIG.city.militiaHp) score += 8;
     if (rel.stance === 'war') score += 12;
     if (game.citiesOf(city.factionId).length <= 1) score += 8;
+    if (weakest && city.factionId === weakest) score += 28;
     consider(city.x, city.y, score);
   }
   for (const other of game.state.units) {
@@ -336,6 +387,7 @@ function strikeTarget(game: Game, factionId: FactionId, unit: Unit): Strike | nu
     let score = (other.canFound ? 52 : 24) - away;
     if (other.canFound && game.citiesOf(other.factionId).length === 0) score += 24;
     if (rel.stance === 'war') score += 8;
+    if (weakest && other.factionId === weakest) score += 16;
     consider(other.x, other.y, score);
   }
   return best;
@@ -632,6 +684,8 @@ export function runAi(game: Game): void {
       mine > bestOther ||
       (mine === bestOther && mine > 0 && (personality.aggression === 'very-aggressive' || personality.risk === 'bold'));
     if (pressing) threshold = Math.max(0.28, threshold - 0.2);
+    const powersLeft = FACTION_IDS.filter((id) => game.citiesOf(id).length > 0).length;
+    if (powersLeft === 2 && game.state.round > 160 && fighting) threshold = Math.max(0.22, threshold - 0.08);
   }
 
   if (!faction.researching) {
