@@ -42,5 +42,17 @@ describe('introduction story', () => {
     expect(FACTIONS.mnemosyne.backstory).toContain('Orla Vesper');
     expect(FACTIONS.clio.backstory).toContain('Wren Solace');
     expect(FACTIONS.helm.backstory.toLowerCase()).not.toMatch(/twilight/);
+    expect(FACTIONS.helm.backstory).toContain('Depart, do not wait for revision');
+    expect(FACTIONS.verdantia.backstory).toContain('Lahore');
+    expect(FACTIONS.genesis.backstory).toContain('DNA archive');
+    expect(FACTIONS.ironclad.backstory).toContain('separation bolts');
+    expect(FACTIONS.mnemosyne.backstory).toContain('Shackleton locks');
+    expect(FACTIONS.clio.backstory).toContain('Muse of history');
+    for (const faction of Object.values(FACTIONS)) {
+      expect(faction.backstory.length).toBeGreaterThan(500);
+      expect(faction.backstory.toLowerCase()).not.toMatch(/twilight|habitable band/);
+      expect(faction.playsLike).toContain(faction.freeTechName);
+      expect(faction.playsLike.length).toBeGreaterThan(80);
+    }
   });
 });

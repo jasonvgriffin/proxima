@@ -3,7 +3,7 @@ import { CONFIG } from '../config';
 import { paintArkCanvas } from '../art/ark';
 import { drawEmblem, drawPlanet, drawStar, drawStarfield } from '../art/draw';
 import { LEADERS, leaderGreeting } from '../art/leaders';
-import { drawPortrait } from '../art/portraits';
+import { drawPortrait, preloadLeaderPortraits, watchLeaderPortraits } from '../art/portraits';
 import { unitContactSheetMarkup } from '../art/sheet';
 import { paintUnitIcon, unitIconTag, unitKindFor } from '../art/units';
 import { AudioBus, TRACKS } from '../audio/engine';
@@ -56,6 +56,7 @@ export class App {
   private reach = new Set<string>();
   private profileId: FactionId = 'helm';
   private profileReturn: Screen = 'menu';
+  private customizeOpen = false;
   private diplomacyFocus: FactionId | null = null;
   private pending: { mode: 'new' | 'exit' } | null = null;
   private treeCam = { x: 16, y: 12, zoom: 0.38 };
@@ -77,6 +78,8 @@ export class App {
     root.innerHTML = '<div id="stage"></div><div id="update-banner"></div><div id="overlay"></div><div id="toast" hidden></div>';
     this.stage = root.querySelector('#stage')!;
     this.overlay = root.querySelector('#overlay')!;
+    watchLeaderPortraits(() => this.paintEmblems());
+    preloadLeaderPortraits();
     root.addEventListener('click', (event) => this.onClick(event));
     root.addEventListener('change', (event) => this.onChange(event));
     root.addEventListener('input', (event) => this.onInput(event));
@@ -211,6 +214,8 @@ export class App {
   }
 
   private renderSetup() {
+    const faction = FACTIONS[this.setup.faction];
+    const leader = LEADERS[this.setup.faction];
     this.stage.innerHTML = `
       <div class="sheet" data-testid="setup-screen">
         <div class="sheet-card">
@@ -226,12 +231,29 @@ export class App {
             <button class="btn small" data-action="back-menu">Back</button>
           </div>
         </div>
-        <div class="sheet-card">
-          ${this.leaderCard(this.setup.faction)}
-          <p class="tag">${esc(FACTIONS[this.setup.faction].idea)}</p>
-          <p class="muted">Social axes start on this faction's strengths. Each match is +10%. Changing one later costs ${CONFIG.social.switchCost} credits.</p>
-          ${this.axisEditor(this.setup.axes, 'setup-axis')}
-          <button class="btn primary" data-action="start-game" data-testid="start-game">Begin the expedition</button>
+        <div class="sheet-card setup-profile">
+          <div class="profile-layout">
+            <div class="profile-art">
+              <canvas data-portrait="${faction.id}" width="480" height="480"></canvas>
+              <canvas class="profile-crest" data-emblem="${faction.id}" width="128" height="128"></canvas>
+            </div>
+            <div>
+              <p class="eyebrow">${esc(faction.formerly)}</p>
+              <h2>${esc(faction.name)}</h2>
+              <p class="leader-line"><strong>${esc(leader.name)}</strong> · ${esc(leader.title)}</p>
+              <p>${esc(leader.line)}</p>
+              <p class="tag">${esc(faction.idea)}</p>
+              <p class="plays-like" data-testid="plays-like"><span>Plays like</span> ${esc(faction.playsLike)}</p>
+            </div>
+          </div>
+          <div class="prose" data-testid="faction-backstory">${this.prose(faction.backstory)}</div>
+          <p class="muted">Free starting tech: ${esc(faction.freeTechName)}.</p>
+          <p class="muted" data-testid="society-summary">Society: ${esc(this.societySummary(this.setup.axes))}. Each match is +${Math.round(CONFIG.social.matchingBonus * 100)}%.</p>
+          <div class="row">
+            <button class="btn small ${this.customizeOpen ? 'on' : ''}" data-action="toggle-customize" data-testid="customize-faction" aria-expanded="${this.customizeOpen ? 'true' : 'false'}">Customize faction</button>
+            <button class="btn primary" data-action="start-game" data-testid="start-game">Begin the expedition</button>
+          </div>
+          ${this.customizeOpen ? this.customizePanel() : ''}
         </div>
       </div>`;
     this.paintEmblems();
@@ -261,7 +283,7 @@ export class App {
         <div class="sheet-card" style="grid-column: 1 / -1; max-width: 860px">
           <div class="profile-layout">
             <div class="profile-art">
-              <canvas data-portrait="${faction.id}" width="440" height="572"></canvas>
+              <canvas data-portrait="${faction.id}" width="480" height="480"></canvas>
               <canvas class="profile-crest" data-emblem="${faction.id}" width="128" height="128"></canvas>
             </div>
             <div>
@@ -269,9 +291,11 @@ export class App {
               <h2>${esc(faction.name)}</h2>
               <p class="leader-line"><strong>${esc(LEADERS[faction.id].name)}</strong> · ${esc(LEADERS[faction.id].title)}</p>
               <p>${esc(LEADERS[faction.id].line)}</p>
-              <p>${esc(faction.backstory)}</p>
+              <p class="plays-like"><span>Plays like</span> ${esc(faction.playsLike)}</p>
+              <div class="prose">${this.prose(faction.backstory)}</div>
               <p class="muted">Look: ${esc(faction.visual)}</p>
               <p class="muted">Free starting tech: ${esc(faction.freeTechName)}.</p>
+              <p class="muted">Society: ${esc(this.societySummary(defaultAxes(faction.id)))}.</p>
               <div class="bars" aria-hidden="true"><i style="background:${faction.colors.main}"></i><i style="background:${faction.colors.deep}"></i><i style="background:${faction.colors.ink}"></i></div>
             </div>
           </div>
@@ -580,6 +604,7 @@ export class App {
       }
     } else if (action === 'intro-exit') this.exitIntro();
     else if (action === 'new-game') {
+      this.customizeOpen = false;
       this.screen = 'setup';
       this.render();
     } else if (action === 'back-menu') {
@@ -611,6 +636,9 @@ export class App {
       this.render();
     } else if (action === 'reroll-seed') {
       this.setup.seed = 1 + Math.floor(Math.random() * 999983);
+      this.render();
+    } else if (action === 'toggle-customize') {
+      this.customizeOpen = !this.customizeOpen;
       this.render();
     } else if (action === 'setup-axis') {
       const axis = node.dataset.axis as SocialAxis;
@@ -1377,16 +1405,33 @@ export class App {
       </div></div>`;
   }
 
-  private leaderCard(id: FactionId) {
-    const faction = FACTIONS[id];
-    const leader = LEADERS[id];
-    return `<div class="leader-pick">
-      <canvas data-portrait="${id}" width="280" height="364"></canvas>
-      <div>
-        <p class="eyebrow">${esc(leader.title)}</p>
-        <h2>${esc(faction.name)}</h2>
-        <h3>${esc(leader.name)}</h3>
-        <p class="muted">${esc(leader.line)}</p>
+  private prose(text: string) {
+    return text.split(/\n\n/).map((part) => `<p>${esc(part)}</p>`).join('');
+  }
+
+  private societySummary(axes: Record<SocialAxis, string>) {
+    return (Object.keys(SOCIAL_OPTIONS) as SocialAxis[])
+      .map((axis) => SOCIAL_OPTIONS[axis].find((option) => option.id === axes[axis])?.label ?? axes[axis])
+      .join(' · ');
+  }
+
+  private customizePanel() {
+    const id = this.setup.faction;
+    const traits = Object.keys(PERSONALITY_LEVELS) as (keyof typeof PERSONALITY_LEVELS)[];
+    const labels: Record<(typeof traits)[number], string> = {
+      aggression: 'Aggression',
+      expansion: 'Expansion',
+      research: 'Research',
+      diplomacy: 'Diplomacy',
+      risk: 'Risk',
+    };
+    const personality = this.setup.personalities[id];
+    return `<div class="faction-customize" data-testid="faction-customize">
+      <p class="muted">Social axes start on this faction's strengths. Each match is +${Math.round(CONFIG.social.matchingBonus * 100)}%. Changing one later costs ${CONFIG.social.switchCost} credits.</p>
+      ${this.axisEditor(this.setup.axes, 'setup-axis')}
+      <p class="muted">Personality is how this faction acts when the AI plays it. Game Options on the start menu edits every rival the same way.</p>
+      <div class="stack" data-testid="personality-editor">
+        ${traits.map((trait) => `<label class="personality-row"><span class="muted">${labels[trait]}</span><select data-personality="${id}" data-trait="${trait}">${PERSONALITY_LEVELS[trait].map((level) => `<option value="${level.id}" ${personality[trait] === level.id ? 'selected' : ''}>${esc(level.label)}</option>`).join('')}</select></label>`).join('')}
       </div>
     </div>`;
   }
@@ -1615,7 +1660,7 @@ export class App {
   private factionButton(id: FactionId) {
     const faction = FACTIONS[id];
     const leader = LEADERS[id];
-    return `<button class="faction-card ${this.setup.faction === id ? 'on' : ''}" data-action="pick-faction" data-faction="${id}" data-testid="faction-${id}"><canvas data-portrait="${id}" width="144" height="188"></canvas><canvas data-emblem="${id}" width="56" height="56"></canvas><span><strong>${esc(faction.name)}</strong><br/><span class="muted">${esc(leader.name)}</span></span></button>`;
+    return `<button class="faction-card ${this.setup.faction === id ? 'on' : ''}" data-action="pick-faction" data-faction="${id}" data-testid="faction-${id}"><canvas data-portrait="${id}" width="144" height="144"></canvas><canvas data-emblem="${id}" width="56" height="56"></canvas><span><strong>${esc(faction.name)}</strong><br/><span class="muted">${esc(leader.name)}</span></span></button>`;
   }
 
   private axisEditor(axes: Record<SocialAxis, string>, action: string) {
@@ -1667,7 +1712,7 @@ export class App {
         ${FACTION_IDS.map((id) => {
           const leader = LEADERS[id];
           return `<figure>
-            <canvas data-portrait="${id}" width="480" height="624"></canvas>
+            <canvas data-portrait="${id}" width="480" height="480"></canvas>
             <figcaption><strong>${esc(leader.name)}</strong><span>${esc(leader.title)}</span><em>${esc(FACTIONS[id].name)}</em></figcaption>
           </figure>`;
         }).join('')}
