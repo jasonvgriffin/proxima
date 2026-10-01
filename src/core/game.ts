@@ -1,6 +1,6 @@
 import { CONFIG } from '../config';
 import { runAi } from './ai';
-import { crisisBandDamage, crisisCreditTithe, crisisLevel, crisisYieldFactor } from './crisis';
+import { crisisTuning, economyRates, normalizeDifficulty, outsideBandDamage, scaleStarting } from './difficulty';
 import {
   acceptanceChance,
   applyWar,
@@ -108,8 +108,9 @@ export class Game {
     const ids = Object.keys(FACTIONS) as FactionId[];
     const map = generateMap(rng, ids, seed);
     const personalities = opts.personalities ?? defaultPersonalities();
+    const difficulty = normalizeDifficulty(opts.difficulty ?? 'normal');
     const setup: GameSetup = {
-      difficulty: opts.difficulty ?? 'normal',
+      difficulty,
       alliedVictory: !!opts.alliedVictory,
       randomEvents: !!opts.randomEvents,
       personalities,
@@ -124,11 +125,11 @@ export class Game {
         stabilityTurns: 0,
         techs: startingTechs(id),
         researching: null,
-        researchPoints: 0,
-        credits: CONFIG.starting.credits,
-        minerals: CONFIG.starting.minerals,
-        nutrients: CONFIG.starting.nutrients,
-        energy: CONFIG.starting.energy,
+        researchPoints: scaleStarting(CONFIG.starting.research, id === opts.player, difficulty),
+        credits: scaleStarting(CONFIG.starting.credits, id === opts.player, difficulty),
+        minerals: scaleStarting(CONFIG.starting.minerals, id === opts.player, difficulty),
+        nutrients: scaleStarting(CONFIG.starting.nutrients, id === opts.player, difficulty),
+        energy: scaleStarting(CONFIG.starting.energy, id === opts.player, difficulty),
         customDesigns: [],
         designSerial: 1,
         lastResearch: 0,
@@ -184,6 +185,16 @@ export class Game {
 
   static fromState(state: GameState): Game {
     const copy = JSON.parse(JSON.stringify(state)) as GameState;
+    if (!copy.setup) {
+      copy.setup = {
+        difficulty: 'normal',
+        alliedVictory: false,
+        randomEvents: false,
+        personalities: defaultPersonalities(),
+      };
+    } else {
+      copy.setup.difficulty = normalizeDifficulty(copy.setup.difficulty);
+    }
     return new Game(copy);
   }
 
@@ -291,12 +302,13 @@ export class Game {
       } as Yields),
       faction.techs,
     );
-    const crisis = crisisYieldFactor(crisisLevel(this.state.round));
+    const rates = economyRates(faction.isHuman, this.state.setup.difficulty);
+    const crisis = crisisTuning(this.state.round, this.state.setup.difficulty).yieldFactor;
     const yields: Yields = {
-      minerals: Math.max(0, Math.round(raw.minerals * socialScale(faction, 'minerals') * this.aiYield(faction) * crisis)),
-      nutrients: Math.max(0, Math.round(raw.nutrients * socialScale(faction, 'nutrients') * this.aiYield(faction) * crisis)),
-      energy: Math.max(0, Math.round(raw.energy * socialScale(faction, 'energy') * this.aiYield(faction) * crisis)),
-      research: Math.max(0, Math.round(raw.research * socialScale(faction, 'research') * this.aiYield(faction) * crisis)),
+      minerals: Math.max(0, Math.round(raw.minerals * socialScale(faction, 'minerals') * rates.production * crisis)),
+      nutrients: Math.max(0, Math.round(raw.nutrients * socialScale(faction, 'nutrients') * crisis)),
+      energy: Math.max(0, Math.round(raw.energy * socialScale(faction, 'energy') * crisis)),
+      research: Math.max(0, Math.round(raw.research * socialScale(faction, 'research') * rates.research * crisis)),
     };
     const credits = this.creditIncome(city, faction);
     return { yields, credits, worked: worked.map((tile) => ({ x: tile.x, y: tile.y })), need: city.population * CONFIG.city.nutrientsPerPop };
@@ -886,13 +898,14 @@ export class Game {
 
   private applyCrisis() {
     const round = this.state.round;
-    if (round === CONFIG.crisis.startRound) {
+    const crisis = crisisTuning(round, this.state.setup.difficulty);
+    if (round === crisis.startRound) {
       this.say('The buried ark reactor wakes under the terminator. The Waking Reactor will fray the twilight band.');
     }
-    const level = crisisLevel(round);
+    const level = crisis.level;
     if (level <= 0) return;
-    const damage = crisisBandDamage(level);
-    const tithe = crisisCreditTithe(level);
+    const damage = crisis.damage;
+    const tithe = crisis.tithe;
     for (const faction of Object.values(this.state.factions)) {
       faction.credits = Math.max(0, faction.credits - tithe);
     }
@@ -913,7 +926,7 @@ export class Game {
     for (const tile of this.state.tiles) {
       if (tile.x !== CONFIG.map.bandStart && tile.x !== CONFIG.map.bandEnd) continue;
       if (tile.scarred || tile.improvement || tile.road || this.cityAt(tile.x, tile.y)) continue;
-      if (this.rng.next() < CONFIG.crisis.scarChance * level) {
+      if (this.rng.next() < crisis.scarChance) {
         tile.scarred = true;
         tile.livable = false;
       }
@@ -1080,15 +1093,16 @@ export class Game {
   private applyOutsideDamage(factionId: FactionId) {
     const faction = this.state.factions[factionId];
     const sealed = hasSealedHabitats(faction.techs);
+    const damage = outsideBandDamage(this.state.setup.difficulty);
     for (const unit of [...this.unitsOf(factionId)]) {
       const tile = this.tile(unit.x, unit.y);
-      const outcome = outsideBandOutcome(unit.hp, tileIsLivable(tile), sealed);
+      const outcome = outsideBandOutcome(unit.hp, tileIsLivable(tile), sealed, damage);
       if (outcome.destroyed) {
         this.removeUnit(unit);
         this.say(`${unit.name} is destroyed outside the livable zone.`, factionId);
       } else if (outcome.hp !== unit.hp) {
         unit.hp = outcome.hp;
-        this.say(`${unit.name} takes ${CONFIG.outsideBand.damagePerTurn} damage outside the twilight band.`, factionId);
+        this.say(`${unit.name} takes ${damage} damage outside the twilight band.`, factionId);
       }
     }
   }
@@ -1185,13 +1199,9 @@ export class Game {
   private creditIncome(city: City, faction: GameState['factions'][FactionId]): number {
     const base = baseCityCreditIncome(city.population);
     const extra = faction.techs.includes('governance') ? CONFIG.techBonuses.governanceCredits : 0;
-    const scaled = base * socialScale(faction, 'credits') * this.aiYield(faction) + extra;
+    const rates = economyRates(faction.isHuman, this.state.setup.difficulty);
+    const scaled = base * socialScale(faction, 'credits') * rates.credits + extra;
     return Math.max(0, Math.round(scaled));
-  }
-
-  private aiYield(faction: GameState['factions'][FactionId]): number {
-    if (faction.isHuman) return 1;
-    return CONFIG.ai.yieldMultiplier[this.state.setup.difficulty] ?? 1;
   }
 
   private spawn(factionId: FactionId, design: UnitDesign, x: number, y: number, ready: boolean): Unit {
