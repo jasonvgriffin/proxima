@@ -39,6 +39,15 @@ The player gets enough time to build before running into civilizations that are 
 - This has to work with randomized starting locations: starts are random, but never so close that someone gets attacked before they're established.
 - Still to decide: how long the window lasts, whether difficulty settings change it, and what signals that it's ending (for example, the first sighting of another faction's signals or scouts).
 
+## Difficulty and personality settings
+
+On the start menu, players pick an overall difficulty level and can then fine-tune settings within it.
+
+- **Opponent aggressiveness:** Very aggressive, Normal, or Easy.
+  - Controls how soon and how hard the opposing factions attack.
+  - Works together with the early-game peace window. For example, Easy could stretch the window and Very aggressive could shorten it.
+- Still to decide: the names of the overall difficulty levels, what each one changes (AI bonuses, resources, events), and any other settings to fine-tune, such as how open AI factions are to diplomacy, map size, or how hostile the planet is.
+
 ## Factions (6)
 
 Each faction gets its own win condition. All six are **TBD**.
@@ -143,3 +152,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added infinite replayability as the top guiding principle.
 - 2026-10-01: Added the "Tech tree" section (scavenging era, faction branches, cross-faction techs).
 - 2026-10-01: Added the "Early-game peace window" section.
+- 2026-10-01: Added the "Difficulty and personality settings" section (opponent aggressiveness).
