@@ -35,6 +35,7 @@ describe('pause tutorial', () => {
     expect(text).toContain('Salvage Formers');
     expect(text).toContain('optional');
     expect(text).toContain('Escape');
+    expect(text).toContain('Press M');
   });
 
   it('pages with Next and Back, and the last page closes instead of advancing', () => {

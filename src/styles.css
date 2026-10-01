@@ -178,6 +178,8 @@ p { margin: 0; }
 .tutorial-copy { display: flex; flex-direction: column; gap: 10px; line-height: 1.5; }
 
 .slider { display: grid; grid-template-columns: 90px 1fr 36px; gap: 8px; align-items: center; color: var(--muted); }
+.audio-settings { display: flex; flex-direction: column; gap: 8px; }
+.audio-settings .audio-note { line-height: 1.4; }
 table.grid { width: 100%; border-collapse: collapse; font-size: 13px; }
 table.grid th, table.grid td { border-bottom: 1px solid var(--line-dim); padding: 6px 4px; text-align: left; }
 .profile-layout { display: grid; grid-template-columns: 120px 1fr; gap: 16px; }
