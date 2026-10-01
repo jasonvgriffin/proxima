@@ -321,10 +321,13 @@ Pressing **Escape** during play opens the pause menu. It contains:
    - A Shuffle / Loop toggle: Shuffle plays tracks in random order, and Loop repeats the current track
 2. **Save game:** save to one of several save slots.
 3. **Load game:** load a game from a save slot.
-4. **New game:** start a fresh game.
+4. **New game:** start a fresh game. A popup first offers to save the current game, with three choices:
+   - Save and Start New Game
+   - Start New Game Without Saving
+   - Cancel
 5. **Exit to desktop:** quit the game.
 
-- Still to decide: how many save slots there are, whether there's autosave, and whether New game and Exit to desktop ask "Are you sure?" or offer to save first.
+- Still to decide: how many save slots there are, whether there's autosave, and whether Exit to desktop also offers to save first.
 
 ## Social axes
 
@@ -418,3 +421,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Audio: set the number of original music tracks to five.
 - 2026-10-01: Audio: added a Shuffle / Loop toggle to the pause menu audio controls.
 - 2026-10-01: Added the "Pause menu" section (audio controls, save, load, new game, exit to desktop); the audio controls moved there from Audio.
+- 2026-10-01: Pause menu: New game shows a popup offering to save first (Save and Start New Game, Start New Game Without Saving, Cancel).
