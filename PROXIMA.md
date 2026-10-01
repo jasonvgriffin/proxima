@@ -98,8 +98,10 @@ Combat works like Alpha Centauri's: a battle is decided by odds, not by a guaran
   - Terraforming and technology gradually open new sea routes, the same way the twilight band widens on land.
 - **Coastlines:** coasts don't block land units. They can move along the shore.
 - **Transport:** naval units can carry land units, either to reach islands or to cross water.
+  - **Transport capacity:** a transport carries only a limited number of land units. How many depends on how the ship is designed, meaning its chassis and special parts (see Unit design).
 - **Naval combat:** works like land combat, using the same Alpha Centauri-style odds. Water terrain changes the odds (for example open ocean, coastal shallows, and hazardous seas).
-- Still to decide: how many units each transport can hold, whether ships can bombard the coast or attack land units, exactly what "dangerous" means for hot and frozen seas (damage per turn, or a chance of losing the ship), and whether submarines or aircraft carriers exist.
+- **Shore bombardment:** naval units can attack land targets from an adjacent water square. Bombardment uses the same Alpha Centauri-style odds, and ships have their own strength values for it.
+- Still to decide: the exact capacity numbers for each chassis and part, whether bombardment can capture a city or only weaken it, exactly what "dangerous" means for hot and frozen seas (damage per turn, or a chance of losing the ship), and whether submarines or aircraft carriers exist.
 
 ## Unit design
 
@@ -251,3 +253,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added the "City construction" section (settler units found cities that grow territory and produce resources, research, and units).
 - 2026-10-01: City construction: cities can be captured in combat, and capturing every rival city wins by military supremacy.
 - 2026-10-01: Added the "Naval rules" section (water movement, hazardous seas, coastlines, transport, naval combat).
+- 2026-10-01: Naval rules: added transport capacity (set by ship design) and shore bombardment.
