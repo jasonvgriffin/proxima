@@ -200,14 +200,16 @@ The tech tree grows out of the crash story.
 - Learning what is edible on Proxima
 
 ### Faction branches
-| Faction | Research focus |
-|---------|----------------|
-| Terraforming Bay | Atmosphere and soil science |
-| Seed Vault | Biology and genetics |
-| Military Pod | Weapons and fortification |
-| Comms Array | Sensors and long-range signaling |
-| Life-Support Core | Medicine and psychology |
-| Bridge Crew | Governance and logistics |
+Every faction starts the game with one free tech that fits its identity.
+
+| Faction | Research focus | Free starting tech |
+|---------|----------------|--------------------|
+| Terraforming Bay | Atmosphere and soil science | Basic atmosphere and soil science |
+| Seed Vault | Biology and genetics | Basic biology |
+| Military Pod | Weapons and fortification | Basic weapons |
+| Comms Array | Sensors and long-range signaling | Basic sensors |
+| Life-Support Core | Medicine and psychology | Basic medicine |
+| Bridge Crew | Governance and logistics | Basic governance and logistics |
 
 ### Late-era techs
 - **Sealed Habitats / Geothermal Wells** (one tech, final name to be picked)
@@ -310,3 +312,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Turn structure: no turn limit; games run until a military supremacy victory.
 - 2026-10-01: Tech tree: added the late-era Sealed Habitats / Geothermal Wells tech (lets players found cities on the day and night sides).
 - 2026-10-01: Tech tree: Sealed Habitats / Geothermal Wells assigned to the Terraforming Bay branch.
+- 2026-10-01: Tech tree: each faction starts with one free tech that fits its identity.
