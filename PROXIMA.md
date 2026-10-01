@@ -187,6 +187,8 @@ As in Sid Meier's Alpha Centauri, players found new cities (bases) to grow their
 - Each new city extends the faction's territory around it.
 - Cities produce resources, research, and military units.
 - Where cities can go ties into the map. The twilight band is the easiest place to live, and the day and night sides are harsher until terraforming or technology opens them up. Founding cities outside the band takes the late-era Sealed Habitats / Geothermal Wells tech (see Tech tree).
+- **Units can travel anywhere.** Any unit, terraformers included, can move anywhere on the map, including the day side and night side outside the twilight band. Traveling outside the band carries a penalty, but that penalty is the only restriction on movement. (Still to decide: what the penalty is, such as slower movement or damage over time.)
+- **City founding is limited to the twilight band.** Cities can only be founded inside the habitable twilight band, unless the player has researched the late-era Sealed Habitats / Geothermal Wells tech in the Terraforming Bay branch. That tech allows founding cities on the day side and night side.
 - **Cities can be captured.** Another faction takes a city by defeating its defenders in combat, and the captured city then belongs to them.
 - Capturing cities drives the military supremacy victory. The game ends when one faction has captured every rival base or city (see Victory condition).
 - Still to decide: what makes a tile suitable (terrain, minimum distance from other cities, water access), how city borders grow, city size and population limits, what happens to a city's population, buildings, and loyalty when it is captured, and whether cities can be razed or moved.
@@ -493,3 +495,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Terraforming: build time depends on what is being built on the tile (planting trees, mining, building a mine, installing solar panels, and so on). More complex or energy-intensive builds take longer.
 - 2026-10-01: Terraforming: build time also depends on the terraformer's tech level (advanced terraformers from later techs work faster). Each terraforming type has its own base time, which improves with tech.
 - 2026-10-01: Terraforming: removed the edge-strip threshold for widening the twilight band. Like Alpha Centauri, terraformers can work any tile, and each terraformed tile can join the livable zone over time.
+- 2026-10-01: City construction: any unit, terraformers included, can travel anywhere on the map, with a penalty outside the twilight band as the only restriction. Cities can only be founded inside the band unless the player has the Sealed Habitats / Geothermal Wells tech.
