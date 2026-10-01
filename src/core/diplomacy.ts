@@ -1,5 +1,5 @@
 import { CONFIG } from '../config';
-import type { FactionId, Proposal, Relation, SocialAxes, Stance } from './types';
+import type { FactionId, Proposal, Relation, SocialAxes, Stance, TradeBundle } from './types';
 
 export function pairOf(a: FactionId, b: FactionId): [FactionId, FactionId] {
   return a < b ? [a, b] : [b, a];
@@ -96,6 +96,56 @@ export function acceptanceChance(opts: {
   return Math.max(0.05, Math.min(0.95, chance));
 }
 
+export function emptyTrade(): TradeBundle {
+  return { credits: 0, minerals: 0, nutrients: 0, energy: 0, tech: null };
+}
+
+export function tradeValue(bundle: TradeBundle, receiverAlreadyKnowsTech: boolean): number {
+  let value = bundle.credits + bundle.minerals + bundle.nutrients + bundle.energy;
+  if (bundle.tech && !receiverAlreadyKnowsTech) value += CONFIG.diplomacy.trade.techValue;
+  return value;
+}
+
+export function tradeMargin(diplomacy: string): number {
+  if (diplomacy === 'trader') return CONFIG.diplomacy.trade.traderMargin;
+  if (diplomacy === 'alone') return CONFIG.diplomacy.trade.aloneMargin;
+  return CONFIG.diplomacy.trade.treatyMargin;
+}
+
+/**
+ * The receiver is looking at what they gain (`offered`) against what they pay (`asked`).
+ * A gift is accepted. A deal at war is not. Traders take a thinner margin.
+ */
+export function acceptsTrade(opts: {
+  diplomacy: string;
+  memory: number;
+  stance: string;
+  offered: number;
+  asked: number;
+}): boolean {
+  if (opts.stance === 'war') return false;
+  if (opts.offered <= 0) return false;
+  if (opts.asked <= 0) return true;
+  if (
+    opts.memory >= CONFIG.diplomacy.trade.memoryRefuse &&
+    opts.diplomacy !== 'trader' &&
+    opts.offered < opts.asked * tradeMargin(opts.diplomacy)
+  ) {
+    return false;
+  }
+  return opts.offered >= opts.asked * tradeMargin(opts.diplomacy);
+}
+
+export function bundleText(bundle: TradeBundle): string {
+  const parts: string[] = [];
+  if (bundle.credits) parts.push(`${bundle.credits} credits`);
+  if (bundle.minerals) parts.push(`${bundle.minerals} minerals`);
+  if (bundle.nutrients) parts.push(`${bundle.nutrients} nutrients`);
+  if (bundle.energy) parts.push(`${bundle.energy} energy`);
+  if (bundle.tech) parts.push(bundle.tech);
+  return parts.join(', ') || 'nothing';
+}
+
 export function blocksAttack(stance: Stance): boolean {
   return stance === 'nap' || stance === 'alliance';
 }
@@ -108,7 +158,7 @@ export function sharesResearch(rel: Pick<Relation, 'research' | 'stance'>): bool
   return rel.research && rel.stance !== 'war';
 }
 
-export function proposalLabel(kind: Proposal | 'war'): string {
+export function proposalLabel(kind: Proposal | 'war' | 'trade'): string {
   switch (kind) {
     case 'war':
       return 'war';
@@ -122,6 +172,8 @@ export function proposalLabel(kind: Proposal | 'war'): string {
       return 'a research treaty';
     case 'exploration':
       return 'an exploration treaty';
+    case 'trade':
+      return 'a trade';
     default:
       return kind;
   }

@@ -80,6 +80,27 @@ export type SocialStat =
   | 'attack'
   | 'defense';
 
+/** One compact line in a tile's terraform log. */
+export interface TerraformEntry {
+  round: number;
+  factionId: FactionId | null;
+  unitName: string | null;
+  change: string;
+}
+
+/** Last look at a tile, kept so fog can show remembered ground. */
+export interface TileSight {
+  terrain: TerrainId;
+  zone: Zone;
+  resource: ResourceId | null;
+  improvement: ImprovementId | null;
+  livable: boolean;
+  road: boolean;
+  scarred: boolean;
+  history: TerraformEntry[];
+  working: { project: ImprovementId; turnsLeft: number; unitName: string } | null;
+}
+
 export interface Tile {
   x: number;
   y: number;
@@ -91,6 +112,8 @@ export interface Tile {
   road: boolean;
   /** The waking reactor has eaten the livable air off this tile. */
   scarred: boolean;
+  /** Completed terraform, removals, and event or reactor changes. Capped. */
+  history: TerraformEntry[];
 }
 
 export interface UnitDesign {
@@ -111,6 +134,8 @@ export interface UnitDesign {
   canTerraform: boolean;
   searchBonus: number;
   role: UnitRole;
+  /** Land units this ship can carry. Comes from the chassis and special parts. */
+  transport: number;
 }
 
 export interface Unit {
@@ -135,6 +160,12 @@ export interface Unit {
   searching: boolean;
   terraform: { project: ImprovementId; turnsLeft: number; total: number } | null;
   starveMarks?: number;
+  /** How many land units this ship can carry. */
+  transport: number;
+  /** Unit ids currently aboard. */
+  cargo: number[];
+  /** Set when this land unit is loaded on a ship. */
+  aboard: number | null;
 }
 
 export interface City {
@@ -179,6 +210,47 @@ export type Stance = 'war' | 'peace' | 'nap' | 'alliance';
 
 export type Proposal = 'peace' | 'nap' | 'alliance' | 'research' | 'exploration';
 
+export interface TradeBundle {
+  credits: number;
+  minerals: number;
+  nutrients: number;
+  energy: number;
+  tech: string | null;
+}
+
+export type EventKind = 'solar-flare' | 'wreckage' | 'betrayal' | 'dust-storm' | 'seismic';
+
+export interface EventChoice {
+  id: string;
+  label: string;
+}
+
+export interface EventPrompt {
+  id: number;
+  kind: EventKind;
+  text: string;
+  choices: EventChoice[];
+  /** Faction on the other side of a betrayal, when the player is involved. */
+  subject?: FactionId;
+}
+
+export interface PendingEvent {
+  id: number;
+  kind: EventKind;
+  fireRound: number;
+}
+
+export interface GameEvents {
+  nextId: number;
+  nextRollRound: number;
+  pending: PendingEvent | null;
+  prompt: EventPrompt | null;
+  solarFlareUntil: number;
+  dustUntil: number;
+  /** The player's units inside their own cities ignore the dust movement penalty. */
+  dustShelter: boolean;
+}
+
 export interface Relation {
   a: FactionId;
   b: FactionId;
@@ -200,7 +272,8 @@ export interface DiplomaticOffer {
   id: number;
   from: FactionId;
   to: FactionId;
-  kind: Proposal;
+  kind: Proposal | 'trade';
+  trade?: { give: TradeBundle; want: TradeBundle };
 }
 
 export interface AxisMark {
@@ -255,6 +328,16 @@ export interface GameState {
   nextSpyId: number;
   nextOfferId: number;
   axisHistory: AxisMark[];
+  /** True once the human faction has no city and no colony pod. */
+  playerDefeated: boolean;
+  /** Factions already announced as eliminated, so the log does not repeat. */
+  eliminated: FactionId[];
+  events: GameEvents;
+  /**
+   * Last-seen tile facts for the human player, keyed `x,y`.
+   * Missing keys are either unexplored or from a save that predates this record.
+   */
+  sight: Record<string, TileSight>;
   /**
    * Per-turn social stance for the recap. Saves written before this field omit it;
    * loading rebuilds the record from `axisHistory` and the current axes.
@@ -264,8 +347,8 @@ export interface GameState {
 
 export interface SaveEnvelope {
   /**
-   * Save-file schema. 1 is a Proxima 0.1.0 file. 2 is Proxima 0.2.0.
-   * Loaders run the migration chain up to the current schema.
+   * Save-file schema. 1 is a Proxima 0.1.0 file. 2 is the first 0.2.0 file.
+   * 3 adds per-tile terraform history. Loaders run the migration chain up to the current schema.
    */
   version: number;
   /** Game-state schema copied from `state.version`. Omitted on 0.1.0 files. */

@@ -50,7 +50,8 @@ test('starts a game, moves, founds, terraforms, saves, and opens diplomacy', asy
   await expect(audioPanel.getByTestId('audio-volume-music')).toBeVisible();
   await expect(audioPanel.getByTestId('audio-volume-sfx')).toBeVisible();
   await expect(audioPanel.getByTestId('audio-volume-ambient')).toBeVisible();
-  await expect(audioPanel.getByTestId('audio-track')).toHaveValue('meridian-dust');
+  await expect(audioPanel.getByTestId('audio-track')).toHaveValue('title');
+  await expect(audioPanel.getByTestId('music-credits')).toContainText('Music: SRG774, Cleyton Kauffman, vitalezzz (CC0, OpenGameArt)');
   await expect(audioPanel.getByTestId('audio-mode')).toHaveValue('loop');
   await audioPanel.getByTestId('audio-mute').check();
   await expect(audioPanel.getByTestId('audio-music')).toBeChecked();
@@ -107,6 +108,7 @@ test('starts a game, moves, founds, terraforms, saves, and opens diplomacy', asy
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('pause-menu')).toBeVisible();
   await expect(page.getByTestId('audio-settings')).toBeVisible();
+  await expect(page.getByTestId('music-credits')).toContainText('Music: SRG774, Cleyton Kauffman, vitalezzz (CC0, OpenGameArt)');
   await expect(page.getByTestId('audio-mute')).toBeChecked();
   await expect(page.getByTestId('audio-music')).toBeChecked();
   await page.getByTestId('audio-mute').uncheck();

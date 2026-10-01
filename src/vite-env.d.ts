@@ -74,6 +74,12 @@ interface ProximaDebug {
   showPortraits(): void;
   showUnits(): void;
   seedDiplomacyOffer(): number | null;
+  showDefeat(): void;
+  showTrade(): void;
+  showEvent(): void;
+  showTransport(): void;
+  showMidgame(): void;
+  finishTerraform(): { x: number; y: number } | null;
   state(): unknown;
   tilePoint(x: number, y: number): { x: number; y: number } | null;
   showUpdateBanner(): void;

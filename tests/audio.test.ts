@@ -108,7 +108,7 @@ describe('audio preference persistence', () => {
     first.setVolume('music', 0.2);
     first.setVolume('sfx', 0.4);
     first.setVolume('ambient', 0.15);
-    first.setTrack('protocol-red');
+    first.setTrack('exploration');
     first.setMode('shuffle');
     first.setMuted(true);
 
@@ -120,7 +120,7 @@ describe('audio preference persistence', () => {
     expect(second.music).toBe(0.2);
     expect(second.sfx).toBe(0.4);
     expect(second.ambient).toBe(0.15);
-    expect(second.track).toBe('protocol-red');
+    expect(second.track).toBe('exploration');
     expect(second.mode).toBe('shuffle');
     expect(second.ambientLevel()).toBe(0);
 
@@ -147,16 +147,23 @@ describe('audio preference persistence', () => {
         music: 0.5,
         sfx: 0.5,
         ambient: 0.5,
-        track: 'glass-orchard',
+        track: 'airy',
         mode: 'shuffle',
       }),
     );
     const legacy = new AudioBus();
     expect(legacy.muted).toBe(false);
     expect(legacy.musicOn).toBe(false);
-    expect(legacy.track).toBe('glass-orchard');
+    expect(legacy.track).toBe('airy');
     expect(legacy.mode).toBe('shuffle');
     expect(legacy.ambientLevel()).toBeCloseTo(0.25);
+
+    localStorage.setItem(
+      AUDIO_STORAGE_KEY,
+      JSON.stringify({ track: 'meridian-dust', mode: 'loop' }),
+    );
+    const procedural = new AudioBus();
+    expect(procedural.track).toBe('title');
 
     localStorage.setItem(
       AUDIO_STORAGE_KEY,
@@ -164,7 +171,7 @@ describe('audio preference persistence', () => {
     );
     const junk = new AudioBus();
     expect(junk.muted).toBe(false);
-    expect(junk.track).toBe('meridian-dust');
+    expect(junk.track).toBe('title');
     expect(junk.mode).toBe('loop');
     expect(junk.master).toBe(CONFIG.audio.defaultMaster);
     expect(junk.ambientLevel()).toBeCloseTo(CONFIG.audio.defaultMaster * CONFIG.audio.defaultAmbient);
