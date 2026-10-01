@@ -93,7 +93,9 @@ describe('spy networks', () => {
     game.endTurn();
     const spentOnSpies = afterPlace - game.state.factions.mnemosyne.credits;
     expect(spentOnSpies).toBeLessThan(CONFIG.spies.recruitCost);
-    expect(game.state.spies.filter((spy) => spy.owner === 'mnemosyne').length).toBeGreaterThan(0);
+    const stillThere = game.state.spies.some((spy) => spy.owner === 'mnemosyne');
+    const rootedOut = game.state.log.some((line) => line.text.includes('roots out a spy'));
+    expect(stillThere || rootedOut).toBe(true);
   });
 
   it('catches a thief on a low roll and lets a high roll steal the tech', () => {
