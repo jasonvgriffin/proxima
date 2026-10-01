@@ -330,8 +330,8 @@ Pressing **Escape** during play opens the pause menu. It contains:
    - Exit Without Saving
    - Cancel
 
-- **Autosave:** the game saves automatically every 10 turns.
-- Still to decide: whether autosave gets its own slot or uses one of the 10, and whether it keeps only the latest autosave or several.
+- **Autosave:** the game saves automatically every 10 turns. The autosave takes up one of the 10 save slots and doesn't get a slot of its own.
+- Still to decide: whether the autosave always uses the same slot and overwrites itself, and whether players can turn autosave off or protect a slot from being overwritten.
 
 ## Social axes
 
@@ -428,3 +428,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Pause menu: New game shows a popup offering to save first (Save and Start New Game, Start New Game Without Saving, Cancel).
 - 2026-10-01: Pause menu: Exit to desktop shows the save-first popup (Save and Exit, Exit Without Saving, Cancel).
 - 2026-10-01: Pause menu: 10 save slots, plus an autosave every 10 turns.
+- 2026-10-01: Pause menu: the autosave uses one of the 10 save slots.
