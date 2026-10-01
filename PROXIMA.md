@@ -381,6 +381,22 @@ Terraforming works like Alpha Centauri: it's an action a unit performs on the ma
 | Mnemosyne | Signal-wave patterns, with static and broadcast imagery |
 | Clio | Soft and bio-mechanical, almost medical |
 
+## UI and player experience
+
+Jason is handing the full UI and player-experience design to the builder (with Eve). No mockups or wireframes are coming from him, so the design is open.
+
+- The builder designs the whole interface, including:
+  - Start menu
+  - Intro
+  - Main game screen and HUD
+  - Map interface
+  - Menus
+  - Faction profile screens
+  - Diplomacy screen
+  - Pause menu
+- Design choices should follow the rules already in this doc, such as the Alpha Centauri-like feel, original art only, the map features, and the menu contents. Everything else is the builder's call.
+- Jason will review what gets built and ask for changes from there.
+
 ## Audio
 
 - **Music and soundtrack:** there are no plans for licensed or royalty-free music at this stage.
@@ -545,3 +561,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Outside-band damage set to 5 per turn (tunable). It stops when the unit is destroyed, returns to the band, or the player researches Sealed Habitats / Geothermal Wells.
 - 2026-10-01: Factions renamed throughout the doc: The Helm (bridge crew), Verdantia (terraforming bay), Genesis (seed vault), Ironclad (military pod), The Signal (comms array), The Pulse (life-support core). Added a backstory paragraph for each faction for the in-game profile screen.
 - 2026-10-01: Factions renamed: The Signal is now Mnemosyne (the Greek Titaness of memory), and The Pulse is now Clio (the Muse of history, one of Mnemosyne's daughters). All references and both backstories updated.
+- 2026-10-01: Added the "UI and player experience" section. The full UI and player-experience design is delegated to the builder (with Eve), and Jason reviews what is built and asks for changes.
