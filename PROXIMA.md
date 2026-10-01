@@ -228,6 +228,7 @@ Proxima's core resources support three of its gameplay pillars: civilization bui
 - Scavenger patrols can also turn up one-time bonuses of credits, minerals, or techs (see Scavenger patrols).
 - **Credits:**
   - *Rush production:* spend credits to finish a unit instantly.
+    - *Rush-buy price:* 1 credit for each production point still needed, with a minimum of 10 credits per rush. This is a starting value and can be tuned later.
   - *Terraforming fee:* terraforming a grid square may cost a set fee in credits, charged per square.
   - *City income (set):* every city earns a baseline amount of credits each turn, and the amount grows with the city's size or population. This is a main source of credits.
     - Starting formula: **credits per turn = population + 2**. That is 1 credit per population point plus a flat 2 credits per city, so a size-5 city earns 7 credits a turn. The numbers may be tweaked later during balancing.
@@ -235,7 +236,7 @@ Proxima's core resources support three of its gameplay pillars: civilization bui
     - Trading with other factions
     - Salvaging wreckage, such as ark debris and destroyed units
     - One-time finds from scavenger patrols
-- Still to decide: the exact yields for each biome, the rush-buy price formula, the fee per terraformed square (flat, or higher for harsher biomes), and whether rare strategic resources exist.
+- Still to decide: the exact yields for each biome, the fee per terraformed square (flat, or higher for harsher biomes), and whether rare strategic resources exist.
 
 ## Scavenger patrols
 
@@ -519,3 +520,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: City construction: set the penalty for traveling outside the twilight band. All units, terraformers included, take damage over time until they are destroyed.
 - 2026-10-01: Outside-band damage: Sealed Habitats / Geothermal Wells lets units travel outside the band without damage; the damage per turn is a tuning value for the builder.
 - 2026-10-01: Social axes: each matching choice gives a 10 percent bonus to the related resource or stat; switching an axis mid-game costs 100 credits (tunable) and causes a temporary stability hit lasting several turns.
+- 2026-10-01: Resources: set the rush-buy price at 1 credit per remaining production point, minimum 10 credits per rush (tunable).
