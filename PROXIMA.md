@@ -29,6 +29,16 @@ Victory is whatever each group decides Proxima should become. Nobody is right by
 - There are no fixed spawn points and no set starting areas for any faction.
 - This fits the story: the ark broke apart and its modules scattered in different directions on landing.
 
+## Early-game peace window
+
+The player gets enough time to build before running into civilizations that are trying to kill them.
+
+- Early turns focus on setting up a first base, researching the scavenging techs, and growing.
+- First contact and hostile encounters come later, once the player has a foothold.
+- Ways to do this (to be decided): spacing starting spots far apart on the random map, AI factions that hold off on aggression for the first N turns or until a certain tech, and the planet's own terrain and hazards keeping groups apart early on.
+- This has to work with randomized starting locations: starts are random, but never so close that someone gets attacked before they're established.
+- Still to decide: how long the window lasts, whether difficulty settings change it, and what signals that it's ending (for example, the first sighting of another faction's signals or scouts).
+
 ## Factions (6)
 
 Each faction gets its own win condition. All six are **TBD**.
@@ -132,3 +142,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added the "Starting locations" section (randomized each game, no fixed spawns).
 - 2026-10-01: Added infinite replayability as the top guiding principle.
 - 2026-10-01: Added the "Tech tree" section (scavenging era, faction branches, cross-faction techs).
+- 2026-10-01: Added the "Early-game peace window" section.
