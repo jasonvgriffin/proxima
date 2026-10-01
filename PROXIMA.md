@@ -293,10 +293,25 @@ Every faction starts the game with one free tech that fits its identity.
   - It sits late in the game and needs a big investment of energy and research.
   - It belongs to the Terraforming Bay branch.
 
+### Terraforming techs
+- **Terraformer units** become available through the Terraforming Bay's research branch (see Terraforming).
+- Other factions can get terraformers later by researching into that branch, or through trade or cross-faction techs.
+
 ### Cross-faction techs
 - Trading with or allying another faction unlocks research neither side could do alone.
 - These techs feed the diplomacy pillar, so working with other factions pays off in science, not just safety.
 - Still to decide: the specific cross-faction techs, how they unlock (a treaty, a tech trade, or shared bases), and whether every faction can research every branch or only its own.
+
+## Terraforming
+
+Terraforming works like Alpha Centauri: it's an action a unit performs on the map, not a city build or a global project.
+
+- **Terraformers** are a unit type. They're unlocked through the Terraforming Bay's tech branch.
+- Each terraformer works on exactly one tile at a time. Changing a tile takes a number of turns, and the unit has to stay on that tile until the work is done.
+- **Better yields:** terraforming a tile improves what it produces, such as more nutrients, minerals, or energy, depending on the change made.
+- **Widening the twilight band:** over time, terraforming tiles at the edges of the twilight band can make them livable. This gradually pushes the band out toward the day side and night side and opens new land in the middle and late game.
+- Terraforming may cost the per-square credit fee described in Resources.
+- Still to decide: the list of terraforming actions (for example farms, mines, solar collectors, and atmosphere work), how many turns each one takes, whether several terraformers can work one tile together to finish faster, and how many edge tiles need terraforming before the band moves.
 
 ## Gameplay pillars
 
@@ -405,7 +420,7 @@ The work is split by folder so several chats or agents can work at the same time
 - Default aggression for each faction, and how social-axis choices change it
 - Diplomacy systems beyond Alpha Centauri's
 - Resource types
-- How terraforming works
+- Terraforming details (the list of actions, how long each takes, and how the twilight band widens)
 
 ## Changelog
 
@@ -469,3 +484,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Intro: added a Back button on every screen (disabled or hidden on the first screen).
 - 2026-10-01: Added the "Multiplayer" section (hotseat and online, with the same rules as single-player).
 - 2026-10-01: Removed the "Multiplayer" section. Proxima is single-player only, and the AI plays every rival faction.
+- 2026-10-01: Added the "Terraforming" section. Terraforming is a unit action like in Alpha Centauri: terraformer units, unlocked through the Terraforming Bay tech branch, each work one tile to improve its yields and can gradually widen the twilight band.
