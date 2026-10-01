@@ -2,6 +2,7 @@ import { CONFIG } from '../config';
 import { FACTIONS } from './factions';
 import type { Game } from './game';
 import { isSea, attackThreshold, canFoundCity, peaceWindow, projectAllowed, tileIsLivable } from './rules';
+import { nextQueuedResearch } from './researchPath';
 import { TECHS, techAvailable } from './tech';
 import { buildableDesigns } from './parts';
 import type { FactionId, ImprovementId, Personality, Unit } from './types';
@@ -90,7 +91,8 @@ export function runAi(game: Game): void {
   const hostile = game.state.round > windowTurns && personality.aggression !== 'easy';
 
   if (!faction.researching) {
-    const next = suggestTech(factionId, faction.techs, personality.research);
+    const queued = nextQueuedResearch(faction.researchQueue, faction.techs);
+    const next = queued ?? suggestTech(factionId, faction.techs, personality.research);
     if (next) game.chooseResearch(next);
   }
 

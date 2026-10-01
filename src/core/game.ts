@@ -45,7 +45,8 @@ import {
   tileIsLivable,
   winnerHpLoss,
 } from './rules';
-import { formerTechLevel, techAvailable, techById, startingTechs } from './tech';
+import { advanceResearchQueue, ensureFactionResearch, nextQueuedResearch, pathToGoal, rememberTech, treatyTechGrants } from './researchPath';
+import { creditFromTechs, formerTechLevel, healFromTechs, startingTechs, techAvailable, techById } from './tech';
 import type {
   ActionResult,
   City,
@@ -99,6 +100,7 @@ export class Game {
 
   constructor(state: GameState) {
     this.state = state;
+    for (const faction of Object.values(state.factions)) ensureFactionResearch(faction, { fillMissing: true });
     this.rng = makeRng(state.seed || 1);
     this.rng.setState(state.rngState || 1);
   }
@@ -126,6 +128,9 @@ export class Game {
         stabilityTurns: 0,
         techs: startingTechs(id),
         researching: null,
+        researchGoal: null,
+        researchQueue: [],
+        techOrigins: Object.fromEntries(startingTechs(id).map((techId) => [techId, 'start' as const])),
         researchPoints: scaleStarting(CONFIG.starting.research, id === opts.player, difficulty),
         credits: scaleStarting(CONFIG.starting.credits, id === opts.player, difficulty),
         minerals: scaleStarting(CONFIG.starting.minerals, id === opts.player, difficulty),
@@ -583,14 +588,38 @@ export class Game {
 
   chooseResearch(techId: string): ActionResult {
     const faction = this.state.factions[this.state.whoseTurn];
+    ensureFactionResearch(faction);
     const tech = techById(techId);
     if (!tech) return fail('Unknown technology.');
     if (faction.techs.includes(techId)) return fail('Already known.');
     if (!techAvailable(tech, faction.techs)) return fail('Requirements missing.');
+    if (faction.researchGoal && !faction.researchQueue.includes(techId)) {
+      faction.researchGoal = null;
+      faction.researchQueue = [];
+    }
     faction.researching = techId;
-    this.tryCompleteResearch(faction.id);
+    this.finishResearchGrants(faction.id);
     this.commit();
     return { ok: true, message: `Researching ${tech.name}.` };
+  }
+
+  /** Queue the prerequisite path for a locked technology and start the first step. */
+  setResearchGoal(techId: string): ActionResult {
+    const faction = this.state.factions[this.state.whoseTurn];
+    ensureFactionResearch(faction);
+    const tech = techById(techId);
+    if (!tech) return fail('Unknown technology.');
+    const path = pathToGoal(techId, faction.techs);
+    if (!path) return fail('That technology cannot be reached.');
+    if (!path.length) return fail('Already known.');
+    faction.researchGoal = techId;
+    faction.researchQueue = path;
+    const next = nextQueuedResearch(path, faction.techs);
+    if (next) faction.researching = next;
+    this.finishResearchGrants(faction.id);
+    this.commit();
+    const names = path.map((id) => techById(id)?.name ?? id).join(', ');
+    return { ok: true, message: `Research goal: ${tech.name}. Path: ${names}.` };
   }
 
   setSocial(axis: SocialAxis, optionId: string): ActionResult {
@@ -781,7 +810,12 @@ export class Game {
       return { ok: false, message: 'The spy was caught.' };
     }
     owner.techs.push(techId);
-    this.say(`Stolen from ${FACTIONS[spy.host].name}: ${techId}.`, spy.owner);
+    ensureFactionResearch(owner);
+    rememberTech(owner.techOrigins, techId, 'espionage');
+    if (owner.researching === techId) owner.researching = null;
+    const next = advanceResearchQueue(owner);
+    if (!owner.researching && next) owner.researching = next;
+    this.say(`Stolen from ${FACTIONS[spy.host].name}: ${techById(techId)?.name ?? techId}.`, spy.owner);
     this.commit();
     return { ok: true, message: 'Technology stolen.' };
   }
@@ -1009,7 +1043,7 @@ export class Game {
     for (const unit of this.unitsOf(factionId)) {
       let heal = 0;
       if (this.cityAt(unit.x, unit.y)?.factionId === factionId) heal += CONFIG.techBonuses.cityHeal;
-      if (faction.techs.includes('medicine')) heal += CONFIG.techBonuses.medicineHeal;
+      heal += healFromTechs(faction.techs);
       if (heal > 0) unit.hp = Math.min(unit.maxHp, unit.hp + heal);
     }
     this.revealFaction(factionId);
@@ -1082,17 +1116,47 @@ export class Game {
     }
     faction.lastResearch = research;
     faction.researchPoints += research + shared;
+    this.finishResearchGrants(factionId);
+  }
+
+  private finishResearchGrants(factionId: FactionId) {
     this.tryCompleteResearch(factionId);
+    this.grantTreatyTechs(factionId);
   }
 
   private tryCompleteResearch(factionId: FactionId) {
     const faction = this.state.factions[factionId];
+    ensureFactionResearch(faction);
     const tech = faction.researching ? techById(faction.researching) : undefined;
     if (!tech || faction.researchPoints < tech.cost) return;
     faction.researchPoints -= tech.cost;
     faction.techs.push(tech.id);
+    rememberTech(faction.techOrigins, tech.id, 'research');
     faction.researching = null;
     this.say(`${FACTIONS[factionId].name} discovers ${tech.name}.`, factionId);
+    const next = advanceResearchQueue(faction);
+    if (next) faction.researching = next;
+  }
+
+  private grantTreatyTechs(factionId: FactionId) {
+    const faction = this.state.factions[factionId];
+    ensureFactionResearch(faction);
+    const partners: string[][] = [];
+    for (const other of Object.keys(this.state.factions) as FactionId[]) {
+      if (other === factionId) continue;
+      if (sharesResearch(this.relation(factionId, other))) partners.push([...this.state.factions[other].techs]);
+    }
+    if (!partners.length) return;
+    for (const id of treatyTechGrants(faction.techs, partners)) {
+      const tech = techById(id);
+      if (!tech) continue;
+      faction.techs.push(id);
+      rememberTech(faction.techOrigins, id, 'treaty');
+      if (faction.researching === id) faction.researching = null;
+      this.say(`A research treaty shares ${tech.name}.`, factionId);
+    }
+    const next = advanceResearchQueue(faction);
+    if (!faction.researching && next) faction.researching = next;
   }
 
   private applyOutsideDamage(factionId: FactionId) {
@@ -1203,7 +1267,7 @@ export class Game {
 
   private creditIncome(city: City, faction: GameState['factions'][FactionId]): number {
     const base = baseCityCreditIncome(city.population);
-    const extra = faction.techs.includes('governance') ? CONFIG.techBonuses.governanceCredits : 0;
+    const extra = creditFromTechs(faction.techs);
     const rates = economyRates(faction.isHuman, this.state.setup.difficulty);
     const scaled = base * socialScale(faction, 'credits') * rates.credits + extra;
     return Math.max(0, Math.round(scaled));

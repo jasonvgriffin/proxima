@@ -14,6 +14,7 @@ import { Game, PROJECTS, projectLabel } from '../core/game';
 import { proposalLabel } from '../core/diplomacy';
 import { biomeClass, terraformFee, terraformTurns } from '../core/rules';
 import { formerTechLevel, TECHS, techAvailable, techById } from '../core/tech';
+import { renderTechTree } from './techtree';
 import { starterDesigns, CHASSIS, WEAPONS, ARMORS, SPECIALS, partKnown } from '../core/parts';
 import { FACTION_IDS, type Difficulty, type DiplomaticOffer, type FactionId, type Proposal, type SaveEnvelope, type SocialAxis, type Stance, type Unit } from '../core/types';
 import { migrateSave, SAVE_VERSION } from '../platform/saveMigrate';
@@ -50,6 +51,11 @@ export class App {
   private profileReturn: Screen = 'menu';
   private diplomacyFocus: FactionId = 'verdantia';
   private pending: { mode: 'new' | 'exit' } | null = null;
+  private treeCam = { x: 16, y: 12, zoom: 0.38 };
+  private treeSelected: string | null = null;
+  private treeNotice = '';
+  private treeDidFit = false;
+  private treeDrag: { x: number; y: number; panX: number; panY: number; pointer: number } | null = null;
   private setup = {
     faction: 'helm' as FactionId,
     difficulty: 'normal' as Difficulty,
@@ -68,6 +74,11 @@ export class App {
     root.addEventListener('change', (event) => this.onChange(event));
     root.addEventListener('input', (event) => this.onInput(event));
     window.addEventListener('keydown', (event) => this.onKey(event));
+    root.addEventListener('pointerover', (event) => this.onTreeHover(event));
+    root.addEventListener('pointerdown', (event) => this.onTreePointerDown(event));
+    window.addEventListener('pointermove', (event) => this.onTreePointerMove(event));
+    window.addEventListener('pointerup', (event) => this.onTreePointerUp(event));
+    root.addEventListener('wheel', (event) => this.onTreeWheel(event), { passive: false });
     root.addEventListener('pointerdown', (event) => {
       this.audio.unlock();
       const el = event.target instanceof Element ? event.target : null;
@@ -307,11 +318,12 @@ export class App {
         <div class="chip"><span>Minerals</span><b>${rates.minerals}/t</b></div>
         <div class="chip"><span>Nutrients</span><b>${rates.nutrients}/t</b></div>
         <div class="chip"><span>Energy</span><b>${faction.energy}</b></div>
-        <div class="chip"><span>Research</span><b>${research ? `${faction.researchPoints}/${research.cost}` : faction.researchPoints}</b></div>
+        <button type="button" class="chip chip-btn" data-action="open-research" data-testid="research-chip"><span>Research</span><b>${research ? `${faction.researchPoints}/${research.cost}` : faction.researchPoints}</b></button>
         <div class="chip"><span>Credits</span><b>${faction.credits}</b></div>
       </div>
       <button class="btn small" data-action="open-diplomacy" data-testid="open-diplomacy">Diplomacy</button>
       <button class="btn small" data-action="open-spies" data-testid="open-spies">Spies</button>
+      <button class="btn small" data-action="open-research" data-testid="open-research">Tech Tree</button>
       <button class="btn primary" data-action="end-turn" data-testid="end-turn">End Turn</button>`;
     const units = game.unitsOf(game.state.playerFaction);
     const cities = game.citiesOf(game.state.playerFaction);
@@ -374,7 +386,6 @@ export class App {
         ${unit.terraform ? `<p>Working on ${esc(projectLabel(unit.terraform.project))}, ${unit.terraform.turnsLeft} turns left.</p>` : ''}
         <div class="stack">
           <button class="btn small" data-action="open-social">Society</button>
-          <button class="btn small" data-action="open-research">Research</button>
           <button class="btn small" data-action="open-design">Design a unit</button>
           <button class="btn small" data-action="open-profile-game">Faction profile</button>
         </div>`;
@@ -530,7 +541,15 @@ export class App {
     }
     else if (action === 'open-spies') this.openSpies();
     else if (action === 'open-social') this.openSocial();
-    else if (action === 'open-research') this.openResearch();
+    else if (action === 'open-research') this.openTechTree();
+    else if (action === 'tech-node' || action === 'tech-research' || action === 'tech-goal') this.pickTech(node.dataset.tech ?? '', action);
+    else if (action === 'tree-zoom-in') {
+      this.treeCam.zoom = Math.min(1.5, this.treeCam.zoom * 1.12);
+      this.applyTreeCam();
+    } else if (action === 'tree-zoom-out') {
+      this.treeCam.zoom = Math.max(0.22, this.treeCam.zoom / 1.12);
+      this.applyTreeCam();
+    } else if (action === 'tree-fit') this.fitTree();
     else if (action === 'open-design') this.openDesign();
     else if (action === 'propose') this.act(() => this.game!.propose(node.dataset.target as FactionId, node.dataset.kind as Proposal | 'war'), 'click');
     else if (action === 'accept-offer') this.act(() => this.game!.acceptOffer(Number(node.dataset.id)), 'click');
@@ -578,12 +597,12 @@ export class App {
   }
 
   private afterActionRefresh(action: string | undefined) {
-    const overlays = ['propose', 'accept-offer', 'reject-offer', 'recruit-spy', 'place-spy', 'steal-tech', 'sabotage', 'frame', 'sweep', 'switch-axis', 'research-pick', 'save-design', 'rush'];
+    const overlays = ['propose', 'accept-offer', 'reject-offer', 'recruit-spy', 'place-spy', 'steal-tech', 'sabotage', 'frame', 'sweep', 'switch-axis', 'research-pick', 'tech-node', 'tech-research', 'tech-goal', 'save-design', 'rush'];
     if (action && overlays.includes(action) && this.screen === 'game') {
       if (action === 'open-diplomacy' || action.startsWith('propose') || action.includes('offer')) this.openDiplomacy();
       else if (['recruit-spy', 'place-spy', 'steal-tech', 'sabotage', 'frame', 'sweep'].includes(action)) this.openSpies();
       else if (action === 'switch-axis') this.openSocial();
-      else if (action === 'research-pick') this.openResearch();
+      else if (action === 'research-pick' || action === 'tech-node' || action === 'tech-research' || action === 'tech-goal') this.openTechTree();
       else this.refreshGame();
     }
   }
@@ -639,6 +658,8 @@ export class App {
   private async endTurn() {
     const game = this.game;
     if (!game) return;
+    const player = game.state.factions[game.state.playerFaction];
+    const researchBefore = { techs: [...player.techs], researching: player.researching };
     const logBefore = snapshotLog(game.state.log);
     const workBefore = snapshotTerraform(game.state.units, game.state.playerFaction);
     const ended = game.endTurn();
@@ -648,6 +669,7 @@ export class App {
     this.toast(ended.message);
     this.refreshGame();
     if (ended.autosave) await this.runSave(() => this.writeSlot(0, 'autosave'), 'Autosave failed. Your game is still running.');
+    this.maybePromptResearch(researchBefore);
   }
 
   private act(fn: () => { ok: boolean; message: string }, sound: 'click' | 'found' | 'terraform' | 'attack') {
@@ -790,18 +812,122 @@ export class App {
       </div></div>`;
   }
 
-  private openResearch() {
-    const faction = this.game!.state.factions[this.game!.state.playerFaction];
-    const available = TECHS.filter((tech) => tech.cost > 0 && techAvailable(tech, faction.techs));
-    this.overlay.innerHTML = `
-      <div class="modal-back"><div class="modal">
-        <h2>Research</h2>
-        <p class="muted">${faction.researchPoints} points banked.${faction.researching ? ` Current: ${esc(techById(faction.researching)?.name ?? '')}.` : ''}</p>
-        <div class="stack">
-          ${available.map((tech) => `<button class="btn" data-action="research-pick" data-tech="${tech.id}">${esc(tech.name)} · ${tech.cost} · ${esc(tech.blurb)}</button>`).join('') || '<p>Nothing left to study.</p>'}
-        </div>
-        <button class="btn" data-action="close">Close</button>
-      </div></div>`;
+  private pickTech(id: string, action: string) {
+    const game = this.game;
+    if (!game) return;
+    this.treeSelected = id;
+    const faction = game.state.factions[game.state.playerFaction];
+    const tech = techById(id);
+    if (!tech || faction.techs.includes(id)) return;
+    if (action === 'tech-goal' || !techAvailable(tech, faction.techs)) this.act(() => game.setResearchGoal(id), 'click');
+    else this.act(() => game.chooseResearch(id), 'click');
+  }
+
+  private openTechTree() {
+    const game = this.game;
+    if (!game) return;
+    const faction = game.state.factions[game.state.playerFaction];
+    this.overlay.innerHTML = renderTechTree({
+      points: faction.researchPoints,
+      rate: game.ratesFor(game.state.playerFaction).research,
+      known: faction.techs,
+      researching: faction.researching,
+      goal: faction.researchGoal,
+      queue: faction.researchQueue ?? [],
+      origins: faction.techOrigins ?? {},
+      selected: this.treeSelected,
+      notice: this.treeNotice,
+      cam: this.treeCam,
+    });
+    if (!this.treeDidFit) {
+      requestAnimationFrame(() => {
+        if (!this.overlay.querySelector('[data-testid="tech-tree"]')) return;
+        this.fitTree();
+        this.treeDidFit = true;
+      });
+    }
+  }
+
+  private applyTreeCam() {
+    const canvas = this.overlay.querySelector('[data-testid="tech-canvas"]') as HTMLElement | null;
+    if (!canvas) return;
+    canvas.style.setProperty('--tree-zoom', String(this.treeCam.zoom));
+    canvas.style.transform = `translate(${this.treeCam.x}px, ${this.treeCam.y}px) scale(${this.treeCam.zoom})`;
+  }
+
+  private fitTree() {
+    const view = this.overlay.querySelector('[data-testid="tech-tree-viewport"]') as HTMLElement | null;
+    const canvas = this.overlay.querySelector('[data-testid="tech-canvas"]') as HTMLElement | null;
+    if (!view || !canvas || canvas.offsetWidth === 0 || canvas.offsetHeight === 0) return;
+    const zoom = Math.min(1, (view.clientWidth - 24) / canvas.offsetWidth, (view.clientHeight - 24) / canvas.offsetHeight);
+    this.treeCam.zoom = Math.max(0.22, zoom);
+    this.treeCam.x = 12;
+    this.treeCam.y = 12;
+    this.applyTreeCam();
+  }
+
+  private onTreeHover(event: Event) {
+    const canvas = this.overlay.querySelector('[data-testid="tech-canvas"]');
+    if (!canvas) return;
+    const node = (event.target as HTMLElement | null)?.closest?.('[data-tech]') as HTMLElement | null;
+    canvas.classList.toggle('has-hover', !!node);
+    canvas.querySelectorAll('.is-hover-chain').forEach((el) => el.classList.remove('is-hover-chain'));
+    if (!node?.dataset.tech) return;
+    const ids = new Set(
+      [node.dataset.tech, node.dataset.ancestors ?? '', node.dataset.descendants ?? ''].join(',').split(',').filter(Boolean),
+    );
+    for (const id of ids) canvas.querySelector(`[data-tech="${CSS.escape(id)}"]`)?.classList.add('is-hover-chain');
+    canvas.querySelectorAll('[data-edge]').forEach((edge) => {
+      const from = edge.getAttribute('data-from');
+      const to = edge.getAttribute('data-to');
+      if (from && to && ids.has(from) && ids.has(to)) edge.classList.add('is-hover-chain');
+    });
+  }
+
+  private onTreePointerDown(event: PointerEvent) {
+    const viewport = (event.target as HTMLElement | null)?.closest?.('[data-testid="tech-tree-viewport"]');
+    if (!viewport) return;
+    if ((event.target as HTMLElement | null)?.closest?.('[data-tech]')) return;
+    this.treeDrag = { x: event.clientX, y: event.clientY, panX: this.treeCam.x, panY: this.treeCam.y, pointer: event.pointerId };
+  }
+
+  private onTreePointerMove(event: PointerEvent) {
+    if (!this.treeDrag || this.treeDrag.pointer !== event.pointerId) return;
+    this.treeCam.x = this.treeDrag.panX + event.clientX - this.treeDrag.x;
+    this.treeCam.y = this.treeDrag.panY + event.clientY - this.treeDrag.y;
+    this.applyTreeCam();
+  }
+
+  private onTreePointerUp(event: PointerEvent) {
+    if (this.treeDrag?.pointer === event.pointerId) this.treeDrag = null;
+  }
+
+  private onTreeWheel(event: WheelEvent) {
+    if (!(event.target as HTMLElement | null)?.closest?.('[data-testid="tech-tree-viewport"]')) return;
+    event.preventDefault();
+    const factor = event.deltaY < 0 ? 1.08 : 0.92;
+    this.treeCam.zoom = Math.min(1.5, Math.max(0.22, this.treeCam.zoom * factor));
+    this.applyTreeCam();
+  }
+
+  private maybePromptResearch(before: { techs: string[]; researching: string | null }) {
+    const game = this.game;
+    if (!game || game.state.winner || game.state.playerTurnsCompleted < 1) return;
+    const faction = game.state.factions[game.state.playerFaction];
+    const completed = before.researching && faction.techs.includes(before.researching) ? before.researching : null;
+    if (completed) {
+      const tech = techById(completed);
+      const unlocks = tech?.unlocks.map((unlock) => unlock.name).join(', ') || 'the next step';
+      this.treeNotice = `Research complete: ${tech?.name ?? completed} unlocks ${unlocks}`;
+      this.treeSelected = completed;
+      this.openTechTree();
+      return;
+    }
+    const available = TECHS.some((tech) => tech.cost > 0 && techAvailable(tech, faction.techs));
+    if (!faction.researching && available && !this.overlay.innerHTML) {
+      this.treeNotice = 'Nothing is being researched. Choose a technology, or click a locked one to queue its prerequisites.';
+      this.openTechTree();
+    }
   }
 
   private openDesign() {
@@ -1026,9 +1152,15 @@ export class App {
       return;
     }
     if (this.screen !== 'game' || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (event.key.toLowerCase() !== 'm') return;
     const tag = event.target instanceof HTMLElement ? event.target.tagName : '';
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    if (event.key.toLowerCase() === 't') {
+      event.preventDefault();
+      if (this.overlay.querySelector('[data-testid="tech-tree"]')) this.closeOverlay();
+      else if (!this.overlay.innerHTML) this.openTechTree();
+      return;
+    }
+    if (event.key.toLowerCase() !== 'm') return;
     event.preventDefault();
     this.audio.toggleMuted();
     this.syncSoundscape();
@@ -1060,7 +1192,9 @@ export class App {
   }
 
   private closeOverlay() {
+    if (this.overlay.querySelector('[data-testid="tech-tree"]')) this.treeNotice = '';
     this.overlay.innerHTML = '';
+    this.treeDrag = null;
   }
 
   private openVictory() {

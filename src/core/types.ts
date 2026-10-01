@@ -150,6 +150,8 @@ export interface City {
   production: { designId: string; progress: number; cost: number } | null;
 }
 
+export type TechOrigin = 'start' | 'research' | 'espionage' | 'treaty';
+
 export interface FactionState {
   id: FactionId;
   isHuman: boolean;
@@ -157,6 +159,11 @@ export interface FactionState {
   stabilityTurns: number;
   techs: string[];
   researching: string | null;
+  /** Locked technology the faction is working toward. The queue is the prerequisite path. */
+  researchGoal: string | null;
+  researchQueue: string[];
+  /** How each known technology was gained. Missing keys are filled when a save loads. */
+  techOrigins: Record<string, TechOrigin>;
   researchPoints: number;
   credits: number;
   minerals: number;

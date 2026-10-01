@@ -172,6 +172,17 @@ export const CONFIG = {
     cityHeal: 1,
     formerLevelAdvanced: 2,
     formerLevelMaster: 3,
+    foundryMinerals: 1,
+    mineMinerals: 1,
+    rationNutrients: 1,
+    geneNutrients: 1,
+    soilNutrients: 1,
+    solarEnergy: 1,
+    gardenNutrients: 1,
+    gardenEnergy: 1,
+    archiveResearch: 1,
+    clinicHeal: 1,
+    ledgerCredits: 1,
   },
 
   starting: {
