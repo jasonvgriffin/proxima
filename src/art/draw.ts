@@ -1,5 +1,7 @@
 import type { FactionId } from '../core/types';
 import { FACTIONS } from '../core/factions';
+import { drawColonyArk, type ArkState } from './ark';
+import { drawUnitSprite } from './units';
 
 export function hash(x: number, y: number): number {
   let n = Math.imul(x, 374761393) + Math.imul(y, 668265263);
@@ -75,45 +77,34 @@ export function drawPlanet(ctx: CanvasRenderingContext2D, x: number, y: number, 
   ctx.stroke();
 }
 
-export function drawArk(ctx: CanvasRenderingContext2D, x: number, y: number, scale: number, tilt: number, broken: boolean) {
-  ctx.save();
-  ctx.translate(x, y);
-  ctx.rotate(tilt);
-  ctx.scale(scale, scale);
-  ctx.fillStyle = '#c9d2dc';
-  ctx.beginPath();
-  ctx.moveTo(-70, 8);
-  ctx.lineTo(-20, -16);
-  ctx.lineTo(78, -8);
-  ctx.lineTo(70, 14);
-  ctx.closePath();
-  ctx.fill();
-  ctx.fillStyle = '#8ea0b4';
-  ctx.fillRect(-48, -6, 90, 8);
-  ctx.fillStyle = '#6f8f86';
-  ctx.fillRect(-10, -14, 28, 10);
-  ctx.fillStyle = '#e0b15c';
-  ctx.fillRect(-68, 2, 10, 6);
-  if (broken) {
-    ctx.strokeStyle = '#e15d4f';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(10, -16);
-    ctx.lineTo(28, 16);
-    ctx.moveTo(30, -10);
-    ctx.lineTo(8, 12);
-    ctx.stroke();
-  }
-  ctx.restore();
+export function drawArk(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  scale: number,
+  tilt: number,
+  broken: boolean | ArkState = false,
+) {
+  const state: ArkState = broken === true ? 'impact' : broken === false ? 'intact' : broken;
+  const phase = typeof performance !== 'undefined' ? performance.now() / 1000 : 0;
+  drawColonyArk(ctx, x, y, scale, tilt, state, phase);
 }
 
 export function drawPod(ctx: CanvasRenderingContext2D, x: number, y: number, color: string) {
-  ctx.fillStyle = color;
+  const phase = typeof performance !== 'undefined' ? performance.now() / 1000 : 0;
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(-0.35 + Math.sin(phase + x * 0.01) * 0.12);
+  ctx.globalAlpha = 0.4;
+  ctx.strokeStyle = color;
+  ctx.lineWidth = 2;
   ctx.beginPath();
-  ctx.ellipse(x, y, 7, 4, -0.4, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = '#f2f6fb';
-  ctx.fillRect(x - 1, y - 1, 2, 2);
+  ctx.moveTo(-14, 8);
+  ctx.lineTo(-4, 3);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+  drawUnitSprite(ctx, 0, 0, 26, { kind: 'colony', color, phase });
+  ctx.restore();
 }
 
 export function drawEmblem(ctx: CanvasRenderingContext2D, faction: FactionId, x: number, y: number, size: number) {

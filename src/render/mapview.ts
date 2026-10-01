@@ -1,5 +1,6 @@
 import { CONFIG } from '../config';
 import { TERRAIN_PAINT, drawEmblem, hash } from '../art/draw';
+import { drawUnitSprite } from '../art/units';
 import { FACTIONS } from '../core/factions';
 import type { Game } from '../core/game';
 import { isSea } from '../core/rules';
@@ -9,6 +10,7 @@ export class MapView {
   camera = { x: 0, y: 0, zoom: 1.25 };
   hover: { x: number; y: number } | null = null;
   private raf = 0;
+  private anim = 0;
   private dragging = false;
   private dragMoved = false;
   private last = { x: 0, y: 0 };
@@ -55,6 +57,7 @@ export class MapView {
   }
 
   private frame = () => {
+    this.anim += 0.016;
     this.draw();
     this.raf = requestAnimationFrame(this.frame);
   };
@@ -256,7 +259,7 @@ export class MapView {
   private drawUnits(ctx: CanvasRenderingContext2D, game: Game, view: { x0: number; y0: number; x1: number; y1: number }) {
     const s = this.tile;
     const selected = this.getSelection().unitId;
-    const stacks = new Map<string, number>();
+    const groups = new Map<string, typeof game.state.units>();
     for (const unit of game.state.units) {
       if (unit.x < view.x0 || unit.x > view.x1 || unit.y < view.y0 || unit.y > view.y1) continue;
       const own = unit.factionId === game.state.playerFaction;
@@ -266,47 +269,36 @@ export class MapView {
         game.mapPartners(game.state.playerFaction).includes(unit.factionId);
       if (!visible) continue;
       const key = `${unit.x},${unit.y}`;
-      const stack = stacks.get(key) ?? 0;
-      stacks.set(key, stack + 1);
-      const px = unit.x * s + s / 2 + stack * 5;
-      const py = unit.y * s + s / 2 + stack * 4;
-      const color = FACTIONS[unit.factionId as FactionId].colors.main;
-      ctx.save();
-      ctx.translate(px, py);
-      ctx.fillStyle = color;
-      ctx.strokeStyle = unit.id === selected ? '#ffffff' : '#0c1018';
-      ctx.lineWidth = 2;
-      if (unit.role === 'settler') {
-        ctx.beginPath();
-        ctx.ellipse(0, 0, 8, 5, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-      } else if (unit.role === 'terraformer') {
-        ctx.rotate(Math.PI / 4);
-        ctx.fillRect(-6, -6, 12, 12);
-        ctx.strokeRect(-6, -6, 12, 12);
-      } else if (unit.domain === 'sea') {
-        ctx.beginPath();
-        ctx.moveTo(-8, 4);
-        ctx.lineTo(0, -7);
-        ctx.lineTo(8, 4);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-      } else {
-        ctx.beginPath();
-        ctx.moveTo(0, -8);
-        ctx.lineTo(7, 6);
-        ctx.lineTo(-7, 6);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-      }
-      ctx.restore();
-      if (unit.terraform) {
-        ctx.strokeStyle = '#8fd18a';
-        ctx.strokeRect(unit.x * s + 2, unit.y * s + 2, s - 4, s - 4);
-      }
+      const list = groups.get(key);
+      if (list) list.push(unit);
+      else groups.set(key, [unit]);
+    }
+    for (const list of groups.values()) {
+      list.forEach((unit, index) => {
+        const px = unit.x * s + s / 2 + index * 5;
+        const py = unit.y * s + s / 2 - index * 3;
+        const faction = FACTIONS[unit.factionId as FactionId];
+        const design = game.findDesign(unit.factionId, unit.designId);
+        drawUnitSprite(ctx, px, py, 24, {
+          role: unit.role,
+          domain: unit.domain,
+          chassis: design?.chassis,
+          specials: design?.specials,
+          name: unit.name,
+          color: faction.colors.main,
+          deep: faction.colors.deep,
+          selected: unit.id === selected,
+          hp: unit.hp,
+          maxHp: unit.maxHp,
+          stack: index === list.length - 1 ? list.length : 1,
+          phase: this.anim + unit.id * 0.65,
+          working: !!unit.terraform,
+        });
+        if (unit.terraform) {
+          ctx.strokeStyle = '#8fd18a';
+          ctx.strokeRect(unit.x * s + 2, unit.y * s + 2, s - 4, s - 4);
+        }
+      });
     }
   }
 
