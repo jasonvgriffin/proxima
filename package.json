@@ -2,7 +2,7 @@
   "name": "proxima",
   "version": "0.1.0",
   "private": true,
-  "description": "Proxima \u2014 a single-player turn-based 4X on a tidally locked world.",
+  "description": "Proxima — a single-player turn-based 4X on a tidally locked world.",
   "author": "Jason Griffin",
   "main": "electron/main.cjs",
   "type": "module",
@@ -32,7 +32,7 @@
   "build": {
     "appId": "com.jasonvgriffin.proxima",
     "productName": "Proxima",
-    "copyright": "Copyright \u00a9 2026 Jason Griffin",
+    "copyright": "Copyright © 2026 Jason Griffin",
     "directories": {
       "output": "release",
       "buildResources": "build"
