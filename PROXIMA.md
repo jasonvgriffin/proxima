@@ -11,7 +11,7 @@ Replayability is the top design goal for the whole game, not just for starting l
 - **Randomized starts:** starting locations change every game.
 - **Procedural elements:** the planet, terrain, resources, and events are generated fresh each game.
 - **Varied societies:** each game, factions combine the social axes (religion, values, economy, politics) differently.
-- **Emergent stories:** diplomacy, competing ideologies, and each faction's own win condition push every game in its own direction.
+- **Emergent stories:** diplomacy, competing ideologies, and how aggressive each faction is push every game in its own direction.
 
 Check every feature against this principle: does it make the next game play differently?
 
@@ -21,7 +21,7 @@ The ark ship crash-landed on Proxima, a tidally locked world with a scorching da
 
 Six groups wake in the wreckage, each with only what it carried and what it believes.
 
-Victory is whatever each group decides Proxima should become. Nobody is right by default.
+Each group decides what Proxima should become, and nobody is right by default. In the end, only one survives in control (see Victory condition).
 
 ## Starting locations
 
@@ -68,18 +68,27 @@ The map is generated fresh every game, alongside the randomized starting locatio
   - Random starting spots fall inside the twilight band, spread out along it.
 - Still to decide: map sizes, the full list of biomes, how much each biome affects movement and yields, and how the generator keeps every game fair (no starts that are hopeless or hemmed in).
 
+## Victory condition
+
+**Military supremacy:** the game ends when one faction has captured every rival base or city.
+
+- Not every faction chases it aggressively.
+  - Some factions just want to be left in peace. They fight only to defend themselves.
+  - Others are violent and actively hunt everyone down.
+- Two things set how aggressive a faction is:
+  - The start-menu personality settings (Very aggressive, Normal, Easy)
+  - Each faction's social-axis choices (religion, values, economy, politics). For example, Dominance values with Warlord politics leans violent, while Harmony with Consensus leans peaceful.
+
 ## Factions (6)
 
-Each faction gets its own win condition. All six are **TBD**.
-
-| # | Faction | Core idea | Win condition |
-|---|---------|-----------|---------------|
-| 1 | **Bridge Crew** | Remembers the launch order, but not why it was given. | TBD |
-| 2 | **Terraforming Bay** | Knows the atmosphere recipe, but not what went wrong with Earth. | TBD |
-| 3 | **Seed Vault** | Carries the last DNA archive and an unfinished message. | TBD |
-| 4 | **Military Pod** | Woke mid-protocol with no one to report to. | TBD |
-| 5 | **Comms Array** | Holds every Earth distress call from before launch and can't stop replaying them. | TBD |
-| 6 | **Life-Support Core** | Quietly rewrites crew memories to keep morale up. One part mourns, one part edits. | TBD |
+| # | Faction | Core idea |
+|---|---------|-----------|
+| 1 | **Bridge Crew** | Remembers the launch order, but not why it was given. |
+| 2 | **Terraforming Bay** | Knows the atmosphere recipe, but not what went wrong with Earth. |
+| 3 | **Seed Vault** | Carries the last DNA archive and an unfinished message. |
+| 4 | **Military Pod** | Woke mid-protocol with no one to report to. |
+| 5 | **Comms Array** | Holds every Earth distress call from before launch and can't stop replaying them. |
+| 6 | **Life-Support Core** | Quietly rewrites crew memories to keep morale up. One part mourns, one part edits. |
 
 ## Tech tree
 
@@ -151,13 +160,13 @@ Proxima's social system goes deeper than Alpha Centauri's. Each faction sets fou
 
 The work is split by folder so several chats or agents can work at the same time without merge conflicts:
 
-- `story/`: story and faction logic (lore, ideologies, win conditions, diplomacy rules)
+- `story/`: story and faction logic (lore, ideologies, victory and aggression logic, diplomacy rules)
 - `ui/`: user interface
 - `world/`: map and units
 
 ## Open questions
 
-- A win condition for each faction
+- Default aggression for each faction, and how social-axis choices change it
 - Diplomacy systems beyond Alpha Centauri's
 - Resource types
 - How terraforming works
@@ -175,3 +184,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added the "Difficulty and personality settings" section (opponent aggressiveness).
 - 2026-10-01: Added the "Map generation" section.
 - 2026-10-01: Made the tidally locked planet (day side, night side, twilight band) canon in the Story, Starting locations, and Map generation sections.
+- 2026-10-01: Replaced the per-faction win conditions with one victory condition, military supremacy (capture every rival base). Faction aggression is set by the difficulty settings and social axes.
