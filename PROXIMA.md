@@ -85,7 +85,7 @@ The map is generated fresh every game, alongside the randomized starting locatio
 - **Shuffled AI order:** the order the AI factions move in is randomized each round instead of staying fixed. The player always goes first.
 - No turns are taken at the same time.
 - One round means every faction has had one turn. Per-turn effects, such as city credit income and resource yields, happen on each faction's own turn.
-- Still to decide: whether there's a turn limit or a game clock.
+- **No turn limit:** there's no turn cap or game clock. A game runs until one faction wins by military supremacy (see Victory condition).
 
 ## Combat
 
@@ -300,3 +300,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Resources: set the starting city credit formula (1 per population point + 2 per city each turn).
 - 2026-10-01: Added the "Turn structure" section (strictly alternating turns, none taken at the same time).
 - 2026-10-01: Turn structure: AI turn order is shuffled every round.
+- 2026-10-01: Turn structure: no turn limit; games run until a military supremacy victory.
