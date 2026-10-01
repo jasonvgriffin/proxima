@@ -112,8 +112,17 @@ The map is generated fresh every game, alongside the randomized starting locatio
 - Turns strictly alternate. The player takes a full turn first, then each AI faction takes its full turn, and the cycle repeats.
 - **Shuffled AI order:** the order the AI factions move in is randomized each round instead of staying fixed. The player always goes first.
 - No turns are taken at the same time.
+- Each turn is one week of game time (see Calendar).
 - One round means every faction has had one turn. Per-turn effects, such as city credit income and resource yields, happen on each faction's own turn.
 - **No turn limit:** there's no turn cap or game clock. A game runs until one faction wins by military supremacy (see Victory condition).
+
+## Calendar
+
+- The game keeps time in Earth years.
+- **Starting year: 2460.** This can be changed later (2580 was also considered).
+- **Each turn is one week.**
+- The current year and week are always shown on the main game screen, for example in the top bar or the HUD (heads-up display), as "Year 2460, Week 1".
+- Still to decide: whether a year is exactly 52 turns, and whether the calendar ever affects gameplay (for example seasons, which a tidally locked planet may not really have).
 
 ## Combat
 
@@ -320,7 +329,7 @@ Pressing **Escape** during play opens the pause menu. It contains:
    - Choosing a music track (from the five original tracks)
    - A Shuffle / Loop toggle: Shuffle plays tracks in random order, and Loop repeats the current track
 2. **Save game:** save to one of **10** save slots.
-3. **Load game:** load a game from a save slot.
+3. **Load game:** load a game from a save slot. The autosave always appears at the top of the load list, above the manual save slots.
 4. **New game:** start a fresh game. A popup first offers to save the current game, with three choices:
    - Save and Start New Game
    - Start New Game Without Saving
@@ -331,7 +340,7 @@ Pressing **Escape** during play opens the pause menu. It contains:
    - Cancel
 
 - **Autosave:** the game saves automatically every 10 turns. The autosave takes up one of the 10 save slots and doesn't get a slot of its own.
-- Still to decide: whether the autosave always uses the same slot and overwrites itself, and whether players can turn autosave off or protect a slot from being overwritten.
+- Still to decide: whether the autosave is one of the 10 slots (leaving 9 manual slots) or sits on top of 10 manual slots, since both have been said; whether the autosave always uses the same slot and overwrites itself, and whether players can turn autosave off or protect a slot from being overwritten.
 
 ## Social axes
 
@@ -429,3 +438,5 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Pause menu: Exit to desktop shows the save-first popup (Save and Exit, Exit Without Saving, Cancel).
 - 2026-10-01: Pause menu: 10 save slots, plus an autosave every 10 turns.
 - 2026-10-01: Pause menu: the autosave uses one of the 10 save slots.
+- 2026-10-01: Pause menu: the autosave always appears first in the Load game list.
+- 2026-10-01: Added the "Calendar" section (Earth years, starting in 2460, one week per turn, shown on the main screen).
