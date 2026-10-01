@@ -1,6 +1,7 @@
 import { CONFIG } from '../config';
 import { drawEmblem, drawPlanet, drawStar, drawStarfield } from '../art/draw';
 import { AudioBus, TRACKS } from '../audio/engine';
+import { playLoggedCues, playTerraformProgress, snapshotLog, snapshotTerraform } from '../audio/listen';
 import { difficultyLabel, difficultyProfile, normalizeDifficulty, outsideBandDamage } from '../core/difficulty';
 import { FACTIONS, SOCIAL_OPTIONS, defaultAxes, defaultPersonalities, DIFFICULTIES, PERSONALITY_LEVELS } from '../core/factions';
 import { Game, PROJECTS, projectLabel } from '../core/game';
@@ -592,33 +593,25 @@ export class App {
   private endTurn() {
     const game = this.game;
     if (!game) return;
-    const before = game.state.log.length;
+    const logBefore = snapshotLog(game.state.log);
+    const workBefore = snapshotTerraform(game.state.units, game.state.playerFaction);
     const ended = game.endTurn();
     this.audio.play('turn');
-    this.noteFresh(before);
+    playTerraformProgress(this.audio, workBefore, snapshotTerraform(game.state.units, game.state.playerFaction));
+    playLoggedCues(this.audio, logBefore, game.state.log, game.state.playerFaction);
     this.toast(ended.message);
     if (ended.autosave) void this.writeSlot(0, 'autosave');
     this.refreshGame();
   }
 
   private act(fn: () => { ok: boolean; message: string }, sound: 'click' | 'found' | 'terraform' | 'attack') {
-    const before = this.game?.state.log.length ?? 0;
+    const logBefore = snapshotLog(this.game?.state.log ?? []);
     const result = fn();
     this.audio.play(result.ok ? sound : 'error');
-    this.noteFresh(before);
+    playLoggedCues(this.audio, logBefore, this.game?.state.log ?? [], this.game?.state.playerFaction ?? '');
     this.toast(result.message);
     if (this.screen === 'game') this.refreshGame();
     return result;
-  }
-
-  private noteFresh(before: number) {
-    const fresh = this.game?.state.log.slice(before) ?? [];
-    for (const line of fresh) {
-      if (line.text.includes('outside the') || line.text.includes('reactor pulse') || line.text.includes('Waking Reactor') && line.text.includes('lost')) {
-        this.audio.play('band');
-      }
-      if (line.text.includes('finishes ')) this.audio.play('terraformDone');
-    }
   }
 
   private openCombat(attackerId: number, x: number, y: number) {
