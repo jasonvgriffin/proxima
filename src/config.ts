@@ -327,6 +327,14 @@ export const CONFIG = {
     defaultMusic: 0.45,
     defaultSfx: 0.7,
     defaultAmbient: 0.25,
+    /** Headroom so a full music file sits with the ambient bed. The slider is still master × music. */
+    musicTrim: 0.8,
+    /** Overlap at the end of a looping file so the join does not click. */
+    loopCrossfadeSec: 0.45,
+    /** Overlap when the playlist, the menu, or a tension sting changes tracks. */
+    trackCrossfadeSec: 1.8,
+    /** How long Urgent stays up after a combat or war line, then the exploration bed returns. */
+    tensionHoldSec: 16,
   },
 
   /** Raw tile yields before improvements, social bonuses, and stability. */

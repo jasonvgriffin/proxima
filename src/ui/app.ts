@@ -1124,15 +1124,12 @@ export class App {
     this.toast(this.audio.muted ? 'Muted.' : 'Sound restored.');
   }
 
-  /** Music previews on the menu once a click unlocks audio. The ambient bed plays only in a game. */
+  /** Menu theme, intro cue, or the exploration playlist. The ambient bed plays only in a game. */
   private syncSoundscape() {
     if (this.screen === 'game') this.audio.startAmbient();
     else this.audio.stopAmbient();
-    if (this.screen === 'intro') {
-      this.audio.stopMusic();
-      return;
-    }
-    this.audio.ensureMusic();
+    const scene = this.screen === 'intro' ? 'intro' : this.screen === 'game' ? 'game' : 'menu';
+    this.audio.setScene(scene);
   }
 
   private syncMuteControls() {
@@ -1755,6 +1752,7 @@ function renderAudioSettings(audio: AudioBus): string {
       ${sliders}
       <label class="row">Track <select data-setting="track" data-testid="audio-track">${TRACKS.map((track) => `<option value="${track.id}" ${audio.track === track.id ? 'selected' : ''}>${esc(track.name)}</option>`).join('')}</select></label>
       <label class="row">Order <select data-setting="mode" data-testid="audio-mode"><option value="loop" ${audio.mode === 'loop' ? 'selected' : ''}>Loop</option><option value="shuffle" ${audio.mode === 'shuffle' ? 'selected' : ''}>Shuffle</option></select></label>
+      <p class="muted audio-note" data-testid="music-credits">Music: <a href="https://opengameart.org/content/dark-sci-fi-audio-pack" target="_blank" rel="noopener noreferrer">SRG774</a>, <a href="https://opengameart.org/content/exploration-theme" target="_blank" rel="noopener noreferrer">Cleyton Kauffman</a>, <a href="https://opengameart.org/content/outworld" target="_blank" rel="noopener noreferrer">vitalezzz</a> (CC0, <a href="https://opengameart.org/" target="_blank" rel="noopener noreferrer">OpenGameArt</a>)</p>
     </div>`;
 }
 
