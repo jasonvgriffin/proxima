@@ -195,3 +195,52 @@ table.grid th, table.grid td { border-bottom: 1px solid var(--line-dim); padding
   z-index: 40;
   pointer-events: none;
 }
+
+.recap-sheet {
+  grid-template-columns: minmax(0, 1fr);
+  justify-items: center;
+  background:
+    radial-gradient(ellipse at 80% 12%, rgba(224, 177, 92, 0.09), transparent 46%),
+    var(--bg);
+}
+.recap-card {
+  width: min(960px, calc(100% - 48px));
+  margin: 24px auto;
+  max-height: calc(100% - 48px);
+  border: 1px solid var(--line);
+  border-right: 1px solid var(--line);
+}
+.recap-head {
+  display: grid;
+  grid-template-columns: 72px 1fr;
+  gap: 16px;
+  align-items: center;
+}
+.recap-head canvas { width: 72px; height: 72px; }
+.recap-summary { display: flex; flex-direction: column; gap: 8px; }
+.recap-summary strong { color: var(--gold); font-weight: 600; }
+.recap-switches { margin: 4px 0 0; padding-left: 18px; }
+.recap-switches li { margin: 2px 0; }
+#recap-chart {
+  width: 100%;
+  background: #0c111b;
+  border: 1px solid var(--line-dim);
+}
+.recap-details summary {
+  cursor: pointer;
+  color: var(--gold);
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+.recap-table-wrap { overflow: auto; max-height: 240px; }
+.recap-changed { color: var(--teal); }
+.recap-same { color: var(--teal); }
+.recap-swatch {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  margin-right: 6px;
+  vertical-align: middle;
+}
+.recap-compare td:first-child { white-space: nowrap; }

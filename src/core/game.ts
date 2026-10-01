@@ -18,6 +18,7 @@ import {
 import { frameBlame, missionCaught } from './spies';
 import { socialScale, tileYield, withTechFlats, type Yields } from './economy';
 import { FACTIONS, defaultAxes, defaultPersonalities, socialOption } from './factions';
+import { recordSocialPresent, seedAxisDrift } from './history';
 import { generateMap } from './mapgen';
 import { blockedKeys, reachable as pathReachable } from './path';
 import { starterDesigns, designById, compileDesign, type DesignDraft } from './parts';
@@ -165,6 +166,7 @@ export class Game {
       nextSpyId: 1,
       nextOfferId: 1,
       axisHistory: [{ round: 1, axes: { ...factions[opts.player].axes } }],
+      axisDrift: seedAxisDrift(1, factions[opts.player].axes),
     };
     const game = new Game(state);
     const designs = starterDesigns();
@@ -195,6 +197,7 @@ export class Game {
     } else {
       copy.setup.difficulty = normalizeDifficulty(copy.setup.difficulty);
     }
+    recordSocialPresent(copy);
     return new Game(copy);
   }
 
@@ -602,6 +605,7 @@ export class Game {
     faction.axes[axis] = optionId;
     faction.stabilityTurns = CONFIG.social.stabilityHitTurns;
     this.state.axisHistory.push({ round: this.state.round, axes: { ...faction.axes } });
+    recordSocialPresent(this.state);
     this.say(`Society shifts. Stability is shaken for ${CONFIG.social.stabilityHitTurns} turns.`, faction.id);
     this.commit();
     return { ok: true, message: `Axis changed. ${CONFIG.social.switchCost} credits, stability shaken.` };
@@ -891,6 +895,7 @@ export class Game {
       this.applyCrisis();
       this.beginTurn(this.state.playerFaction);
     }
+    recordSocialPresent(this.state);
     this.commit();
     const label = this.calendar().label;
     return { ok: true, message: label, autosave, aiOrder: order };
