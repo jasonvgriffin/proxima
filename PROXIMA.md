@@ -309,6 +309,9 @@ Terraforming works like Alpha Centauri: it's an action a unit performs on the ma
 - **Terraformers** are a unit type. They're unlocked through the Terraforming Bay's tech branch.
 - Each terraformer works on exactly one tile at a time. The unit has to stay on that tile until the work is done.
 - **Build time depends on what's being built.** Each kind of tile work has its own time cost in turns. Examples include planting trees, mining, building a mine, and installing solar panels to collect energy. The more complex or energy-intensive the build, the longer it takes.
+- **Terraformer tech level also matters.** More advanced terraformers, unlocked through later techs, work faster on every kind of build.
+- **Base times improve with tech.** Each terraforming type (planting trees, mining, building a mine, installing solar panels, and so on) has its own base time cost, and research can shorten those base times.
+- So the turns a tile takes depend on three things: the type of terraforming, how complex or energy-intensive that build is, and the terraformer's tech level.
 - **Better yields:** terraforming a tile improves what it produces, such as more nutrients, minerals, or energy, depending on the change made.
 - **Widening the twilight band:** over time, terraforming tiles at the edges of the twilight band can make them livable. This gradually pushes the band out toward the day side and night side and opens new land in the middle and late game.
 - Terraforming may cost the per-square credit fee described in Resources.
@@ -487,3 +490,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Removed the "Multiplayer" section. Proxima is single-player only, and the AI plays every rival faction.
 - 2026-10-01: Added the "Terraforming" section. Terraforming is a unit action like in Alpha Centauri: terraformer units, unlocked through the Terraforming Bay tech branch, each work one tile to improve its yields and can gradually widen the twilight band.
 - 2026-10-01: Terraforming: build time depends on what is being built on the tile (planting trees, mining, building a mine, installing solar panels, and so on). More complex or energy-intensive builds take longer.
+- 2026-10-01: Terraforming: build time also depends on the terraformer's tech level (advanced terraformers from later techs work faster). Each terraforming type has its own base time, which improves with tech.
