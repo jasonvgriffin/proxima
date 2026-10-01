@@ -77,6 +77,7 @@ interface ProximaDebug {
   showDefeat(): void;
   showTrade(): void;
   showEvent(): void;
+  showDiplomacy(faction?: string): void;
   showTransport(): void;
   showMidgame(): void;
   finishTerraform(): { x: number; y: number } | null;

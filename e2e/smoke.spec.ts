@@ -50,8 +50,9 @@ test('starts a game, moves, founds, terraforms, saves, and opens diplomacy', asy
   await expect(audioPanel.getByTestId('audio-volume-music')).toBeVisible();
   await expect(audioPanel.getByTestId('audio-volume-sfx')).toBeVisible();
   await expect(audioPanel.getByTestId('audio-volume-ambient')).toBeVisible();
-  await expect(audioPanel.getByTestId('audio-track')).toHaveValue('title');
-  await expect(audioPanel.getByTestId('music-credits')).toContainText('Music: SRG774, Cleyton Kauffman, vitalezzz (CC0, OpenGameArt)');
+  await expect(audioPanel.getByTestId('audio-track')).toHaveValue('exploration');
+  await expect(audioPanel.getByTestId('music-credits')).toContainText('Music: Cleyton Kauffman, SRG774, vitalezzz (CC0, OpenGameArt)');
+  await expect(audioPanel.getByTestId('audio-track')).not.toContainText('Title');
   await expect(audioPanel.getByTestId('audio-mode')).toHaveValue('loop');
   await audioPanel.getByTestId('audio-mute').check();
   await expect(audioPanel.getByTestId('audio-music')).toBeChecked();
@@ -59,6 +60,19 @@ test('starts a game, moves, founds, terraforms, saves, and opens diplomacy', asy
   await expect(audioPanel.getByTestId('audio-volume-ambient')).toHaveValue('0.25');
   await page.getByTestId('audio-close').click();
   await expect(page.getByTestId('audio-panel')).toHaveCount(0);
+
+  await page.getByTestId('game-options').click();
+  await expect(page.getByTestId('options-screen')).toBeVisible();
+  const back = page.getByTestId('options-back');
+  const backBox = await back.boundingBox();
+  expect(backBox).toBeTruthy();
+  expect(backBox!.x).toBeLessThan(40);
+  expect(backBox!.y).toBeLessThan(40);
+  expect(backBox!.width).toBeLessThan(150);
+  expect(backBox!.height).toBeLessThan(28);
+  await shot(page, 'game-options');
+  await back.click();
+  await expect(page.getByTestId('start-menu')).toBeVisible();
 
   await page.getByTestId('play-intro').click();
   await expect(page.getByTestId('intro-back')).toBeDisabled();
@@ -108,7 +122,8 @@ test('starts a game, moves, founds, terraforms, saves, and opens diplomacy', asy
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('pause-menu')).toBeVisible();
   await expect(page.getByTestId('audio-settings')).toBeVisible();
-  await expect(page.getByTestId('music-credits')).toContainText('Music: SRG774, Cleyton Kauffman, vitalezzz (CC0, OpenGameArt)');
+  await expect(page.getByTestId('music-credits')).toContainText('Music: Cleyton Kauffman, SRG774, vitalezzz (CC0, OpenGameArt)');
+  await expect(page.getByTestId('audio-track')).not.toContainText('Title');
   await expect(page.getByTestId('audio-mute')).toBeChecked();
   await expect(page.getByTestId('audio-music')).toBeChecked();
   await page.getByTestId('audio-mute').uncheck();
@@ -129,9 +144,24 @@ test('starts a game, moves, founds, terraforms, saves, and opens diplomacy', asy
   await expect(page.getByTestId('city-list')).not.toContainText('No cities');
 
   await page.getByTestId('open-diplomacy').click();
-  await expect(page.getByTestId('diplomacy-screen')).toContainText('non-aggression');
+  await expect(page.getByTestId('diplomacy-picker')).toBeVisible();
+  await expect(page.getByTestId('diplomacy-screen')).toContainText('No contact yet');
+  const close = page.getByTestId('diplomacy-close');
+  const closeBox = await close.boundingBox();
+  const screenBox = await page.getByTestId('diplomacy-screen').boundingBox();
+  expect(closeBox && screenBox).toBeTruthy();
+  expect(closeBox!.y).toBeLessThan(screenBox!.y + 70);
+  expect(closeBox!.height).toBeLessThan(36);
   await shot(page, 'diplomacy');
-  await page.getByTestId('diplomacy-screen').getByRole('button', { name: 'Close' }).click();
+  await page.evaluate(() => window.__proximaDebug!.showDiplomacy('verdantia'));
+  await expect(page.getByTestId('diplomacy-detail')).toBeVisible();
+  await expect(page.getByTestId('diplomacy-detail')).toContainText('Verdantia');
+  await expect(page.getByTestId('diplomacy-detail')).toContainText('Non-aggression');
+  await expect(page.getByTestId('diplomat-greeting')).not.toBeEmpty();
+  await shot(page, 'diplomacy-talk');
+  await page.getByTestId('diplomacy-back').click();
+  await expect(page.getByTestId('diplomacy-picker')).toBeVisible();
+  await page.getByTestId('diplomacy-close').click();
 
   await page.getByTestId('open-spies').click();
   await expect(page.getByTestId('recruit-spy')).toBeVisible();
