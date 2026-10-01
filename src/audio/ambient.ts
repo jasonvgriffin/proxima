@@ -1,5 +1,5 @@
 /**
- * Procedural ambient bed for the twilight: a low reactor hum under soft wind.
+ * Procedural ambient bed: a low reactor hum under soft wind.
  * Generated with Web Audio at play time. No samples, so nothing here is licensed audio.
  *
  * The bed's output gain is `ambientGain` (master × ambient, or 0 while muted).

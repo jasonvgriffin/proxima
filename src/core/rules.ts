@@ -20,24 +20,13 @@ export function isSea(terrain: TerrainId): boolean {
   return SEA.has(terrain);
 }
 
-export function zoneForColumn(x: number): 'day' | 'twilight' | 'night' {
-  if (x < CONFIG.map.bandStart) return 'day';
-  if (x > CONFIG.map.bandEnd) return 'night';
-  return 'twilight';
-}
-
-export function biomeClass(tile: Pick<Tile, 'terrain' | 'zone'>): BiomeClass {
+export function biomeClass(tile: Pick<Tile, 'terrain'>): BiomeClass {
   if (tile.terrain === 'toxic') return 'toxic';
   if (tile.terrain === 'thin-air') return 'thin-air';
-  if (
-    tile.terrain === 'frozen-plain' ||
-    tile.terrain === 'ice-ridge' ||
-    tile.terrain === 'frozen-sea' ||
-    tile.zone === 'night'
-  ) {
-    return 'frozen';
+  if (tile.terrain === 'frozen-plain' || tile.terrain === 'ice-ridge' || tile.terrain === 'frozen-sea') return 'frozen';
+  if (tile.terrain === 'scorched' || tile.terrain === 'dunes' || tile.terrain === 'lava' || tile.terrain === 'hot-sea') {
+    return 'scorched';
   }
-  if (tile.zone === 'day') return 'scorched';
   return 'standard';
 }
 
@@ -75,7 +64,7 @@ export function terraformEnergy(project: string): number {
   return CONFIG.terraform.energyCost[project] ?? 0;
 }
 
-/** Only atmosphere work pulls a tile into the livable zone. Roads, farms, and mines do not. */
+/** Only atmosphere work softens a hostile climate. Roads, farms, and mines do not. */
 export function projectMakesLivable(project: ImprovementId): boolean {
   return project === 'atmosphere';
 }
@@ -134,17 +123,6 @@ export function terrainDefenseMod(terrain: TerrainId, inCity: boolean): number {
   return base + (inCity ? CONFIG.city.cityDefenseBonus : 0);
 }
 
-export function outsideBandOutcome(
-  hp: number,
-  livable: boolean,
-  hasSealed: boolean,
-  damage: number = CONFIG.outsideBand.damagePerTurn,
-): { hp: number; destroyed: boolean } {
-  if (livable || hasSealed) return { hp, destroyed: false };
-  const next = hp - damage;
-  return { hp: next, destroyed: next <= 0 };
-}
-
 export function calendarForRound(round: number): { year: number; week: number } {
   const index = Math.max(0, round - 1);
   return {
@@ -194,9 +172,8 @@ export interface FoundingCheck {
 export function canFoundCity(opts: {
   canFound: boolean;
   sea: boolean;
-  livable: boolean;
-  inBand: boolean;
-  hasSealed: boolean;
+  hostile: boolean;
+  sealed: boolean;
   nearestCity: number;
   cityHere: boolean;
 }): FoundingCheck {
@@ -206,11 +183,10 @@ export function canFoundCity(opts: {
   if (opts.nearestCity < CONFIG.city.minDistance) {
     return { ok: false, reason: `Too close to another city (need ${CONFIG.city.minDistance} tiles).` };
   }
-  const allowed = opts.inBand || opts.livable || opts.hasSealed;
-  if (!allowed) {
+  if (opts.hostile && !opts.sealed) {
     return {
       ok: false,
-      reason: 'Cities can only be founded in the twilight band, on terraformed livable ground, or after Sealed Habitats / Geothermal Wells.',
+      reason: 'This climate is too hostile for a city until atmosphere work softens it, or you research Sealed Habitats.',
     };
   }
   return { ok: true, reason: '' };
@@ -218,11 +194,6 @@ export function canFoundCity(opts: {
 
 export function hasSealedHabitats(techs: readonly string[]): boolean {
   return techs.includes('sealed-habitats');
-}
-
-export function tileIsLivable(tile: Pick<Tile, 'zone' | 'livable' | 'scarred'>): boolean {
-  if (tile.scarred) return false;
-  return tile.zone === 'twilight' || tile.livable;
 }
 
 export function improvementYield(project: ImprovementId): {

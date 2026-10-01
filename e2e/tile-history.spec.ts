@@ -40,5 +40,15 @@ test('clicks a terraformed tile and shows its improvements and history', async (
   await expect(page.getByTestId('tile-improvements')).toContainText('Farm');
   await expect(page.getByTestId('tile-history')).toContainText('farm');
   await expect(page.getByTestId('tile-yields')).toContainText('nutrients');
+
+  await page.getByTestId('hide-tile').click();
+  await expect(page.getByTestId('tile-panel')).toHaveCount(0);
+  await page.mouse.move(point!.x, point!.y);
+  await page.keyboard.press('i');
+  await expect(page.getByTestId('tile-panel')).toBeVisible();
+  await expect(page.getByTestId('tile-improvements')).toContainText('Farm');
   await shot(page, 'tile-history');
+
+  await page.keyboard.press('t');
+  await expect(page.getByTestId('tech-tree')).toBeVisible();
 });

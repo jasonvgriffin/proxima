@@ -1,7 +1,8 @@
 import { CONFIG } from '../config';
+import { isHostileClimate, settleScore } from './geography';
 import type { Rng } from './rng';
-import { isSea, zoneForColumn } from './rules';
-import type { FactionId, ResourceId, TerrainId, Tile, Zone } from './types';
+import { isSea } from './rules';
+import type { FactionId, ResourceId, SpecialId, TerrainId, Tile } from './types';
 
 function hash(x: number, y: number, seed: number): number {
   let n = Math.imul(x, 374761393) + Math.imul(y, 668265263) + Math.imul(seed, 1442695041);
@@ -31,31 +32,56 @@ function fbm(x: number, y: number, seed: number): number {
   return noise(x, y, seed) * 0.62 + noise(x * 2.1, y * 2.1, seed + 17) * 0.28 + noise(x * 4.2, y * 4.2, seed + 41) * 0.1;
 }
 
-function seaFor(zone: Zone): TerrainId {
-  if (zone === 'day') return 'hot-sea';
-  if (zone === 'night') return 'frozen-sea';
+function clamp01(n: number): number {
+  return Math.max(0, Math.min(1, n));
+}
+
+interface Blob {
+  x: number;
+  y: number;
+  rx: number;
+  ry: number;
+}
+
+function blobHeight(nx: number, ny: number, blob: Blob): number {
+  const dx = (nx - blob.x) / blob.rx;
+  const dy = (ny - blob.y) / blob.ry;
+  return Math.exp(-(dx * dx + dy * dy));
+}
+
+/** A raised saddle so the landmasses stay walkable for land units. */
+function saddle(nx: number, ny: number, a: Blob, b: Blob, width: number): number {
+  const abx = b.x - a.x;
+  const aby = b.y - a.y;
+  const len2 = abx * abx + aby * aby || 1;
+  let t = ((nx - a.x) * abx + (ny - a.y) * aby) / len2;
+  t = Math.max(0, Math.min(1, t));
+  const px = a.x + abx * t;
+  const py = a.y + aby * t;
+  const dist = Math.hypot(nx - px, ny - py);
+  const along = Math.sin(t * Math.PI);
+  return Math.exp(-(dist * dist) / (width * width)) * along * 0.72;
+}
+
+function seaTerrain(temperature: number): TerrainId {
+  if (temperature > 0.72) return 'hot-sea';
+  if (temperature < 0.28) return 'frozen-sea';
   return 'temperate-sea';
 }
 
-function landTerrain(zone: Zone, elevation: number, moisture: number, belt: number, spot: number): TerrainId {
-  if (zone === 'day') {
-    if (elevation > 0.8) return 'lava';
-    if (moisture > 0.74) return 'thin-air';
-    if (moisture < 0.38) return 'dunes';
-    return 'scorched';
-  }
-  if (zone === 'night') {
-    if (elevation > 0.72) return 'ice-ridge';
-    if (elevation > 0.8) return 'mountain';
-    return 'frozen-plain';
-  }
-  if (belt > 0.62 && belt < 0.7) return 'toxic';
-  if (spot > 0.93) return 'alien-growth';
-  if (elevation > 0.82) return 'mountain';
-  if (elevation > 0.74) return 'ridge';
-  if (elevation > 0.66 && moisture < 0.4) return 'canyon';
-  if (moisture > 0.68) return 'forest';
-  if (moisture < 0.32) return 'rocky';
+function landTerrain(elevation: number, rainfall: number, temperature: number, spot: number): TerrainId {
+  if (elevation > 0.86) return temperature < 0.32 ? 'ice-ridge' : 'mountain';
+  if (elevation > 0.78 && temperature > 0.82 && spot > 0.55) return 'lava';
+  if (elevation > 0.74 && rainfall < 0.4) return 'ridge';
+  if (temperature < 0.22) return elevation > 0.66 ? 'ice-ridge' : 'frozen-plain';
+  if (temperature > 0.8 && rainfall < 0.28) return elevation > 0.6 ? 'scorched' : 'dunes';
+  if (elevation > 0.7 && rainfall < 0.32 && temperature > 0.62) return 'thin-air';
+  if (spot > 0.965) return 'alien-growth';
+  if (rainfall > 0.62 && rainfall < 0.7 && spot > 0.9) return 'toxic';
+  if (elevation > 0.68 && rainfall < 0.34) return 'canyon';
+  if (elevation > 0.66) return rainfall > 0.55 ? 'highlands' : 'rocky';
+  if (rainfall > 0.66 && temperature > 0.34 && temperature < 0.75) return 'forest';
+  if (rainfall < 0.28) return 'rocky';
   if (elevation > 0.6) return 'highlands';
   return 'grass';
 }
@@ -70,78 +96,132 @@ export interface GeneratedMap {
 export function generateMap(rng: Rng, factions: readonly FactionId[], seed: number): GeneratedMap {
   const width = CONFIG.map.width;
   const height = CONFIG.map.height;
+  const blobs: Blob[] = [
+    { x: 0.4 + (hash(1, 2, seed) - 0.5) * 0.08, y: 0.48 + (hash(2, 3, seed) - 0.5) * 0.08, rx: 0.3, ry: 0.36 },
+    { x: 0.72 + (hash(3, 4, seed) - 0.5) * 0.05, y: 0.3 + (hash(4, 5, seed) - 0.5) * 0.06, rx: 0.16, ry: 0.18 },
+    { x: 0.22 + (hash(5, 6, seed) - 0.5) * 0.05, y: 0.74 + (hash(6, 7, seed) - 0.5) * 0.05, rx: 0.15, ry: 0.16 },
+  ];
   const tiles: Tile[] = [];
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
-      const zone = zoneForColumn(x);
-      const elevation = fbm(x * 0.16, y * 0.16, seed);
-      const moisture = fbm(x * 0.16 + 30, y * 0.16, seed + 5);
-      const belt = fbm(x * 0.05, y * 0.22, seed + 9);
+      const nx = x / (width - 1);
+      const ny = y / (height - 1);
+      let mask = 0;
+      for (const blob of blobs) mask = Math.max(mask, blobHeight(nx, ny, blob));
+      mask = Math.max(mask, saddle(nx, ny, blobs[0], blobs[1], 0.07));
+      mask = Math.max(mask, saddle(nx, ny, blobs[0], blobs[2], 0.065));
+      const edge = Math.min(nx, 1 - nx, ny, 1 - ny);
+      const shore = Math.min(1, edge / 0.07);
+      const n = fbm(x * 0.085, y * 0.085, seed);
+      const chains = fbm(x * 0.045, y * 0.16, seed + 3);
+      const elevation = clamp01((mask * 0.78 + n * 0.34 + (chains > 0.74 ? 0.1 : 0)) * shore);
+      const rainfall = clamp01(fbm(x * 0.07 + 20, y * 0.08, seed + 11));
+      const temperature = clamp01(0.48 + (fbm(x * 0.06 + 8, y * 0.055, seed + 21) - 0.5) * 0.85 + (0.5 - ny) * 0.1);
       const spot = hash(x, y, seed + 99);
-      let terrain: TerrainId;
-      if (elevation < 0.4) terrain = seaFor(zone);
-      else terrain = landTerrain(zone, elevation, moisture, belt, spot);
-      const resource = rollResource(rng, terrain, zone);
+      let terrain: TerrainId = elevation < 0.4 ? seaTerrain(temperature) : landTerrain(elevation, rainfall, temperature, spot);
       tiles.push({
         x,
         y,
-        zone,
         terrain,
-        resource,
+        elevation,
+        rainfall,
+        temperature,
+        river: false,
+        resource: null,
+        special: null,
         improvement: null,
-        livable: zone === 'twilight',
         road: false,
         scarred: false,
         history: [],
       });
     }
   }
-  bridgeTwilight(tiles, width);
   for (const tile of tiles) {
     if (isSea(tile.terrain)) continue;
-    if (tile.terrain === 'mountain' || tile.terrain === 'ridge' || tile.terrain === 'lava') continue;
+    if (tile.terrain === 'mountain' || tile.terrain === 'ridge' || tile.terrain === 'lava' || tile.terrain === 'ice-ridge') continue;
     const nearSea = neighbors(tile.x, tile.y, width, height).some((n) => isSea(at(tiles, width, n.x, n.y).terrain));
-    if (nearSea && (tile.terrain === 'grass' || tile.terrain === 'scorched' || tile.terrain === 'frozen-plain' || tile.terrain === 'dunes')) {
+    if (nearSea && tile.elevation < 0.52 && (tile.terrain === 'grass' || tile.terrain === 'dunes' || tile.terrain === 'scorched' || tile.terrain === 'frozen-plain' || tile.terrain === 'rocky')) {
       tile.terrain = 'coast';
     }
   }
+  carveRivers(tiles, width, height, seed);
+  for (const tile of tiles) {
+    if (isSea(tile.terrain)) continue;
+    rollDeposit(rng, tile);
+  }
   const starts = placeStarts(tiles, width, height, factions, rng);
+  connectStarts(tiles, width, height, starts);
   for (const start of starts) prepareStart(tiles, width, height, start.x, start.y);
   return { width, height, tiles, starts };
 }
 
-/** Keep the twilight band one walkable continent, so a sea inlet cannot wall a city off forever. */
-function bridgeTwilight(tiles: Tile[], width: number) {
-  const spine = Math.floor((CONFIG.map.bandStart + CONFIG.map.bandEnd) / 2);
-  const height = tiles.length / width;
-  for (let y = 0; y < height; y++) {
-    const center = tiles[y * width + spine];
-    if (isSea(center.terrain)) center.terrain = 'grass';
-    for (let x = CONFIG.map.bandStart; x <= CONFIG.map.bandEnd; x++) {
-      if (isSea(tiles[y * width + x].terrain)) continue;
-      const from = Math.min(x, spine);
-      const to = Math.max(x, spine);
-      for (let cx = from; cx <= to; cx++) {
-        const mid = tiles[y * width + cx];
-        if (isSea(mid.terrain)) mid.terrain = 'grass';
-      }
-    }
-  }
+function rollDeposit(rng: Rng, tile: Tile) {
+  if (rng.next() < 0.04) tile.special = rollSpecial(rng, tile.terrain);
+  if (tile.special && rng.next() < 0.45) return;
+  if (rng.next() > 0.09) return;
+  tile.resource = rollResource(rng, tile.terrain);
 }
 
-function rollResource(rng: Rng, terrain: TerrainId, zone: Zone): ResourceId | null {
-  if (isSea(terrain)) return null;
-  if (rng.next() > 0.09) return null;
+function rollResource(rng: Rng, terrain: TerrainId): ResourceId {
   const roll = rng.next();
   if (terrain === 'rocky' || terrain === 'mountain' || terrain === 'ridge' || terrain === 'canyon') {
-    return roll < 0.7 ? 'minerals' : 'ark-debris';
+    return roll < 0.75 ? 'minerals' : 'ark-debris';
   }
-  if (zone === 'day') return roll < 0.6 ? 'energy' : 'minerals';
-  if (zone === 'night') return roll < 0.5 ? 'minerals' : 'ark-debris';
+  if (terrain === 'forest' || terrain === 'grass' || terrain === 'coast') {
+    if (roll < 0.55) return 'nutrients';
+    if (roll < 0.8) return 'minerals';
+    return 'energy';
+  }
+  if (terrain === 'scorched' || terrain === 'dunes' || terrain === 'lava' || terrain === 'thin-air') {
+    return roll < 0.65 ? 'energy' : 'minerals';
+  }
+  if (terrain === 'frozen-plain' || terrain === 'ice-ridge') return roll < 0.5 ? 'minerals' : 'ark-debris';
   if (roll < 0.4) return 'nutrients';
-  if (roll < 0.65) return 'minerals';
-  if (roll < 0.85) return 'energy';
+  if (roll < 0.7) return 'minerals';
+  if (roll < 0.9) return 'energy';
   return 'ark-debris';
+}
+
+function rollSpecial(rng: Rng, terrain: TerrainId): SpecialId {
+  const roll = rng.next();
+  if (terrain === 'forest' || terrain === 'alien-growth' || terrain === 'grass') {
+    return roll < 0.55 ? 'spores' : 'cache';
+  }
+  if (terrain === 'lava' || terrain === 'scorched' || terrain === 'thin-air') return roll < 0.6 ? 'vent' : 'crystal';
+  if (terrain === 'rocky' || terrain === 'mountain' || terrain === 'canyon' || terrain === 'ridge') {
+    return roll < 0.7 ? 'crystal' : 'cache';
+  }
+  if (roll < 0.34) return 'crystal';
+  if (roll < 0.67) return 'spores';
+  return 'vent';
+}
+
+function carveRivers(tiles: Tile[], width: number, height: number, seed: number) {
+  const sources = tiles.filter(
+    (tile) => !isSea(tile.terrain) && tile.elevation > 0.6 && tile.rainfall > 0.55 && hash(tile.x, tile.y, seed + 7) > 0.62,
+  );
+  sources.sort((a, b) => b.elevation - a.elevation || a.y - b.y || a.x - b.x);
+  for (const source of sources.slice(0, 22)) {
+    let x = source.x;
+    let y = source.y;
+    const seen = new Set<string>();
+    for (let step = 0; step < 70; step++) {
+      const tile = at(tiles, width, x, y);
+      if (isSea(tile.terrain)) break;
+      tile.river = true;
+      seen.add(`${x},${y}`);
+      let best: { x: number; y: number; elevation: number } | null = null;
+      for (const n of neighbors(x, y, width, height)) {
+        if (seen.has(`${n.x},${n.y}`)) continue;
+        const next = at(tiles, width, n.x, n.y);
+        const elev = isSea(next.terrain) ? -1 : next.elevation;
+        if (!best || elev < best.elevation) best = { x: n.x, y: n.y, elevation: elev };
+      }
+      if (!best || best.elevation >= tile.elevation - 0.0005) break;
+      x = best.x;
+      y = best.y;
+    }
+  }
 }
 
 function placeStarts(
@@ -151,9 +231,8 @@ function placeStarts(
   factions: readonly FactionId[],
   rng: Rng,
 ): { faction: FactionId; x: number; y: number }[] {
-  const candidates = tiles.filter(
-    (tile) => tile.zone === 'twilight' && !isSea(tile.terrain) && tile.terrain !== 'mountain' && tile.terrain !== 'lava',
-  );
+  const candidates = tiles.filter((tile) => settleScore(tile) >= 4 && !isHostileClimate(tile.terrain));
+  const poolSource = candidates.length >= factions.length ? candidates : tiles.filter((tile) => !isSea(tile.terrain) && tile.terrain !== 'mountain' && tile.terrain !== 'lava');
   const order = [...factions];
   for (let i = order.length - 1; i > 0; i--) {
     const j = rng.int(i + 1);
@@ -163,30 +242,102 @@ function placeStarts(
   }
   let minDist = CONFIG.map.minStartDistance;
   let chosen: Tile[] = [];
-  while (minDist >= 3 && chosen.length < factions.length) {
+  while (minDist >= 4 && chosen.length < factions.length) {
     chosen = [];
-    const pool = [...candidates];
+    const pool = [...poolSource];
     const first = pool.splice(rng.int(pool.length), 1)[0];
     chosen.push(first);
     while (chosen.length < factions.length && pool.length) {
       let bestIndex = 0;
       let bestScore = -1;
+      let bestSep = 0;
       for (let i = 0; i < pool.length; i++) {
-        const score = Math.min(...chosen.map((c) => chebyshev(c, pool[i])));
+        const sep = Math.min(...chosen.map((c) => chebyshev(c, pool[i])));
+        const score = sep * 10 + settleScore(pool[i]);
         if (score > bestScore) {
           bestScore = score;
           bestIndex = i;
+          bestSep = sep;
         }
       }
-      if (bestScore < minDist) break;
+      if (bestSep < minDist) break;
       chosen.push(pool.splice(bestIndex, 1)[0]);
     }
     if (chosen.length < factions.length) minDist -= 1;
   }
   while (chosen.length < factions.length) {
-    chosen.push(candidates[rng.int(candidates.length)]);
+    chosen.push(poolSource[rng.int(poolSource.length)]);
   }
   return chosen.slice(0, factions.length).map((tile, i) => ({ faction: order[i], x: tile.x, y: tile.y }));
+}
+
+function connectStarts(tiles: Tile[], width: number, height: number, starts: { x: number; y: number }[]) {
+  if (!starts.length) return;
+  const key = (x: number, y: number) => `${x},${y}`;
+  const reachable = new Set<string>();
+  const queue = [starts[0]];
+  reachable.add(key(starts[0].x, starts[0].y));
+  for (let i = 0; i < queue.length; i++) {
+    const cur = queue[i];
+    for (const n of neighbors(cur.x, cur.y, width, height)) {
+      const id = key(n.x, n.y);
+      if (reachable.has(id)) continue;
+      if (isSea(at(tiles, width, n.x, n.y).terrain)) continue;
+      reachable.add(id);
+      queue.push(n);
+    }
+  }
+  for (const start of starts) {
+    if (reachable.has(key(start.x, start.y))) continue;
+    const path = pathToReachable(tiles, width, height, start, reachable);
+    for (const step of path) {
+      const tile = at(tiles, width, step.x, step.y);
+      if (isSea(tile.terrain) || tile.terrain === 'mountain' || tile.terrain === 'lava') {
+        tile.terrain = 'coast';
+        tile.elevation = Math.max(tile.elevation, 0.46);
+      }
+      reachable.add(key(step.x, step.y));
+      for (const n of neighbors(step.x, step.y, width, height)) {
+        if (!isSea(at(tiles, width, n.x, n.y).terrain)) reachable.add(key(n.x, n.y));
+      }
+    }
+  }
+}
+
+function pathToReachable(
+  tiles: Tile[],
+  width: number,
+  height: number,
+  origin: { x: number; y: number },
+  reachable: Set<string>,
+): { x: number; y: number }[] {
+  const key = (x: number, y: number) => `${x},${y}`;
+  const prev = new Map<string, string | null>();
+  const queue = [origin];
+  prev.set(key(origin.x, origin.y), null);
+  let hit: string | null = null;
+  for (let i = 0; i < queue.length && !hit; i++) {
+    const cur = queue[i];
+    for (const n of neighbors(cur.x, cur.y, width, height)) {
+      const id = key(n.x, n.y);
+      if (prev.has(id)) continue;
+      prev.set(id, key(cur.x, cur.y));
+      if (reachable.has(id)) {
+        hit = id;
+        break;
+      }
+      queue.push(n);
+    }
+  }
+  if (!hit) return [];
+  const path: { x: number; y: number }[] = [];
+  let cursor: string | null = hit;
+  while (cursor) {
+    const [x, y] = cursor.split(',').map(Number);
+    path.push({ x, y });
+    cursor = prev.get(cursor) ?? null;
+  }
+  return path;
 }
 
 function prepareStart(tiles: Tile[], width: number, height: number, x: number, y: number) {
@@ -196,15 +347,17 @@ function prepareStart(tiles: Tile[], width: number, height: number, x: number, y
       const ny = y + dy;
       if (nx < 0 || ny < 0 || nx >= width || ny >= height) continue;
       const tile = at(tiles, width, nx, ny);
-      if (isSea(tile.terrain) || tile.terrain === 'lava' || tile.terrain === 'mountain') {
-        tile.terrain = tile.zone === 'twilight' ? 'grass' : tile.zone === 'day' ? 'scorched' : 'frozen-plain';
+      if (isSea(tile.terrain) || tile.terrain === 'lava' || tile.terrain === 'mountain' || isHostileClimate(tile.terrain)) {
+        tile.terrain = 'grass';
+        tile.elevation = Math.max(tile.elevation, 0.5);
+        tile.temperature = 0.52;
+        tile.rainfall = Math.max(tile.rainfall, 0.5);
       }
-      tile.livable = tile.zone === 'twilight';
     }
   }
   const center = at(tiles, width, x, y);
   center.terrain = 'grass';
-  center.livable = true;
+  center.elevation = Math.max(center.elevation, 0.5);
   if (!center.resource) center.resource = 'nutrients';
 }
 

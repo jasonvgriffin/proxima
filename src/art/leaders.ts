@@ -62,7 +62,7 @@ export const LEADERS: Record<FactionId, Leader> = {
       war: 'Even a war is a signal. I will answer it if I must.',
       peace: 'Peace leaves the channel open. I am still listening for Earth.',
       nap: 'A pact is a quiet frequency. Stay on it and I will trade what I hear.',
-      alliance: 'Share the band with me. Somewhere in the static, someone else is still calling.',
+      alliance: 'Share the continent with me. Somewhere in the static, someone else is still calling.',
     },
   },
   clio: {

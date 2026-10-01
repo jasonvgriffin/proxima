@@ -1,6 +1,6 @@
 /**
  * Original procedural sound effects for terraforming and for travel damage
- * outside the twilight band. Generated with Web Audio at play time, so the
+ * on harsh ground. Generated with Web Audio at play time, so the
  * game stays offline and ships no sample files.
  *
  * Callers pass the sfx loudness from AudioBus (master × sfx, already muted
@@ -41,7 +41,7 @@ function terraformProgress(ctx: AudioContext, t0: number, volume: number, dest: 
   osc(ctx, envelope(ctx, t0 + 0.02, 0.07, 0.04 * volume, dest), 'triangle', 196, t0 + 0.02, 0.07);
 }
 
-/** The tile joins the livable zone: a short open triad and a settled sub. */
+/** A finished terraform job: a short open triad and a settled sub. */
 function terraformComplete(ctx: AudioContext, t0: number, volume: number, dest: AudioNode) {
   const notes = [294, 370, 440];
   notes.forEach((freq, index) => {

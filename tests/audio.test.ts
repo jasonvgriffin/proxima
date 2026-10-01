@@ -163,7 +163,7 @@ describe('audio preference persistence', () => {
       JSON.stringify({ track: 'meridian-dust', mode: 'loop' }),
     );
     const procedural = new AudioBus();
-    expect(procedural.track).toBe('title');
+    expect(procedural.track).toBe('exploration');
 
     localStorage.setItem(
       AUDIO_STORAGE_KEY,
@@ -171,7 +171,7 @@ describe('audio preference persistence', () => {
     );
     const junk = new AudioBus();
     expect(junk.muted).toBe(false);
-    expect(junk.track).toBe('title');
+    expect(junk.track).toBe('exploration');
     expect(junk.mode).toBe('loop');
     expect(junk.master).toBe(CONFIG.audio.defaultMaster);
     expect(junk.ambientLevel()).toBeCloseTo(CONFIG.audio.defaultMaster * CONFIG.audio.defaultAmbient);

@@ -53,6 +53,7 @@ describe('diplomacy ladder', () => {
   it('refuses attacks under a pact and lets a declaration of war break treaties', () => {
     const game = Game.newGame({ seed: 19, player: 'helm' });
     const rel = game.relation('helm', 'verdantia');
+    rel.contact = true;
     rel.stance = 'peace';
     const pact = game.propose('verdantia', 'nap', true);
     expect(pact.ok).toBe(true);
@@ -63,8 +64,6 @@ describe('diplomacy ladder', () => {
     foe.y = scout.y;
     const tile = game.tile(foe.x, foe.y);
     tile.terrain = 'grass';
-    tile.zone = 'twilight';
-    tile.livable = true;
     tile.scarred = false;
     const blocked = game.confirmAttack(scout.id, foe.x, foe.y);
     expect(blocked.ok).toBe(false);
@@ -94,7 +93,9 @@ describe('spy networks', () => {
     game.endTurn();
     const spentOnSpies = afterPlace - game.state.factions.mnemosyne.credits;
     expect(spentOnSpies).toBeLessThan(CONFIG.spies.recruitCost);
-    expect(game.state.spies.filter((spy) => spy.owner === 'mnemosyne').length).toBeGreaterThan(0);
+    const stillThere = game.state.spies.some((spy) => spy.owner === 'mnemosyne');
+    const rootedOut = game.state.log.some((line) => line.text.includes('roots out a spy'));
+    expect(stillThere || rootedOut).toBe(true);
   });
 
   it('catches a thief on a low roll and lets a high roll steal the tech', () => {
@@ -166,12 +167,12 @@ describe('the waking reactor', () => {
     expect(warning.level).toBe(0);
     expect(warning.startRound).toBe(CONFIG.crisis.startRound);
     expect(full.level).toBe(1);
-    expect(full.damage).toBe(CONFIG.crisis.maxBandDamage);
+    expect(full.damage).toBe(CONFIG.crisis.maxPulseDamage);
     expect(full.tithe).toBe(CONFIG.crisis.creditTithe);
     expect(full.yieldFactor).toBeCloseTo(1 - CONFIG.crisis.maxYieldPenalty);
   });
 
-  it('warns on the first crisis week and later hurts unanchored units in the band', () => {
+  it('warns on the first crisis week and later hurts unanchored units', () => {
     const game = Game.newGame({ seed: 14, player: 'helm' });
     game.state.round = CONFIG.crisis.startRound - 1;
     game.endTurn();

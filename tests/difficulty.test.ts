@@ -7,7 +7,7 @@ import {
   difficultyProfile,
   economyRates,
   normalizeDifficulty,
-  outsideBandDamage,
+  exposureDamage,
 } from '../src/core/difficulty';
 import { Game } from '../src/core/game';
 import { peaceWindow } from '../src/core/rules';
@@ -22,8 +22,6 @@ function rivalReport(difficulty: Difficulty) {
   const tile = game.tile(settler.x, settler.y);
   tile.terrain = 'forest';
   tile.resource = 'ark-debris';
-  tile.zone = 'twilight';
-  tile.livable = true;
   expect(game.foundCity(settler.id).ok).toBe(true);
   const city = game.citiesOf('ironclad')[0];
   const report = game.cityReport(city.id);
@@ -53,11 +51,11 @@ describe('difficulty table', () => {
       const prev = ORDER[i - 1];
       const next = ORDER[i];
       expect(peaceWindow('normal', next)).toBeLessThan(peaceWindow('normal', prev));
-      expect(outsideBandDamage(next)).toBeGreaterThan(outsideBandDamage(prev));
+      expect(exposureDamage(next)).toBeGreaterThan(exposureDamage(prev));
       expect(difficultyProfile(next).crisisStartRound).toBeLessThan(difficultyProfile(prev).crisisStartRound);
       expect(difficultyProfile(next).crisisStrength).toBeGreaterThan(difficultyProfile(prev).crisisStrength);
     }
-    expect(outsideBandDamage('normal')).toBe(CONFIG.outsideBand.damagePerTurn);
+    expect(exposureDamage('normal')).toBe(CONFIG.exposure.damagePerTurn);
     expect(difficultyProfile('normal').crisisStartRound).toBe(CONFIG.crisis.startRound);
     const early = difficultyProfile('brutal').crisisStartRound + 4;
     expect(crisisTuning(early, 'brutal').level).toBeGreaterThan(0);
@@ -81,14 +79,12 @@ describe('difficulty table', () => {
     }
   });
 
-  it('deals more outside-band damage on higher difficulties', () => {
+  it('deals more harsh-ground damage on higher difficulties', () => {
     const losses = ORDER.map((difficulty) => {
       const game = Game.newGame({ seed: 8, player: 'helm', difficulty });
       const scout = game.unitsOf('helm').find((unit) => unit.role === 'scout')!;
       scout.x = 0;
       const tile = game.tile(0, scout.y);
-      tile.livable = false;
-      tile.zone = 'day';
       tile.terrain = 'scorched';
       const before = scout.hp;
       game.endTurn();
@@ -96,7 +92,7 @@ describe('difficulty table', () => {
       expect(after).toBeTruthy();
       return before - after!.hp;
     });
-    expect(losses).toEqual(ORDER.map((id) => outsideBandDamage(id)));
+    expect(losses).toEqual(ORDER.map((id) => exposureDamage(id)));
     for (let i = 1; i < losses.length; i++) expect(losses[i]).toBeGreaterThan(losses[i - 1]);
   });
 });

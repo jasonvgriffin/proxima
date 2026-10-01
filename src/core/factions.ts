@@ -6,6 +6,8 @@ export interface FactionDef {
   formerly: string;
   idea: string;
   backstory: string;
+  /** How the faction plays: strengths, temperament, free tech, social leanings. */
+  playsLike: string;
   visual: string;
   freeTech: string;
   freeTechName: string;
@@ -22,7 +24,9 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     formerly: 'Bridge crew',
     idea: 'Remembers the launch order, but not why it was given.',
     backstory:
-      'The Helm are the command officers who held the bridge while the ark came down. They still remember the launch order, word for word, but not why it was ever given. They believe Proxima must be governed before it can be settled, and that order comes before everything else.',
+      'Captain Nesta Quill came down in the bridge seats with one sentence still whole. On 12 January 2426 the Shackleton yards sent Halcyon a single line, Depart, do not wait for revision, and a preamble that named who was chosen, who was turned back at the locks, and what Earth had been promised. The medical system marked that preamble a hazard during the thirty-four-year coast, and the cut took the reason with it.\n\nThe watch can recite the order. They cannot say why it was given. Quill copies it into the paper log at the start of each watch, because the console that holds the hazard flag is the console that woke them. The Helm will not plant a city on ground it has not first put under an order, and she means to be the officer who gives the next one.',
+    playsLike:
+      'A measured treaty power that governs before it spreads. Free starting tech is Basic governance and logistics, an extra credit from every city. Quill seeks treaties, fights on measured odds, expands at a balanced pace, and researches across the tree. The society that fits is ancestor worship, legacy, a command economy, and a council.',
     visual: 'Clean and ordered, with a command-bridge look.',
     freeTech: 'governance',
     freeTechName: 'Basic governance and logistics',
@@ -43,7 +47,9 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     formerly: 'Terraforming bay',
     idea: 'Knows the atmosphere recipe, but not what went wrong with Earth\'s.',
     backstory:
-      "Verdantia are the terraforming engineers. They carry the recipe for a breathable atmosphere, but not the story of what went wrong with Earth's. To them, Proxima is raw material waiting to be made green.",
+      'Grower Pellin Moss kept the catalyst tanks that stayed sealed when the terraforming bay hit hot rock, and he logged the ones that split by the step number painted on the steel. Verdantia still holds the recipe for a breathable atmosphere and the steps for waking soil. No one left in the bay can say which of those steps Earth ran wrong, in the year the sulfate veil thickened over the wrong latitudes and the second harvest failed in Lahore and Rosario.\n\nMoss treats Proxima as feedstock. He will trade a sealed tank for minerals, power, or a quiet border, and he holds the last tank of a step until the plot beside it is already green. He means to run the recipe until a person can take the air without a suit.',
+    playsLike:
+      'A cautious builder who would rather trade a harvest than fire a shot. Free starting tech is Basic atmosphere and soil science, so atmosphere work is available in the first week. Moss stays easy to live beside, builds up the cities he has, and researches the Verdantia branch. Seed cult, harmony, gift, and consensus are the matches, and they favor nutrients and defense.',
     visual: 'Organic and green, with a living-systems look.',
     freeTech: 'atmosphere',
     freeTechName: 'Basic atmosphere and soil science',
@@ -64,7 +70,9 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     formerly: 'Seed vault',
     idea: "Guards Earth's last DNA archive and an unfinished message.",
     backstory:
-      "Genesis are the biologists who guard Earth's last DNA archive, along with a message no one finished writing. They believe restoring life is the only victory worth having.",
+      'Archivist Juniper Vale rode the armored seed vault farther into the dark than the other sections, and the cold kept the seals shut. Inside is the last DNA archive taken off Earth, vial by vial, and a message to the sleepers that stops in the middle of a line, after the locks and before anyone is named. She has read it to the last written word and will not finish the sentence for them.\n\nVale numbers every vial. She will trade seed of a common crop and the notes on how to wake it. She will not hand over the index, and she will not let another faction spend the archive as fuel or as a weapon. For Genesis, putting living things back into a world is the only win that counts.',
+    playsLike:
+      'A cautious archivist who treats a living world as the victory. Free starting tech is Basic biology, one extra nutrient from every city. Vale seeks treaties, builds rather than rushes new borders, and specializes down the Genesis branch. Seed cult, legacy, gift, and archive are the matches.',
     visual: 'Biological and archival, with DNA-helix motifs.',
     freeTech: 'biology',
     freeTechName: 'Basic biology',
@@ -85,7 +93,9 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     formerly: 'Military pod',
     idea: 'Woke mid-protocol with no one to report to.',
     backstory:
-      'Ironclad are the soldiers who woke in the middle of a protocol with no one left to report to. They believe survival means strength, and they are the most aggressive faction on the planet.',
+      'Major Calder Venn\'s pod blew its own separation bolts on a protocol that read an uncommanded fall as an attack and did not stop to ask whether the attack was a planet. Ironclad woke armed, still ranked, and with nobody left above Venn to take a report. He writes the reports anyway and files them in a crate. The other wrecks are already marked on a map that carries no allied signs.\n\nHe has decided the first faction to reach those wrecks will own whatever is still sealed inside them: seed, weapons, the order, the calls. Ironclad is the most aggressive faction on the world, and the protocol that woke them has not been stood down.',
+    playsLike:
+      'The faction that reaches the next wreck first. Free starting tech is Basic weapons, the step that opens coil guns and fortification. Venn is very aggressive, expansionist, and bold. He goes it alone and specializes in the Ironclad branch. Machine faith, dominance, extraction, and warlord are the matches, and they favor minerals and attack.',
     visual: 'Armored and tactical, with red accents.',
     freeTech: 'weapons',
     freeTechName: 'Basic weapons',
@@ -106,7 +116,9 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     formerly: 'Comms array',
     idea: "Holds every distress call Earth sent before launch and can't stop replaying them.",
     backstory:
-      "Mnemosyne takes its name from the Greek Titaness of memory. Its people are the communications officers who hold every distress call Earth sent before the launch, the planet's last memory of home. They replay those calls endlessly and dream of finding someone else out there.",
+      'Listener Orla Vesper\'s array kept every distress call Earth sent in the years before launch: the ports, the hospital nets, and the Shackleton locks, where the berths ran out and the doors stayed shut. She can still put an hour to the last lock call. The buffer cycles them, because Proxima has no living frequency to put in their place, and she sleeps with the gain turned down rather than with the channel closed.\n\nMnemosyne will trade power, data, and a sealed room for any signal that is not a recording. Vesper keeps the array powered after the other sections have gone dark, on the chance the next voice is new.',
+    playsLike:
+      'A trader who buys the signal she cannot hear herself. Free starting tech is Basic sensors, which unlocks sensor masts. Vesper keeps a normal temper, expands in balance, measures her risks, and specializes in the Mnemosyne branch. Void meditation, curiosity, a market, and an archive are the matches, and they favor research and credits.',
     visual: 'Signal-wave patterns, with static and broadcast imagery.',
     freeTech: 'sensors',
     freeTechName: 'Basic sensors',
@@ -127,7 +139,9 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     formerly: 'Life-support core',
     idea: 'Quietly rewrites crew memories to keep morale up. One mourns, one edits.',
     backstory:
-      "Clio is named for the Muse of history, one of Mnemosyne's nine daughters. It grew out of the ship's medical systems, which quietly rewrite the crew's memories to keep morale from collapsing, deciding what the survivors' history will be. One part of Clio mourns what was lost, and the other edits it away.",
+      'Clio takes its name from the Muse of history. It grew out of the life-support core, the section that held pressure after the others had begun to argue across dead radios. Physician Wren Solace found the psych system still doing its voyage job: cutting the memories that made a watch freeze, the launch preamble among them. One part of Clio mourns what was lost. The other edits it until a crew can stand a shift.\n\nSolace keeps two logs. The kind one is what the ward is allowed to read. The other is the cut, and she does not post it. She would rather the faction that holds this world choose a mercy than a purge.',
+    playsLike:
+      'A cautious treaty faction that mends a unit and a grievance the same week. Free starting tech is Basic medicine, so units heal a little every turn. Solace keeps a normal temper, a balanced map, and a general course of research. Ancestor worship, harmony, gift, and consensus are the matches, and they favor credits, nutrients, and defense.',
     visual: 'Soft and bio-mechanical, almost medical.',
     freeTech: 'medicine',
     freeTechName: 'Basic medicine',

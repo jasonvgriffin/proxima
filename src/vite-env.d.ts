@@ -72,10 +72,12 @@ interface ProximaDebug {
   spawnRaider(): { x: number; y: number; name: string } | null;
   showRecap(): void;
   showPortraits(): void;
+  showUnits(): void;
   seedDiplomacyOffer(): number | null;
   showDefeat(): void;
   showTrade(): void;
-  showEvent(): void;
+  showEvent(kind?: string): void;
+  showDiplomacy(faction?: string): void;
   showTransport(): void;
   showMidgame(): void;
   finishTerraform(): { x: number; y: number } | null;

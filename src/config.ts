@@ -11,15 +11,13 @@ export const CONFIG = {
   map: {
     width: 60,
     height: 40,
-    /** Inclusive column range of the habitable twilight band. */
-    bandStart: 23,
-    bandEnd: 36,
-    minStartDistance: 6,
+    minStartDistance: 8,
     visionRadius: 2,
     cityVision: 2,
   },
 
-  outsideBand: {
+  /** Damage each turn a unit spends on hostile climate (not a map stripe). */
+  exposure: {
     damagePerTurn: 5,
   },
 
@@ -180,13 +178,13 @@ export const CONFIG = {
     } as Record<string, number>,
     /** Colony pods kept in the field, also capped by how many legal sites are left. */
     podCap: {
-      expansionist: 2,
+      expansionist: 1,
       balanced: 1,
       builder: 1,
     } as Record<string, number>,
     /** Added to every rival's attack chance once the peace window is over. Easy waits. */
     aggressionOdds: {
-      'very-aggressive': -0.05,
+      'very-aggressive': 0,
       normal: 0,
       easy: 0.08,
     } as Record<string, number>,
@@ -220,6 +218,17 @@ export const CONFIG = {
     cityHeal: 1,
     formerLevelAdvanced: 2,
     formerLevelMaster: 3,
+    foundryMinerals: 1,
+    mineMinerals: 1,
+    rationNutrients: 1,
+    geneNutrients: 1,
+    soilNutrients: 1,
+    solarEnergy: 1,
+    gardenNutrients: 1,
+    gardenEnergy: 1,
+    archiveResearch: 1,
+    clinicHeal: 1,
+    ledgerCredits: 1,
   },
 
   starting: {
@@ -316,7 +325,7 @@ export const CONFIG = {
   crisis: {
     startRound: 36,
     rampRounds: 24,
-    maxBandDamage: 4,
+    maxPulseDamage: 4,
     maxYieldPenalty: 0.35,
     creditTithe: 6,
     scarChance: 0.22,

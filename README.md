@@ -71,7 +71,7 @@ npm test
 npm run test:e2e
 ```
 
-`npm test` covers combat odds, income, rush-buy, terraform cost and time, damage outside the livable zone, turn order, file saves, spies, diplomacy, and the endgame crisis.
+`npm test` covers combat odds, income, rush-buy, terraform cost and time, damage on harsh ground, turn order, file saves, spies, diplomacy, and the endgame crisis.
 
 The Playwright smoke test needs Chromium:
 
@@ -86,17 +86,17 @@ It starts a game, moves a unit, founds a city, starts a terraform project, ends 
 
 1. **Play Introduction** is optional and never starts by itself. Back is off on the first scene. Next, Exit, or a click moves through six scenes. There is no music during the introduction.
 2. **New Game**. Pick one of the six factions. Each has a free starting technology and a short profile. Social choices that match the faction give +10% to the related output.
-3. The map is Proxima b. A marked twilight band is where cities can be founded. Units may leave it. Outside the livable zone they take damage each turn until they come back, are destroyed, or you have Sealed Habitats / Geothermal Wells.
+3. The map is continents and oceans. Cities are founded on hospitable land. Scorched, frozen, toxic, thin-air, and volcanic ground damages a unit each turn until it leaves, is destroyed, or you have Sealed Habitats. Geothermal Wells later add energy on rocky ground. Unexplored ground is dark; ground you have seen stays dim until a unit is near.
 4. Your colony pod is consumed to found a city. A terraformer works one tile at a time (farm, trees, mine, solar, road, or atmosphere). Atmosphere work needs that technology. One terraformer to a tile. Time depends on the project and how advanced your formers are. The credit fee is higher on harsh ground.
 5. **End Turn**. You go first. Then each rival takes a turn, in an order that changes every week. The top bar shows `Year 2460, Week 1`. One week passes per full round. There is no turn limit.
 6. Cities gather minerals, nutrients, energy, research, and credits. Credit income starts at 1 per population plus 2. Rush-buy spends 1 credit per remaining production point, and at least 10.
 7. An attack shows the odds before you confirm. Terrain changes the defender's odds. Cities can be captured. A ship can bombard a city and cannot capture it.
-8. **Diplomacy** does not require a unit to make contact. The ladder is war, peace, non-aggression pact, then alliance. Research and exploration treaties can be signed when you are not at war. Rivals answer from their personalities. Game Options on the start menu edits those personalities.
+8. **Diplomacy** starts as a choice of faction. You cannot talk to one until a unit or city of yours has seen one of theirs. The ladder is war, peace, non-aggression pact, then alliance. Research and exploration treaties can be signed when you are not at war. Rivals follow the same contact rule. Game Options on the start menu edits their personalities. Back to start on that screen sits in the top-left corner.
 9. **Spies** cost credits to recruit and nothing to keep. Place one in another faction to watch that faction's map, stocks, and research. They can steal a technology, sabotage a work, or frame two other factions so those two blame each other. A sweep looks for spies in your own faction.
 10. Holding every rival city wins. A faction that still has a colony pod has not lost yet. Allied Victory, if you turn it on, lets an alliance share a win.
 11. Escape opens the pause menu: audio, the autosave switch, the update check, save, load, a tutorial slot, new game, and exit. New game and exit ask whether to save first.
 
-The buried ark core, the Waking Reactor, starts to press on the twilight band after a set number of weeks. Yields thin, a credit tithe comes due, and units standing on unanchored twilight tiles take rising damage. Terraformed tiles stay anchored.
+The buried ark core, the Waking Reactor, starts to press on open ground after a set number of weeks. Yields thin, a credit tithe comes due, and units standing on unanchored tiles take rising damage. Terraformed tiles stay anchored.
 
 ## What this build does not do
 

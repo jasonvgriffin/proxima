@@ -40,7 +40,7 @@ export class AudioBus {
   music: number = CONFIG.audio.defaultMusic;
   sfx: number = CONFIG.audio.defaultSfx;
   ambient: number = CONFIG.audio.defaultAmbient;
-  track: TrackId = 'title';
+  track: TrackId = 'exploration';
   mode: 'loop' | 'shuffle' = 'loop';
   private ctx: AudioContext | null = null;
   private started = false;
@@ -254,7 +254,7 @@ export class AudioBus {
     void this.playCommand(cmd);
   }
 
-  play(kind: 'click' | 'move' | 'found' | 'terraform' | 'terraformDone' | 'band' | 'attack' | 'turn' | 'error' | 'save' | 'open') {
+  play(kind: 'click' | 'move' | 'found' | 'terraform' | 'terraformDone' | 'pulse' | 'attack' | 'turn' | 'error' | 'save' | 'open') {
     if (!this.sfxOn || !this.started || this.muted) return;
     const vol = this.level('sfx');
     const dest = this.bus('sfx');
@@ -266,7 +266,7 @@ export class AudioBus {
     }
     if (kind === 'terraform') playGameSfx(this.context(), 'terraform-start', vol, 0, dest);
     if (kind === 'terraformDone') playGameSfx(this.context(), 'terraform-complete', vol, 0, dest);
-    if (kind === 'band') this.bandDamage(vol, dest);
+    if (kind === 'pulse') this.pulseHit(vol, dest);
     if (kind === 'attack') this.noise(0.12, 900, vol * 0.2, false, dest);
     if (kind === 'turn') this.tone(180, 0.12, 0.05 * vol, 'sine', dest);
     if (kind === 'error') this.tone(140, 0.14, 0.06 * vol, 'sawtooth', dest);
@@ -275,7 +275,7 @@ export class AudioBus {
   }
 
   /**
-   * Terraforming and outside-band travel damage.
+   * Terraforming and harsh-ground travel damage.
    * Uses the same mute, unlock, and sfx loudness as play().
    */
   playCue(kind: GameSfx, delay = 0) {
@@ -284,7 +284,7 @@ export class AudioBus {
   }
 
   /** Air failing: a dry hiss falling into a dull knock. */
-  private bandDamage(vol: number, dest: AudioNode) {
+  private pulseHit(vol: number, dest: AudioNode) {
     this.noise(0.22, 1800, vol * 0.18, true, dest);
     this.tone(70, 0.16, 0.08 * vol, 'sine', dest);
   }

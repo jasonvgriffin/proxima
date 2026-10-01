@@ -1,6 +1,6 @@
 import { CONFIG } from '../config';
 import { chooseDesign, runAi, wantsToFight } from './ai';
-import { crisisTuning, economyRates, normalizeDifficulty, outsideBandDamage, scaleStarting } from './difficulty';
+import { crisisTuning, economyRates, exposureDamage, normalizeDifficulty, scaleStarting } from './difficulty';
 import {
   acceptanceChance,
   acceptsTrade,
@@ -18,11 +18,13 @@ import {
   sharesResearch,
   tradeValue,
 } from './diplomacy';
+import { ensureContacts, seesFaction } from './contact';
 import { blankEvents, EVENT_KINDS, eventPromptFor, eventWarningText } from './events';
 import { frameBlame, missionCaught } from './spies';
 import { socialScale, tileYield, withTechFlats, type Yields } from './economy';
 import { FACTIONS, defaultAxes, defaultPersonalities, socialOption } from './factions';
 import { recordSocialPresent, seedAxisDrift } from './history';
+import { exposureOutcome, isExposed, isHostileClimate, softenTile } from './geography';
 import { generateMap } from './mapgen';
 import { blockedKeys, findPath, reachable as pathReachable } from './path';
 import { starterDesigns, designById, compileDesign, type DesignDraft } from './parts';
@@ -41,19 +43,19 @@ import {
   hasSealedHabitats,
   unitUpkeep,
   isSea,
-  outsideBandOutcome,
   projectAllowed,
-  projectMakesLivable,
   rushPayments,
   shouldAutosave,
   terraformEnergy,
   terraformFee,
   terraformTurns,
   terrainDefenseMod,
-  tileIsLivable,
   winnerHpLoss,
 } from './rules';
-import { formerTechLevel, techAvailable, techById, startingTechs } from './tech';
+import { advanceResearchQueue, ensureFactionResearch, nextQueuedResearch, pathToGoal, rememberTech, treatyTechGrants } from './researchPath';
+import { ensureRecall, snapshotRecall } from './sight';
+import { stripLegacyClimate } from '../platform/saveMigrate';
+import { creditFromTechs, formerTechLevel, healFromTechs, startingTechs, techAvailable, techById } from './tech';
 import { appendHistory, ensureTileRecords, improvementLines, projectNoun, sightFrom } from './tilelog';
 import type {
   ActionResult,
@@ -115,10 +117,13 @@ export interface EndTurnResult extends ActionResult {
 
 export class Game {
   state: GameState;
+  /** Bumps on every committed change so the map can redraw only then. */
+  revision = 0;
   private rng: Rng;
 
   constructor(state: GameState) {
     this.state = state;
+    for (const faction of Object.values(state.factions)) ensureFactionResearch(faction, { fillMissing: true });
     this.rng = makeRng(state.seed || 1);
     this.rng.setState(state.rngState || 1);
   }
@@ -146,6 +151,9 @@ export class Game {
         stabilityTurns: 0,
         techs: startingTechs(id),
         researching: null,
+        researchGoal: null,
+        researchQueue: [],
+        techOrigins: Object.fromEntries(startingTechs(id).map((techId) => [techId, 'start' as const])),
         researchPoints: scaleStarting(CONFIG.starting.research, id === opts.player, difficulty),
         credits: scaleStarting(CONFIG.starting.credits, id === opts.player, difficulty),
         minerals: scaleStarting(CONFIG.starting.minerals, id === opts.player, difficulty),
@@ -177,6 +185,7 @@ export class Game {
       nextUnitId: 1,
       nextCityId: 1,
       explored,
+      recall: ensureRecall({ width: map.width, height: map.height, explored } as GameState),
       log: [],
       winner: null,
       alliances: [],
@@ -203,7 +212,7 @@ export class Game {
     if (setup.randomEvents) {
       game.say('Random events are on. They follow no schedule, and a warning is not guaranteed.');
     }
-    game.say(`${FACTIONS[opts.player].name} wakes in the twilight band. Found a city, then set a terraformer to work.`);
+    game.say(`${FACTIONS[opts.player].name} wakes on open ground. Found a city, then set a terraformer to work.`);
     game.beginTurn(opts.player);
     game.noteSight();
     game.commit();
@@ -226,6 +235,8 @@ export class Game {
     if (!copy.eliminated) copy.eliminated = [];
     if (copy.playerDefeated == null) copy.playerDefeated = false;
     ensureTileRecords(copy);
+    stripLegacyClimate(copy);
+    ensureRecall(copy);
     for (const unit of copy.units) {
       if (unit.transport == null) unit.transport = 0;
       if (!unit.cargo) unit.cargo = [];
@@ -236,8 +247,10 @@ export class Game {
         if (design.transport == null) design.transport = 0;
       }
     }
+    ensureContacts(copy);
     recordSocialPresent(copy);
     const game = new Game(copy);
+    game.noteContact();
     game.noteSight();
     return game;
   }
@@ -295,6 +308,17 @@ export class Game {
       if (Math.max(Math.abs(city.x - x), Math.abs(city.y - y)) <= CONFIG.map.cityVision) return true;
     }
     return false;
+  }
+
+  /**
+   * Fog for one faction, matching the map mask: 2 in sight, 1 remembered, 0 unknown.
+   * Contact uses 2 only. Remembered ground does not count as a meeting.
+   */
+  fogState(faction: FactionId, x: number, y: number): 0 | 1 | 2 {
+    if (!this.inBounds(x, y)) return 0;
+    if (this.isVisible(faction, x, y)) return 2;
+    if (this.isExplored(faction, x, y)) return 1;
+    return 0;
   }
 
   calendar(): { year: number; week: number; label: string } {
@@ -358,7 +382,7 @@ export class Game {
     const faction = this.state.factions[city.factionId];
     const worked = this.workedTiles(city);
     const raw = withTechFlats(
-      worked.reduce((sum, tile) => add(sum, tileYield(tile)), {
+      worked.reduce((sum, tile) => add(sum, tileYield(tile, faction.techs)), {
         minerals: CONFIG.city.baseMinerals,
         nutrients: CONFIG.city.baseNutrients,
         energy: CONFIG.city.baseEnergy,
@@ -424,9 +448,8 @@ export class Game {
     const check = canFoundCity({
       canFound: unit.canFound,
       sea: isSea(tile.terrain),
-      livable: tile.livable,
-      inBand: tile.zone === 'twilight',
-      hasSealed: hasSealedHabitats(faction.techs),
+      hostile: isHostileClimate(tile.terrain),
+      sealed: hasSealedHabitats(faction.techs),
       nearestCity: this.nearestCityDistance(unit.x, unit.y),
       cityHere: !!this.cityAt(unit.x, unit.y),
     });
@@ -665,14 +688,38 @@ export class Game {
 
   chooseResearch(techId: string): ActionResult {
     const faction = this.state.factions[this.state.whoseTurn];
+    ensureFactionResearch(faction);
     const tech = techById(techId);
     if (!tech) return fail('Unknown technology.');
     if (faction.techs.includes(techId)) return fail('Already known.');
     if (!techAvailable(tech, faction.techs)) return fail('Requirements missing.');
+    if (faction.researchGoal && !faction.researchQueue.includes(techId)) {
+      faction.researchGoal = null;
+      faction.researchQueue = [];
+    }
     faction.researching = techId;
-    this.tryCompleteResearch(faction.id);
+    this.finishResearchGrants(faction.id);
     this.commit();
     return { ok: true, message: `Researching ${tech.name}.` };
+  }
+
+  /** Queue the prerequisite path for a locked technology and start the first step. */
+  setResearchGoal(techId: string): ActionResult {
+    const faction = this.state.factions[this.state.whoseTurn];
+    ensureFactionResearch(faction);
+    const tech = techById(techId);
+    if (!tech) return fail('Unknown technology.');
+    const path = pathToGoal(techId, faction.techs);
+    if (!path) return fail('That technology cannot be reached.');
+    if (!path.length) return fail('Already known.');
+    faction.researchGoal = techId;
+    faction.researchQueue = path;
+    const next = nextQueuedResearch(path, faction.techs);
+    if (next) faction.researching = next;
+    this.finishResearchGrants(faction.id);
+    this.commit();
+    const names = path.map((id) => techById(id)?.name ?? id).join(', ');
+    return { ok: true, message: `Research goal: ${tech.name}. Path: ${names}.` };
   }
 
   setSocial(axis: SocialAxis, optionId: string): ActionResult {
@@ -707,6 +754,27 @@ export class Game {
     const found = findRelation(this.state.relations, a, b);
     if (!found) throw new Error(`No relation between ${a} and ${b}`);
     return found;
+  }
+
+  /**
+   * Contact sticks once either side has a unit or city in current sight.
+   * The look goes through `seesFaction`, which asks for fog state 2 and ignores remembered ground.
+   */
+  noteContact(): void {
+    const places = [...this.state.units, ...this.state.cities];
+    const visible = (viewer: FactionId, x: number, y: number) => this.fogState(viewer, x, y) === 2;
+    for (const rel of this.state.relations) {
+      if (rel.contact) continue;
+      if (seesFaction(rel.a, rel.b, places, visible) || seesFaction(rel.b, rel.a, places, visible)) {
+        rel.contact = true;
+      }
+    }
+  }
+
+  inContact(a: FactionId, b: FactionId): boolean {
+    if (a === b) return false;
+    this.noteContact();
+    return this.relation(a, b).contact;
   }
 
   mapPartners(viewer: FactionId): FactionId[] {
@@ -797,6 +865,7 @@ export class Game {
     const actor = this.state.whoseTurn;
     if (this.state.winner) return fail('The game is over.');
     if (actor === target) return fail('A faction cannot treat with itself.');
+    if (!this.inContact(actor, target)) return fail('No contact with that faction yet.');
     if (kind !== 'war' && this.flareActive()) return fail('A solar flare is scrambling comms.');
     const rel = this.relation(actor, target);
     if (kind === 'war') {
@@ -844,6 +913,7 @@ export class Game {
     const actor = this.state.whoseTurn;
     if (this.state.winner || this.state.playerDefeated) return fail('The game is over.');
     if (actor === target) return fail('A faction cannot trade with itself.');
+    if (!this.inContact(actor, target)) return fail('No contact with that faction yet.');
     if (this.flareActive()) return fail('A solar flare is scrambling comms.');
     const rel = this.relation(actor, target);
     if (rel.stance === 'war') return fail('There is no trade in wartime.');
@@ -962,7 +1032,12 @@ export class Game {
       return { ok: false, message: 'The spy was caught.' };
     }
     owner.techs.push(techId);
-    this.say(`Stolen from ${FACTIONS[spy.host].name}: ${techId}.`, spy.owner);
+    ensureFactionResearch(owner);
+    rememberTech(owner.techOrigins, techId, 'espionage');
+    if (owner.researching === techId) owner.researching = null;
+    const next = advanceResearchQueue(owner);
+    if (!owner.researching && next) owner.researching = next;
+    this.say(`Stolen from ${FACTIONS[spy.host].name}: ${techById(techId)?.name ?? techId}.`, spy.owner);
     this.commit();
     return { ok: true, message: 'Technology stolen.' };
   }
@@ -1091,7 +1166,7 @@ export class Game {
     const round = this.state.round;
     const crisis = crisisTuning(round, this.state.setup.difficulty);
     if (round === crisis.startRound) {
-      this.say('The buried ark reactor wakes under the terminator. The Waking Reactor will fray the twilight band.');
+      this.say('The buried ark reactor wakes. The Waking Reactor will scar open ground.');
     }
     const level = crisis.level;
     if (level <= 0) return;
@@ -1105,7 +1180,7 @@ export class Game {
         if (unit.aboard != null) continue;
         if (this.state.factions[unit.factionId].techs.includes('sealed-habitats')) continue;
         const tile = this.tile(unit.x, unit.y);
-        if (tile.zone !== 'twilight' || tile.scarred || tile.improvement || this.cityAt(unit.x, unit.y)) continue;
+        if (isSea(tile.terrain) || tile.scarred || tile.improvement || this.cityAt(unit.x, unit.y)) continue;
         unit.hp -= damage;
         if (unit.hp <= 0) {
           this.removeUnit(unit);
@@ -1116,11 +1191,10 @@ export class Game {
       }
     }
     for (const tile of this.state.tiles) {
-      if (tile.x !== CONFIG.map.bandStart && tile.x !== CONFIG.map.bandEnd) continue;
-      if (tile.scarred || tile.improvement || tile.road || this.cityAt(tile.x, tile.y)) continue;
+      if (isSea(tile.terrain) || tile.scarred || tile.improvement || tile.road || this.cityAt(tile.x, tile.y)) continue;
+      if ((tile.x * 17 + tile.y * 13 + round) % 23 !== 0) continue;
       if (this.rng.next() < crisis.scarChance) {
         tile.scarred = true;
-        tile.livable = false;
         this.recordTile(tile, 'the waking reactor scarred this tile and took the air', null, null);
       }
     }
@@ -1210,7 +1284,7 @@ export class Game {
     for (const unit of this.unitsOf(factionId)) {
       let heal = 0;
       if (this.cityAt(unit.x, unit.y)?.factionId === factionId) heal += CONFIG.techBonuses.cityHeal;
-      if (faction.techs.includes('medicine')) heal += CONFIG.techBonuses.medicineHeal;
+      heal += healFromTechs(faction.techs);
       if (heal > 0) unit.hp = Math.min(unit.maxHp, unit.hp + heal);
     }
     this.applyDust(factionId);
@@ -1224,7 +1298,7 @@ export class Game {
     this.state.whoseTurn = factionId;
     this.resolveEconomy(factionId);
     this.runPatrols(factionId);
-    this.applyOutsideDamage(factionId);
+    this.applyExposure(factionId);
     this.state.whoseTurn = previous;
     this.checkVictory();
   }
@@ -1299,33 +1373,63 @@ export class Game {
     }
     faction.lastResearch = research;
     faction.researchPoints += research + shared;
+    this.finishResearchGrants(factionId);
+  }
+
+  private finishResearchGrants(factionId: FactionId) {
     this.tryCompleteResearch(factionId);
+    this.grantTreatyTechs(factionId);
   }
 
   private tryCompleteResearch(factionId: FactionId) {
     const faction = this.state.factions[factionId];
+    ensureFactionResearch(faction);
     const tech = faction.researching ? techById(faction.researching) : undefined;
     if (!tech || faction.researchPoints < tech.cost) return;
     faction.researchPoints -= tech.cost;
     faction.techs.push(tech.id);
+    rememberTech(faction.techOrigins, tech.id, 'research');
     faction.researching = null;
     this.say(`${FACTIONS[factionId].name} discovers ${tech.name}.`, factionId);
+    const next = advanceResearchQueue(faction);
+    if (next) faction.researching = next;
   }
 
-  private applyOutsideDamage(factionId: FactionId) {
+  private grantTreatyTechs(factionId: FactionId) {
+    const faction = this.state.factions[factionId];
+    ensureFactionResearch(faction);
+    const partners: string[][] = [];
+    for (const other of Object.keys(this.state.factions) as FactionId[]) {
+      if (other === factionId) continue;
+      if (sharesResearch(this.relation(factionId, other))) partners.push([...this.state.factions[other].techs]);
+    }
+    if (!partners.length) return;
+    for (const id of treatyTechGrants(faction.techs, partners)) {
+      const tech = techById(id);
+      if (!tech) continue;
+      faction.techs.push(id);
+      rememberTech(faction.techOrigins, id, 'treaty');
+      if (faction.researching === id) faction.researching = null;
+      this.say(`A research treaty shares ${tech.name}.`, factionId);
+    }
+    const next = advanceResearchQueue(faction);
+    if (!faction.researching && next) faction.researching = next;
+  }
+
+  private applyExposure(factionId: FactionId) {
     const faction = this.state.factions[factionId];
     const sealed = hasSealedHabitats(faction.techs);
-    const damage = outsideBandDamage(this.state.setup.difficulty);
+    const damage = exposureDamage(this.state.setup.difficulty);
     for (const unit of [...this.unitsOf(factionId)]) {
       if (unit.aboard != null) continue;
       const tile = this.tile(unit.x, unit.y);
-      const outcome = outsideBandOutcome(unit.hp, tileIsLivable(tile), sealed, damage);
+      const outcome = exposureOutcome(unit.hp, isExposed(tile.terrain), sealed, damage);
       if (outcome.destroyed) {
         this.removeUnit(unit);
-        this.say(`${unit.name} is destroyed outside the livable zone.`, factionId);
+        this.say(`${unit.name} is destroyed by the harsh ground.`, factionId);
       } else if (outcome.hp !== unit.hp) {
         unit.hp = outcome.hp;
-        this.say(`${unit.name} takes ${damage} damage outside the twilight band.`, factionId);
+        this.say(`${unit.name} takes ${damage} damage from the harsh ground.`, factionId);
       }
     }
   }
@@ -1390,28 +1494,26 @@ export class Game {
     const project = unit.terraform.project;
     const previous = tile.improvement;
     const previousTerrain = tile.terrain;
-    const wasLivable = tile.livable;
     if (project === 'road') tile.road = true;
     else tile.improvement = project;
-    if (
+    if (project === 'atmosphere') softenTile(tile);
+    else if (
       project === 'plant-trees' &&
-      (tile.terrain === 'grass' || tile.terrain === 'toxic' || tile.terrain === 'scorched' || tile.terrain === 'dunes' || tile.terrain === 'frozen-plain')
+      (tile.terrain === 'grass' || tile.terrain === 'toxic' || tile.terrain === 'scorched' || tile.terrain === 'dunes' || tile.terrain === 'frozen-plain' || tile.terrain === 'coast')
     ) {
       tile.terrain = 'forest';
     }
-    const opened = projectMakesLivable(project);
-    if (opened) tile.livable = true;
+    if (project === 'mine') tile.elevation = Math.max(0.36, tile.elevation - 0.05);
     const parts: string[] = [];
     if (project === 'road') parts.push('built a road');
     else if (previous && previous !== project) parts.push(`replaced ${projectNoun(previous)} with ${projectNoun(project)}`);
     else parts.push(`built ${projectNoun(project)}`);
     if (tile.terrain !== previousTerrain) parts.push(`the ground became ${tile.terrain.replace('-', ' ')}`);
-    if (!wasLivable && tile.livable) parts.push('the tile became livable');
+    if (project === 'atmosphere') parts.push('the climate softened');
     this.recordTile(tile, parts.join(', '), unit.factionId, unit.name);
     unit.terraform = null;
     unit.movesLeft = unit.maxMoves;
-    const joined = opened ? ' The tile joins the livable zone.' : '';
-    this.say(`${unit.name} finishes ${projectLabel(project)}.${joined}`, unit.factionId);
+    this.say(`${unit.name} finishes ${projectLabel(project)}.`, unit.factionId);
   }
 
   private workingOn(tile: Tile): TileSight['working'] {
@@ -1448,7 +1550,7 @@ export class Game {
 
   private creditIncome(city: City, faction: GameState['factions'][FactionId]): number {
     const base = baseCityCreditIncome(city.population);
-    const extra = faction.techs.includes('governance') ? CONFIG.techBonuses.governanceCredits : 0;
+    const extra = creditFromTechs(faction.techs);
     const rates = economyRates(faction.isHuman, this.state.setup.difficulty);
     const scaled = base * socialScale(faction, 'credits') * rates.credits + extra;
     return Math.max(0, Math.round(scaled));
@@ -1566,12 +1668,22 @@ export class Game {
 
   private reveal(faction: FactionId, cx: number, cy: number, radius: number) {
     const row = this.state.explored[faction];
+    const memory = ensureRecall(this.state)[faction];
     for (let y = cy - radius; y <= cy + radius; y++) {
       for (let x = cx - radius; x <= cx + radius; x++) {
         if (!this.inBounds(x, y)) continue;
-        if (Math.max(Math.abs(x - cx), Math.abs(y - cy)) <= radius) row[y * this.state.width + x] = true;
+        if (Math.max(Math.abs(x - cx), Math.abs(y - cy)) > radius) continue;
+        const index = y * this.state.width + x;
+        row[index] = true;
+        const tile = this.state.tiles[index];
+        memory[index] = snapshotRecall(
+          tile,
+          this.cityAt(x, y),
+          this.state.units.filter((unit) => unit.x === x && unit.y === y),
+        );
       }
     }
+    this.noteContact();
   }
 
   disband(unitId: number): void {
@@ -2014,8 +2126,10 @@ export class Game {
 
   private commit() {
     this.state.rngState = this.rng.getState();
+    this.revision += 1;
   }
 }
+
 
 function fail(message: string): ActionResult {
   return { ok: false, message };
@@ -2055,5 +2169,5 @@ export const PROJECTS: { id: ImprovementId; label: string; detail: string }[] = 
   { id: 'mine', label: 'Mine', detail: '+minerals' },
   { id: 'solar', label: 'Solar panels', detail: '+energy' },
   { id: 'road', label: 'Road', detail: 'Easier travel over rough ground' },
-  { id: 'atmosphere', label: 'Atmosphere', detail: 'Pulls a harsh tile into the livable zone' },
+  { id: 'atmosphere', label: 'Atmosphere', detail: 'Softens a harsh climate and raises its yields' },
 ];

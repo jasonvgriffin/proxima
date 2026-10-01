@@ -59,6 +59,7 @@ export const WEAPONS: WeaponDef[] = [
   { id: 'rifle', name: 'Salvage rifle', attack: 3, cost: 4, req: null },
   { id: 'coil', name: 'Coil gun', attack: 6, cost: 10, req: 'coil-weapons' },
   { id: 'plasma', name: 'Plasma lance', attack: 8, cost: 16, req: 'plasma-lance' },
+  { id: 'doctrine', name: 'Doctrine lance', attack: 9, cost: 18, req: 'planetary-supremacy' },
 ];
 
 export const ARMORS: ArmorDef[] = [
@@ -66,6 +67,7 @@ export const ARMORS: ArmorDef[] = [
   { id: 'scrap', name: 'Scrap plate', defense: 3, cost: 4, req: null },
   { id: 'composite', name: 'Composite shell', defense: 5, cost: 9, req: 'composite-armor' },
   { id: 'reflective', name: 'Reflective lattice', defense: 7, cost: 14, req: 'reflective-armor' },
+  { id: 'bulwark', name: 'Bulwark plate', defense: 8, cost: 16, req: 'shock-doctrine' },
 ];
 
 export const SPECIALS: SpecialDef[] = [
@@ -73,6 +75,10 @@ export const SPECIALS: SpecialDef[] = [
   { id: 'terraform', name: 'Terraform kit', cost: 6, req: 'field-formers', terraform: true },
   { id: 'sensor', name: 'Sensor mast', cost: 6, req: 'sensors', vision: 1 },
   { id: 'search', name: 'Search array', cost: 4, req: null, searchBonus: 0.12 },
+  { id: 'survey', name: 'Survey kit', cost: 5, req: 'wreck-survey', searchBonus: 0.1 },
+  { id: 'signal', name: 'Signal net', cost: 7, req: 'signal-nets', vision: 1 },
+  { id: 'probe', name: 'Probe drone', cost: 7, req: 'probe-kits', vision: 1 },
+  { id: 'listening', name: 'Listening post', cost: 6, req: 'listening-posts', searchBonus: 0.08 },
   { id: 'bay', name: 'Transport bay', cost: 6, req: null, transport: 2 },
 ];
 

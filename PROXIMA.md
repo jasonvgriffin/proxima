@@ -17,35 +17,45 @@ Check every feature against this principle: does it make the next game play diff
 
 ## Story
 
-The ark ship crash-landed on Proxima, a tidally locked world with a scorching day side, a frozen night side, and a thin livable twilight band between them. Everyone scattered in different directions. There is no central command and no shared memory.
+In 2425 a stratospheric seeding fleet over the North Atlantic flew eleven days on a stale command after its control satellite died in a solar storm. The sulfate veil, meant to hold the heat off the Punjab and the Pampas, thickened over the wrong latitudes, and the second harvest failed in both. In Lahore and Rosario the ration lines stood through the night and went home with empty sacks. The grain that fed the cities did not come in.
 
-Six groups wake in the wreckage, each with only what it carried and what it believes.
+Halcyon was a research hull in the Shackleton yards, built for a library and four thousand sleepers and aimed at the nearest star. On 12 January 2426 the launch order left the yards as a single line: Depart, do not wait for revision. The preamble named who was chosen, who was turned back at the locks, and what Earth had been promised. The medical system could mark that file a hazard. A laser array pushed the ship clear, and she coasted at an eighth of the speed of light for thirty-four years. The clocks barely differed from Earth's. Twelve people stood the wake.
 
-Each group decides what Proxima should become, and nobody is right by default. In the end, only one survives in control (see Victory condition).
+Proxima Centauri was in the flight model: a small red flare star, and one close world that keeps a single face toward the light. The model's rate for the large flares was too low. At four-tenths of an astronomical unit a flare drove a proton storm through the magnetic sail while the sail was braking on the stellar wind. The brake pulled harder on one side. Halcyon fell at Proxima b too fast, on an aerocapture path drawn for an atmosphere a decade of flares had thinned. The shield did not hold the heat. Halcyon broke open along her berths, and the sections came down in pieces, some on the dayside furnace and some in the ice that has no morning. Between those faces the continents keep their own weather, and a person can stand where the climate allows: wind, rain, and stone. There is no gentle shore.
+
+Six sections kept their own air: the bridge, the terraforming bay, the seed vault, the military pod, the communications array, and the life-support core. No section could raise another, and each radio carried only its own echo. The living went to the compartment that would still seal, and those compartments were already beyond each other's horizon. There is no central command. The reason for the launch was one of the memories the psych system cut, and the bridge still has the order without the why.
+
+The full scene script is in `docs/intro-story.md`. Whoever holds the planet decides which memories, which seeds, and which laws remain (see Victory condition).
 
 ## Intro
 
 - **"Play Introduction" button:** the start menu (home screen) has a button labeled "Play Introduction". The intro starts only when the player clicks it. It never plays automatically.
-- **What it shows:** an animated sequence that tells the story (the ark crashing, the survivors scattering, and six factions waking with no shared memory) in six scenes:
-  1. The planet Proxima b in space beside its star.
-  2. The huge ark spaceship approaching and entering the atmosphere.
-  3. The ark crashing onto the planet's surface.
-  4. Escape pods and smaller craft breaking away from the wreck.
-  5. People leaving the ship and heading off in different directions across the land.
-  6. The six factions appearing as separate groups in different places.
-- **On-screen text:** every screen shows text, so the story can be read.
+- **What it shows:** an animated sequence of twelve scenes, two to four sentences each. The script is `docs/intro-story.md`, wired straight into `INTRO_SCENES`:
+  1. The second harvest. Why the cities lost their grain.
+  2. Do not wait. Halcyon, the launch order, and the preamble filed as a hazard.
+  3. Thirty-four years. The coast to Proxima Centauri.
+  4. The sail. The flare, the asymmetric brake, the thin air.
+  5. Opened along her berths. The sections came down in pieces, some on the dayside furnace and some in the ice.
+  6. Beyond the horizon. Six sealed sections, already out of sight of one another.
+  7. The Helm. Captain Nesta Quill and the order without its reason.
+  8. Verdantia. Pellin Moss and the atmosphere recipe.
+  9. Genesis. Juniper Vale and the unfinished message.
+  10. Ironclad. Calder Venn and the protocol that read the fall as an attack.
+  11. Mnemosyne. Orla Vesper and the distress calls from the locks.
+  12. What you keep. Wren Solace, the cut memories, and the choice the player is about to make.
+- **On-screen text:** every screen shows its text in a fixed overlay panel. The intro screen itself never scrolls. The text and the buttons stay inside the viewport at any window size, including a partly open window.
 - **The player moves through it:** the intro never moves on by itself and has no timer. The player goes to the next screen with a Next button or a click.
 - **Back button on every screen:** sits alongside Next and Exit and returns to the previous screen. It's disabled or hidden on the first screen.
+- **Skip intro button on every screen:** leaves the intro immediately and returns to the start menu.
 - **Exit button on every screen:** clicking it leaves the intro at any point and returns to the start menu.
 - **No audio for now:** no voice narration and no sound. Audio can be added later.
-- **Afterward:** after the last screen, or after Exit, the player is back on the start menu to set up the game and begin.
-- All art, animation, and text in the intro must be original, the same as every other asset.
-- Still to decide: how long the text on each screen should be.
+- **Afterward:** after the last screen, or after Skip or Exit, the player is back on the start menu to set up the game and begin.
+- All art, animation, and text in the intro must be original, the same as every other asset. The ship and the pods are drawn with the shared art helpers. Proxima b is a scorched dayside and an icy nightside with a soft terminator, clouds, and rim light. Proxima Centauri is a red dwarf with a corona and flares. The starfield behind them stays as it is.
 
 ## Starting locations
 
 - Starting locations are randomized every game, so no two games start the same way.
-- Every faction starts somewhere in the livable twilight band (see Map generation).
+- Every faction starts on hospitable ground, spread across the land (see Map generation).
 - There are no fixed spawn points and no set starting areas for any faction.
 - This fits the story: the ark broke apart and its modules scattered in different directions on landing.
 
@@ -99,28 +109,22 @@ On the start menu, players pick an overall difficulty level and can then fine-tu
 
 The map is generated fresh every game, alongside the randomized starting locations, to serve the infinite-replayability principle.
 
-- **Varied terrain types:** flats, rocky ground, highlands, ridges, canyons, coastlines, and so on.
-- **Resource placement:** randomized each game, so no fixed "best spot" ever emerges.
-- **Biomes unique to Proxima, tied to the terraforming pillar:** each can be terraformed over time.
-  - Thin-atmosphere zones
-  - Toxic soil
-  - Frozen regions
-- **Natural barriers:** mountain ranges, toxic belts, ice fields, and similar terrain keep factions apart early on, which helps enforce the early-game peace window.
-- **A tidally locked planet (this is canon):** like the real Proxima b probably is, the planet always keeps the same side facing its star. The whole map is built around that.
-  - **Day side:** too hot to settle early on.
-  - **Night side:** frozen and too cold to settle early on.
-  - **Twilight band:** a narrow livable ring between the two. Every civilization starts and expands here.
-  - **Terraforming** can gradually widen the livable zone toward both sides, opening new land in the middle and late game.
-  - Random starting spots fall inside the twilight band, spread out along it.
+- **Varied terrain types:** flats, rocky ground, highlands, ridges, canyons, coastlines, forest, and open ocean.
+- **Resource placement:** randomized each game, so no fixed "best spot" ever emerges. Rare deposits (crystal, spores, vents, caches) sit on top of the ordinary yields.
+- **Biomes come from elevation, rainfall, and temperature,** not from a fixed stripe. Harsh climates include thin air, toxic soil, scorched flats, ice, and volcanic ground. Rivers run downhill toward the sea.
+- **Continents and oceans.** Landmasses are generated fresh each game, with coasts, inland heights, and enough land bridges that land units can eventually meet.
+- **Natural barriers:** mountain ranges, toxic ground, ice, and ocean keep factions apart early on, which helps enforce the early-game peace window.
+- **Terraforming** raises yields and can change the ground: atmosphere work softens a harsh climate and eases elevation, planting trees can grow a forest, and a mine cuts into the slope.
+- Random starting spots fall on hospitable land, spread out from each other.
 - Still to decide: map sizes, the full list of biomes, how much each biome affects movement and yields, and how the generator keeps every game fair (no starts that are hopeless or hemmed in).
 
 ## Map interface
 
 The main game screen includes a map of the known planet.
 
-- **Fog of war:** unexplored areas start hidden. They're revealed when units explore them or by other means, such as sensors, scouting, or maps traded through diplomacy.
-- **Twilight band shown clearly:** the habitable twilight band is clearly marked on the map, so players can see where cities can be founded.
+- **Fog of war:** three states. Unexplored ground is a dark shroud. Explored ground that no unit can currently see stays remembered: dimmer, and it shows the last-seen cities, improvements, and units rather than live data. Ground in sight is shown in full color. The edges between those states are soft, on the map and on the minimap.
 - **Known information:** the map shows known terrain, resources, and units.
+- **Grid:** an optional faint grid can be turned on. It is off by default so the terrain does not read as a checkerboard.
 - **Pan and zoom:** players can pan the map and zoom in and out.
 - Still to decide: whether explored areas fall back to a "last seen" view when no unit is nearby (as in Alpha Centauri), and whether there's a separate minimap.
 
@@ -160,17 +164,17 @@ Combat works like Alpha Centauri's: a battle is decided by odds, not by a guaran
 
 - The attacker's strength is compared with the defender's strength to get the odds, and the result is rolled from those odds. A weaker unit can sometimes win.
 - **Terrain changes the odds:**
-  - Defensive terrain, such as mountains, forests, and the ridges along the twilight band, improves the defender's odds.
+  - Defensive terrain, such as mountains, forests, and ridges, improves the defender's odds.
   - Open ground favors the attacker.
 - Show the odds to the player before they commit to an attack.
-- Still to decide: other modifiers (fortifying, base defenses, veteran experience, faction and social-axis bonuses), whether a battle runs in rounds that wear down health or is a single roll, and how the day side and night side affect combat.
+- Still to decide: other modifiers (fortifying, base defenses, veteran experience, faction and social-axis bonuses), whether a battle runs in rounds that wear down health or is a single roll, and how harsh climates affect combat.
 
 ## Naval rules
 
-- **Movement:** ships move on water squares. They can sail along the coasts of the twilight band and out into open ocean.
+- **Movement:** ships move on water squares. They can sail along coasts and out into open ocean.
 - **Hazardous seas:**
-  - Early in the game, the hot seas on the day side and the frozen seas on the night side are impassable or dangerous.
-  - Terraforming and technology gradually open new sea routes, the same way the twilight band widens on land.
+  - Hot water and frozen water deal damage to a ship each turn until Sealed Habitats.
+  - Terraforming and technology open more of the map by softening harsh ground and raising what coast and land produce.
 - **Coastlines:** coasts don't block land units. They can move along the shore.
 - **Transport:** naval units can carry land units, either to reach islands or to cross water.
   - **Transport capacity:** a transport carries only a limited number of land units. How many depends on how the ship is designed, meaning its chassis and special parts (see Unit design).
@@ -196,12 +200,12 @@ As in Sid Meier's Alpha Centauri, players found new cities (bases) to grow their
 - A settler unit, such as a colony pod, is used up to found a new city on a suitable tile.
 - Each new city extends the faction's territory around it.
 - Cities produce resources, research, and military units.
-- Where cities can go ties into the map. The twilight band is the easiest place to live, and the day and night sides are harsher until terraforming or technology opens them up. Founding cities outside the band takes the late-era Sealed Habitats / Geothermal Wells tech (see Tech tree).
-- **Units can travel anywhere.** Any unit, terraformers included, can move anywhere on the map, including the day side and night side outside the twilight band. Traveling outside the band carries a penalty, and that penalty is the only restriction on movement.
-  - **The penalty is damage over time.** Any unit outside the twilight band, terraformers included, takes **5 damage per turn** (a starting value, tunable later).
-  - The damage continues until one of these happens: the unit is destroyed, the unit returns to the band, or the player researches Sealed Habitats / Geothermal Wells.
-  - **Sealed Habitats / Geothermal Wells removes the damage.** Once a player researches this late-era tech in the Verdantia branch, their units can travel outside the band without taking damage.
-- **City founding is limited to the twilight band.** Cities can only be founded inside the habitable twilight band, unless the player has researched the late-era Sealed Habitats / Geothermal Wells tech in the Verdantia branch. That tech allows founding cities on the day side and night side.
+- Where cities can go ties into the map. Ordinary land is open. Scorched, frozen, toxic, thin-air, and volcanic ground is too hostile until atmosphere work softens it, or until the player researches Sealed Habitats (see Tech tree).
+- **Units can travel anywhere the terrain allows.** Land units walk the land. Water blocks them until they have a ship. Hostile climates are the penalty, not a line on the map.
+  - **The penalty is damage over time.** A unit on hostile ground takes **5 damage per turn** on Normal (a starting value, tunable later, and higher on harder difficulties).
+  - The damage continues until one of these happens: the unit is destroyed, the unit leaves that ground, or the player researches Sealed Habitats.
+  - **Sealed Habitats removes the damage** and lets cities be founded on that ground. Geothermal Wells, the tech after it, adds energy from rock and volcanic tiles.
+- **City founding follows the climate.** Cities can be founded on land that is not a hostile climate, at least a minimum distance from another city. Sealed Habitats lifts the climate limit. Mountains and open water still cannot hold a city.
 - **Cities can be captured.** Another faction takes a city by defeating its defenders in combat, and the captured city then belongs to them.
 - Capturing cities drives the military supremacy victory. The game ends when one faction has captured every rival base or city (see Victory condition).
 - Still to decide: what makes a tile suitable (terrain, minimum distance from other cities, water access), how city borders grow, city size and population limits, what happens to a city's population, buildings, and loyalty when it is captured, and whether cities can be razed or moved.
@@ -220,10 +224,10 @@ Proxima's core resources support three of its gameplay pillars: civilization bui
 
 - **Where they come from:** cities and the terrain squares they work.
 - **Biomes change yields.** Proxima's own biomes produce more or less of each resource, for example:
-  - Thin-air zones
+  - Thin air
   - Toxic soil
-  - Frozen regions on the night side
-- **Terraforming** raises a square's yield over time, and it helps unlock the harsh day and night sides.
+  - Frozen ground
+- **Terraforming** raises a square's yield over time, and atmosphere work turns harsh ground into something a city can use.
 - Scavenger patrols can also turn up one-time bonuses of credits, minerals, or techs (see Scavenger patrols).
 - **Credits:**
   - *Rush production:* spend credits to finish a unit instantly.
@@ -250,7 +254,7 @@ Proxima has no supply pods sitting visibly on the map, the way Alpha Centauri do
   - Free units
 - This fits the story: pieces of the ark were scattered across the planet in the crash.
 - Finds are random every game, which supports infinite replayability.
-- Still to decide: the odds and size of each find, whether there are risks such as ambushes, hazards, or losing the unit, whether finds run out over time, whether patrols can enter the day or night side, and whether players can choose an area to search.
+- Still to decide: the odds and size of each find, whether there are risks such as ambushes, hazards, or losing the unit, whether finds run out over time, whether patrols can enter hostile climates, and whether players can choose an area to search.
 
 ## Random events
 
@@ -268,7 +272,7 @@ Random events can shake up a game. Where possible, each one ties into the crash 
 - Random events add to the guiding principle of infinite replayability.
 - **Frequency is random:** how often events happen varies unpredictably from game to game, with no fixed schedule.
 - **Warnings are random:** each event separately decides whether the player gets a warning. Sometimes a hint appears beforehand, and sometimes the event just hits.
-- Still to decide: whether events are good, bad, or mixed, whether they scale with difficulty, whether players get a choice in how to respond, and whether events are limited to certain map zones (for example, flares hit the day side harder).
+- Still to decide: whether events are good, bad, or mixed, whether they scale with difficulty, whether players get a choice in how to respond, and whether events are limited to certain climates (for example, flares hit hot ground harder).
 
 ## Factions (6)
 
@@ -285,17 +289,17 @@ Each faction is named for its own identity, and its backstory notes the ship mod
 
 ### Faction profiles
 
-**The Helm.** The Helm are the command officers who held the bridge while the ark came down. They still remember the launch order, word for word, but not why it was ever given. They believe Proxima must be governed before it can be settled, and that order comes before everything else.
+**The Helm.** Captain Nesta Quill and the bridge watch came down with the launch order intact, word for word, and without the preamble that explained it. The ship's medical system had marked that file as a hazard during the voyage. The Helm will not settle a world they cannot first put under an order, and Quill intends to be the one who gives the next one.
 
-**Verdantia.** Verdantia are the terraforming engineers. They carry the recipe for a breathable atmosphere, but not the story of what went wrong with Earth's. To them, Proxima is raw material waiting to be made green.
+**Verdantia.** Grower Pellin Moss kept the catalyst tanks that stayed sealed when the terraforming bay hit. Verdantia holds the recipe for a breathable atmosphere and the steps for waking soil, and no one in the bay can say which step Earth got wrong. He treats Proxima as feedstock, and he means to run the recipe until a person can breathe without a suit.
 
-**Genesis.** Genesis are the biologists who guard Earth's last DNA archive, along with a message no one finished writing. They believe restoring life is the only victory worth having.
+**Genesis.** Archivist Juniper Vale rode the armored seed vault farther into the dark than the other sections, and it stayed cold and whole. She keeps the last DNA archive taken off Earth, and a message to the sleepers that stops in the middle of a line. For Genesis, putting living things back into a world is the only win that matters, and she will not hand the archive to anyone who would spend it.
 
-**Ironclad.** Ironclad are the soldiers who woke in the middle of a protocol with no one left to report to. They believe survival means strength, and they are the most aggressive faction on the planet.
+**Ironclad.** Major Calder Venn's pod blew its own bolts on a protocol that read the fall as an attack and did not ask whether the attack was a planet. Ironclad woke armed, still ranked, and with nobody left above them to report to. Venn believes the first faction to reach the other wrecks will own what is still sealed inside them, and Ironclad is the most aggressive faction on the world.
 
-**Mnemosyne.** Mnemosyne takes its name from the Greek Titaness of memory. Its people are the communications officers who hold every distress call Earth sent before the launch, the planet's last memory of home. They replay those calls endlessly and dream of finding someone else out there.
+**Mnemosyne.** Listener Orla Vesper's array kept every distress call Earth sent before launch, including the Shackleton locks where the berths ran out and the doors stayed shut. The buffer still plays them, because Proxima has no living frequency to put in their place. Mnemosyne will trade power, data, and shelter for any signal that is not a recording.
 
-**Clio.** Clio is named for the Muse of history, one of Mnemosyne's nine daughters. It grew out of the ship's medical systems, which quietly rewrite the crew's memories to keep morale from collapsing, deciding what the survivors' history will be. One part of Clio mourns what was lost, and the other edits it away.
+**Clio.** Clio is named for the Muse of history, and it grew out of the life-support core that stayed sealed the longest. Physician Wren Solace found the psych system still doing its voyage job: cutting the memories that made a watch freeze, including the reason for the launch. One part of Clio mourns what was lost, and the other edits it away.
 
 ## Tech tree
 
@@ -319,12 +323,13 @@ Every faction starts the game with one free tech that fits its identity.
 | The Helm | Governance and logistics | Basic governance and logistics |
 
 ### Late-era techs
-- **Sealed Habitats / Geothermal Wells** (one tech, final name to be picked)
+- **Sealed Habitats**
   - It's a technology, not a victory goal.
-  - It lets players found cities on the day side and night side, outside the twilight band. Sealed habitats and geothermal heat protect those cities from the extreme temperatures.
-  - It sits late in the game and needs a big investment of energy and research.
-  - It also lets the player's units travel outside the twilight band without taking damage (see City construction).
-  - It belongs to the Verdantia branch.
+  - It lets players found cities on scorched, frozen, toxic, thin-air, and volcanic ground, and it stops the damage those climates deal to units.
+  - It sits late in the Verdantia branch and needs advanced formers plus atmosphere science.
+- **Geothermal Wells**
+  - It follows Sealed Habitats.
+  - Cities that work rock, ridges, canyons, or volcanic ground draw extra energy.
 
 ### Terraforming techs
 - **Terraformer units** become available through Verdantia's research branch (see Terraforming).
@@ -347,7 +352,7 @@ Terraforming works like Alpha Centauri: it's an action a unit performs on the ma
 - So the turns a tile takes depend on three things: the type of terraforming, how complex or energy-intensive that build is, and the terraformer's tech level.
 - **Better yields:** terraforming a tile improves what it produces, such as more nutrients, minerals, or energy, depending on the change made.
 - **Send a terraformer anywhere:** like Alpha Centauri, a terraformer can be sent to any tile and start work there. It doesn't need a strip of already-converted tiles next to it, and there is no threshold to reach first.
-- **Widening the twilight band:** terraforming a tile improves its yields and, over time, can make that tile part of the expanding livable zone. The band grows tile by tile wherever players terraform, with no threshold effect blocking where terraformers can work.
+- **Changing the ground:** terraforming a tile improves its yields. Atmosphere work softens a harsh climate and eases extreme elevation. Planting trees can turn open ground into forest. A mine lowers the slope a little. There is no threshold effect blocking where terraformers can work.
 - **Credit fees scale by biome.** Terraforming costs a per-tile credit fee (see Resources), and harsher biomes cost more.
   - A standard tile pays the base fee.
   - Harsher biomes, such as toxic soil and frozen regions, cost roughly 1.5 to 2 times the base fee.
@@ -406,7 +411,7 @@ Jason is handing the full UI and player-experience design to the builder (with E
   - UI clicks and button presses
   - Combat sounds
   - Terraforming effects
-  - Ambient sounds of the planet, such as wind on the night side or heat on the day side
+  - Ambient sounds of the planet, such as wind over ice or heat over scorched ground
 - Like the art, every sound and every piece of music must be original. Never copy audio from Alpha Centauri or any other game.
 - **Audio controls** are in the Escape pause menu (see Pause menu).
 
@@ -487,7 +492,7 @@ The first test build is a real game in miniature: explore, build, fight, and win
 
 There is no separate version two for now. Sid hasn't built version one yet, so everything below is **part of version one** and should be built along with the First test build scope.
 
-- **Sound effects** for terraforming and for travel damage outside the twilight band.
+- **Sound effects** for terraforming and for travel damage on harsh ground.
 - **Pause menu:** the autosave toggle is always visible.
 - **Recap screen** after each run, showing how the faction's social axes drifted.
 - **Spy networks:**
@@ -532,7 +537,7 @@ The work is split by folder so several chats or agents can work at the same time
 - Default aggression for each faction, and how social-axis choices change it
 - Diplomacy systems beyond Alpha Centauri's
 - Resource types
-- Terraforming details (the list of actions, how long each takes, and how long a terraformed tile takes to become livable)
+- Terraforming details (the list of actions, how long each takes, and how far atmosphere work should push a harsh climate)
 
 ## Changelog
 
@@ -546,7 +551,7 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added the "Early-game peace window" section.
 - 2026-10-01: Added the "Difficulty and personality settings" section (opponent aggressiveness).
 - 2026-10-01: Added the "Map generation" section.
-- 2026-10-01: Made the tidally locked planet (day side, night side, twilight band) canon in the Story, Starting locations, and Map generation sections.
+- 2026-10-01: An earlier note treated a climate stripe as canon. That was removed; see the later map entry.
 - 2026-10-01: Replaced the per-faction win conditions with one victory condition, military supremacy (capture every rival base). Faction aggression is set by the difficulty settings and social axes.
 - 2026-10-01: Added the "Combat" section (odds-based results with terrain modifiers).
 - 2026-10-01: Added the "Unit design" section (player-designed units built from researched parts).
@@ -564,7 +569,7 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added the "Turn structure" section (strictly alternating turns, none taken at the same time).
 - 2026-10-01: Turn structure: AI turn order is shuffled every round.
 - 2026-10-01: Turn structure: no turn limit; games run until a military supremacy victory.
-- 2026-10-01: Tech tree: added the late-era Sealed Habitats / Geothermal Wells tech (lets players found cities on the day and night sides).
+- 2026-10-01: Tech tree: added late Verdantia work that was later split into Sealed Habitats and Geothermal Wells.
 - 2026-10-01: Tech tree: Sealed Habitats / Geothermal Wells assigned to the Terraforming Bay branch.
 - 2026-10-01: Tech tree: each faction starts with one free tech that fits its identity.
 - 2026-10-01: Added the "Diplomacy" section (treaties, trade deals, alliances, espionage, diplomacy screen, social-axis influence).
@@ -596,19 +601,19 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Intro: added a Back button on every screen (disabled or hidden on the first screen).
 - 2026-10-01: Added the "Multiplayer" section (hotseat and online, with the same rules as single-player).
 - 2026-10-01: Removed the "Multiplayer" section. Proxima is single-player only, and the AI plays every rival faction.
-- 2026-10-01: Added the "Terraforming" section. Terraforming is a unit action like in Alpha Centauri: terraformer units, unlocked through the Terraforming Bay tech branch, each work one tile to improve its yields and can gradually widen the twilight band.
+- 2026-10-01: Added the "Terraforming" section. Terraforming is a unit action like in Alpha Centauri: terraformer units, unlocked through the Terraforming Bay tech branch, each work one tile to improve its yields and can change the ground.
 - 2026-10-01: Terraforming: build time depends on what is being built on the tile (planting trees, mining, building a mine, installing solar panels, and so on). More complex or energy-intensive builds take longer.
 - 2026-10-01: Terraforming: build time also depends on the terraformer's tech level (advanced terraformers from later techs work faster). Each terraforming type has its own base time, which improves with tech.
-- 2026-10-01: Terraforming: removed the edge-strip threshold for widening the twilight band. Like Alpha Centauri, terraformers can work any tile, and each terraformed tile can join the livable zone over time.
-- 2026-10-01: City construction: any unit, terraformers included, can travel anywhere on the map, with a penalty outside the twilight band as the only restriction. Cities can only be founded inside the band unless the player has the Sealed Habitats / Geothermal Wells tech.
-- 2026-10-01: Added the "Map interface" section (map of the known planet on the main screen; fog of war, clearly marked twilight band, known terrain, resources, and units; pan and zoom).
-- 2026-10-01: City construction: set the penalty for traveling outside the twilight band. All units, terraformers included, take damage over time until they are destroyed.
-- 2026-10-01: Outside-band damage: Sealed Habitats / Geothermal Wells lets units travel outside the band without damage; the damage per turn is a tuning value for the builder.
+- 2026-10-01: Terraforming: removed any edge-strip threshold. Like Alpha Centauri, terraformers can work any tile, and the work raises yields or changes the ground.
+- 2026-10-01: City construction: any unit, terraformers included, can travel the map. Hostile climates are the penalty. Cities need hospitable land unless the player has Sealed Habitats.
+- 2026-10-01: Added the "Map interface" section (map of the known planet on the main screen; fog of war, known terrain, resources, and units; pan and zoom).
+- 2026-10-01: City construction: set the penalty for traveling hostile climates. All units, terraformers included, take damage over time until they are destroyed.
+- 2026-10-01: Harsh-ground damage: Sealed Habitats lets units cross that ground without damage; the damage per turn is a tuning value for the builder.
 - 2026-10-01: Social axes: each matching choice gives a 10 percent bonus to the related resource or stat; switching an axis mid-game costs 100 credits (tunable) and causes a temporary stability hit lasting several turns.
 - 2026-10-01: Resources: set the rush-buy price at 1 credit per remaining production point, minimum 10 credits per rush (tunable).
 - 2026-10-01: Terraforming: credit fees scale by biome. Standard tiles pay the base fee, and harsher biomes like toxic soil and frozen regions cost about 1.5 to 2 times that (tunable).
 - 2026-10-01: Pause menu: added an autosave on/off toggle (when off, no autosave every 10 turns).
-- 2026-10-01: Outside-band damage set to 5 per turn (tunable). It stops when the unit is destroyed, returns to the band, or the player researches Sealed Habitats / Geothermal Wells.
+- 2026-10-01: Harsh-ground damage set to 5 per turn (tunable). It stops when the unit is destroyed, leaves that ground, or the player researches Sealed Habitats.
 - 2026-10-01: Factions renamed throughout the doc: The Helm (bridge crew), Verdantia (terraforming bay), Genesis (seed vault), Ironclad (military pod), The Signal (comms array), The Pulse (life-support core). Added a backstory paragraph for each faction for the in-game profile screen.
 - 2026-10-01: Factions renamed: The Signal is now Mnemosyne (the Greek Titaness of memory), and The Pulse is now Clio (the Muse of history, one of Mnemosyne's daughters). All references and both backstories updated.
 - 2026-10-01: Added the "UI and player experience" section. The full UI and player-experience design is delegated to the builder (with Eve), and Jason reviews what is built and asks for changes.
@@ -616,5 +621,7 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added the "Version two scope" section (sound effects, always-visible autosave toggle, social-axis recap screen, spy networks, diplomacy ladder, endgame crisis, start-menu difficulty settings, optional tutorial). None of it is for the first build.
 - 2026-10-01: Folded the brainstormed version-two items into version one. The section is renamed "Version one additions", and Sid builds all of it as part of version one.
 - 2026-10-01: Added the "Steam readiness (future goal)" section: an installer-based Windows build, clean install and uninstall, DRM-free, crash reporting, early planning of store assets, and pre-launch steps. Documentation only, not built yet.
-- 2026-10-01: Version 2 gameplay: rivals plan multi-turn routes to founding sites, rebuild after each unit finishes, and attack, capture, spy, and trade once the peace window and their difficulty allow it. Only atmosphere terraforming makes a tile livable. A faction with no cities and no colony pod is defeated. Energy, minerals, and nutrients are spent on upkeep, terraforming, city works, and rush-buying, and grievances fade each week. Random events follow the start-menu toggle, the game seed, and an optional warning and response. Ships carry land units up to the capacity of their design, and shore bombardment uses the naval flag. Factions can trade resources and technology.
-- 2026-10-01: Map: clicking a tile, or pressing T over it, shows its terrain, improvements, yields against the untouched tile, work in progress, and a short terraform history. Remembered tiles show the last look. Old saves load with an empty history.
+- 2026-10-01: Intro story rewritten around the ship Halcyon, the 2426 launch order, the flare that broke the magnetic sail, and the six sealed sections. The story no longer depends on a habitable band. Faction profiles name the section leaders. The scene script lives in `docs/intro-story.md`.
+- 2026-10-01: Version 2 gameplay: rivals plan multi-turn routes to founding sites, rebuild after each unit finishes, and attack, capture, spy, and trade once the peace window and their difficulty allow it. Only atmosphere terraforming softens a harsh climate. A faction with no cities and no colony pod is defeated. Energy, minerals, and nutrients are spent on upkeep, terraforming, city works, and rush-buying, and grievances fade each week. Random events follow the start-menu toggle, the game seed, and an optional warning and response. Ships carry land units up to the capacity of their design, and shore bombardment uses the naval flag. Factions can trade resources and technology.
+- 2026-10-01: Map: clicking a tile, pressing I while the pointer is over it, or shift-clicking it, shows its terrain, improvements, yields against the untouched tile, work in progress, and a short terraform history. T opens the tech tree. Remembered tiles show the last look. Old saves load with an empty history.
+- 2026-10-01: Removed the habitable stripe. The map is continents, oceans, elevation, rainfall, temperature, rivers, and local climates. Fog of war has three states with soft edges. Sealed Habitats and Geothermal Wells are separate techs. Improved tiles draw their works on the map.

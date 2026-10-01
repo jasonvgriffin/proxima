@@ -23,26 +23,31 @@ function asSwitch(command: ReturnType<MusicDirector['enter']>): SwitchCommand {
 }
 
 describe('track selection', () => {
-  it('plays the menu theme, and Exploration Theme if Title cannot load', () => {
+  it('plays Exploration Theme on the menu, and Sector if that file cannot load', () => {
     const menu = new MusicDirector();
     const opening = asSwitch(menu.enter('menu'));
-    expect(opening.to).toBe('title');
+    expect(opening.to).toBe('exploration');
     expect(opening.loop).toBe(true);
-    expect(menu.current).toBe('title');
+    expect(menu.current).toBe('exploration');
     finish(menu);
 
     const fallback = new MusicDirector();
-    fallback.failed.add('title');
-    expect(asSwitch(fallback.enter('menu')).to).toBe('exploration');
+    fallback.failed.add('exploration');
+    expect(asSwitch(fallback.enter('menu')).to).toBe('sector');
   });
 
-  it('starts the exploration playlist in order, from the pinned track when there is one', () => {
+  it('starts the in-game rotation on Exploration Theme, or on a pinned track', () => {
     const director = new MusicDirector();
     director.enter('menu');
     finish(director);
-    expect(asSwitch(director.enter('game')).to).toBe('sector');
-    expect(director.picked).toBe('sector');
-    finish(director);
+    expect(director.enter('game')).toBeNull();
+    expect(director.current).toBe('exploration');
+    expect(director.picked).toBe('exploration');
+
+    const fresh = new MusicDirector();
+    expect(asSwitch(fresh.enter('game')).to).toBe('exploration');
+    expect(fresh.picked).toBe('exploration');
+    finish(fresh);
 
     const pinned = new MusicDirector();
     pinned.pick('airy');
@@ -51,25 +56,25 @@ describe('track selection', () => {
     expect(pinned.current).toBe('airy');
   });
 
-  it('rotates Sector, Airy, and Exploration Theme, and shuffle skips the one playing', () => {
+  it('rotates Exploration Theme, Sector, and Airy, and shuffle skips the one playing', () => {
     const director = new MusicDirector();
     director.enter('game');
     finish(director);
-    expect(asSwitch(director.loopPoint()).to).toBe('airy');
-    expect(director.fade?.from).toBe('sector');
+    expect(asSwitch(director.loopPoint()).to).toBe('sector');
+    expect(director.fade?.from).toBe('exploration');
     expect(director.fade?.kind).toBe('switch');
+    finish(director);
+    expect(asSwitch(director.loopPoint()).to).toBe('airy');
     finish(director);
     expect(asSwitch(director.loopPoint()).to).toBe('exploration');
     finish(director);
-    expect(asSwitch(director.loopPoint()).to).toBe('sector');
-    finish(director);
 
     director.mode = 'shuffle';
-    expect(nextExplore('sector', 'shuffle', () => 0)).toBe('airy');
-    expect(nextExplore('sector', 'shuffle', () => 0.999)).toBe('exploration');
+    expect(nextExplore('sector', 'shuffle', () => 0)).toBe('exploration');
+    expect(nextExplore('sector', 'shuffle', () => 0.999)).toBe('airy');
     const shuffled = asSwitch(director.loopPoint(() => 0));
-    expect(shuffled.to).not.toBe('sector');
-    expect(['airy', 'exploration']).toContain(shuffled.to);
+    expect(shuffled.to).not.toBe('exploration');
+    expect(['sector', 'airy']).toContain(shuffled.to);
   });
 
   it('loops the menu theme in place instead of rotating into the map', () => {
@@ -78,8 +83,8 @@ describe('track selection', () => {
     finish(director);
     const again = asSwitch(director.loopPoint());
     expect(again.kind).toBe('loop');
-    expect(again.to).toBe('title');
-    expect(director.current).toBe('title');
+    expect(again.to).toBe('exploration');
+    expect(director.current).toBe('exploration');
     expect(again.duration).toBe(CONFIG.audio.loopCrossfadeSec);
   });
 
@@ -88,7 +93,7 @@ describe('track selection', () => {
     director.enter('game');
     expect(director.fade).not.toBeNull();
     expect(director.loopPoint()).toBeNull();
-    expect(director.current).toBe('sector');
+    expect(director.current).toBe('exploration');
   });
 });
 
@@ -105,14 +110,14 @@ describe('crossfade state', () => {
     director.enter('game');
     const fade = director.fade!;
     expect(fade.from).toBeNull();
-    expect(fade.to).toBe('sector');
+    expect(fade.to).toBe('exploration');
     expect(fadeProgress(fade)).toBe(0);
     expect(director.step(fade.duration / 2)).toBe(false);
     expect(fadeProgress(director.fade!)).toBeCloseTo(0.5);
     expect(crossfadeGains(fadeProgress(director.fade!)).incoming).toBeCloseTo(Math.SQRT1_2);
     expect(director.step(fade.duration / 2)).toBe(true);
     expect(director.fade).toBeNull();
-    expect(director.current).toBe('sector');
+    expect(director.current).toBe('exploration');
   });
 
   it('keeps the same track id across a loop-point overlap', () => {
@@ -121,11 +126,11 @@ describe('crossfade state', () => {
     finish(director);
     const loop = asSwitch(director.loopPoint());
     expect(loop.kind).toBe('loop');
-    expect(director.current).toBe('title');
-    expect(director.fade?.to).toBe('title');
-    expect(director.fade?.from).toBe('title');
+    expect(director.current).toBe('exploration');
+    expect(director.fade?.to).toBe('exploration');
+    expect(director.fade?.from).toBe('exploration');
     finish(director);
-    expect(director.current).toBe('title');
+    expect(director.current).toBe('exploration');
   });
 });
 
@@ -136,20 +141,20 @@ describe('tension and intro', () => {
     finish(director);
     director.loopPoint();
     finish(director);
-    expect(director.current).toBe('airy');
+    expect(director.current).toBe('sector');
 
     const sting = asSwitch(director.stir());
     expect(sting.to).toBe('urgent');
     expect(director.tension).toBe(true);
-    expect(director.bed).toBe('airy');
+    expect(director.bed).toBe('sector');
     expect(director.stir()).toBeNull();
     finish(director);
 
     const back = asSwitch(director.release(22));
-    expect(back.to).toBe('airy');
+    expect(back.to).toBe('sector');
     expect(back.offset).toBe(22);
     expect(director.tension).toBe(false);
-    expect(director.current).toBe('airy');
+    expect(director.current).toBe('sector');
   });
 
   it('plays Outworld once per intro visit and skips it when the file fails', () => {
