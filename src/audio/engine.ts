@@ -1,44 +1,21 @@
 import { CONFIG } from '../config';
 import { ambientGain, clamp01, createAmbientBed, type AmbientBed } from './ambient';
+import {
+  isTrackId,
+  MUSIC_FILES,
+  musicUrl,
+  MusicDirector,
+  nextExplore,
+  type MusicCommand,
+  type MusicScene,
+  type SwitchCommand,
+  type TrackId,
+} from './music';
+import { MusicPlayer } from './player';
 import { playGameSfx, type GameSfx } from './sfx';
 
-export const TRACKS = [
-  { id: 'meridian-dust', name: 'Meridian Dust' },
-  { id: 'glass-orchard', name: 'Glass Orchard' },
-  { id: 'protocol-red', name: 'Protocol Red' },
-  { id: 'last-distress', name: 'Last Distress' },
-  { id: 'quiet-revision', name: 'Quiet Revision' },
-] as const;
-
-type TrackId = (typeof TRACKS)[number]['id'];
-
-export type VolumeKey = 'master' | 'music' | 'sfx' | 'ambient';
-
-interface Note {
-  midi: number;
-  step: number;
-  dur: number;
-  gain: number;
-  wave: OscillatorType;
-}
-
-const PATTERNS: Record<TrackId, { tempo: number; notes: Note[] }> = {
-  'meridian-dust': pattern(72, [0, 3, 7, 10, 7, 3, 0, 5], 0.9, 'triangle'),
-  'glass-orchard': pattern(64, [0, 2, 7, 12, 7, 14, 10, 7], 1.05, 'sine'),
-  'protocol-red': pattern(92, [0, 0, 1, 0, 3, 1, 0, 6], 0.7, 'square'),
-  'last-distress': pattern(60, [0, 5, 7, 12, 10, 7, 5, 3], 1.2, 'sawtooth'),
-  'quiet-revision': pattern(70, [0, 4, 7, 11, 7, 4, 2, 7], 1.1, 'sine'),
-};
-
-function pattern(root: number, degrees: number[], spacing: number, wave: OscillatorType): { tempo: number; notes: Note[] } {
-  const notes: Note[] = [];
-  degrees.forEach((degree, i) => {
-    notes.push({ midi: root + degree, step: i * 2, dur: 1.6, gain: 0.08, wave });
-    notes.push({ midi: root - 12 + (degree % 7), step: i * 2, dur: 2, gain: 0.05, wave: 'sine' });
-  });
-  notes.push({ midi: root - 24, step: 0, dur: 16, gain: 0.04, wave: 'triangle' });
-  return { tempo: 150 * spacing, notes };
-}
+export { TRACKS } from './music';
+export type { MusicScene, TrackId };
 
 export const AUDIO_STORAGE_KEY = 'proxima-audio-prefs';
 
@@ -63,16 +40,21 @@ export class AudioBus {
   music: number = CONFIG.audio.defaultMusic;
   sfx: number = CONFIG.audio.defaultSfx;
   ambient: number = CONFIG.audio.defaultAmbient;
-  track: TrackId = 'meridian-dust';
+  track: TrackId = 'title';
   mode: 'loop' | 'shuffle' = 'loop';
   private ctx: AudioContext | null = null;
-  private timer = 0;
-  private step = 0;
-  private playing = false;
   private started = false;
+  private playing = false;
+  private scene: MusicScene = 'menu';
+  private readonly director = new MusicDirector();
+  private player: MusicPlayer | null = null;
+  private playGen = 0;
   private musicOut: GainNode | null = null;
+  private musicLevel: GainNode | null = null;
   private sfxOut: GainNode | null = null;
   private bed: AmbientBed | null = null;
+  private tensionUntil = 0;
+  private resumeOffset = 0;
 
   constructor() {
     this.restore();
@@ -122,6 +104,33 @@ export class AudioBus {
     this.setMuted(!this.muted);
   }
 
+  /**
+   * Menu, intro, or the game. The same scene does not restart a track that is already playing.
+   * Nothing is fetched until audio has been unlocked.
+   */
+  setScene(scene: MusicScene) {
+    const changed = scene !== this.scene;
+    this.scene = scene;
+    if (!changed) {
+      this.ensureMusic();
+      return;
+    }
+    const cmd = this.director.enter(scene);
+    this.followPick();
+    if (!this.started || !this.musicOn || this.muted) return;
+    if (cmd === null) {
+      this.ensureMusic();
+      return;
+    }
+    if (cmd.type === 'stop') {
+      this.stopMusic();
+      return;
+    }
+    this.playing = true;
+    this.applyBuses();
+    void this.playCommand(cmd);
+  }
+
   private context(): AudioContext {
     if (!this.ctx) this.ctx = new AudioContext();
     return this.ctx;
@@ -132,8 +141,12 @@ export class AudioBus {
     return this.master * channel;
   }
 
+  private musicLoudness() {
+    return this.level('music') * CONFIG.audio.musicTrim;
+  }
+
   /**
-   * Starts the track when music is on, audio is unlocked, and Mute all is off.
+   * Starts the bed when music is on, audio is unlocked, and Mute all is off.
    * Leaves a playing track alone so slider moves do not restart it.
    */
   ensureMusic() {
@@ -142,40 +155,31 @@ export class AudioBus {
       this.stopMusic();
       return;
     }
-    if (!this.playing) this.startMusic();
-  }
-
-  startMusic() {
-    if (!this.started || !this.musicOn || this.muted) return;
-    this.stopMusic();
-    this.playing = true;
-    this.step = 0;
-    this.setBusGain(this.musicOut, 1);
-    this.context();
-    const schedule = () => {
-      if (!this.playing || !this.musicOn || this.muted) return;
-      const song = PATTERNS[this.track];
-      const beat = song.tempo / 1000;
-      for (const note of song.notes) {
-        if (note.step === this.step % 16) {
-          this.tone(note.midi, note.dur * beat, note.gain * this.level('music'), note.wave, this.bus('music'));
+    this.applyBuses();
+    if (this.playing) return;
+    const current = this.director.current;
+    const file = current ? MUSIC_FILES[current] : undefined;
+    const cmd: MusicCommand | null = file
+      ? {
+          type: 'switch',
+          to: current as string,
+          offset: 0,
+          duration: CONFIG.audio.trackCrossfadeSec,
+          kind: 'switch',
+          loop: file.loop,
         }
-      }
-      this.step += 1;
-      if (this.step % 16 === 0 && this.step > 0 && this.mode === 'shuffle') {
-        const next = TRACKS[Math.floor(Math.random() * TRACKS.length)].id;
-        this.track = next;
-      }
-    };
-    this.timer = window.setInterval(schedule, PATTERNS[this.track].tempo);
+      : this.director.enter(this.scene);
+    this.followPick();
+    if (!cmd || cmd.type === 'stop') return;
+    this.playing = true;
+    void this.playCommand(cmd);
   }
 
   stopMusic() {
     this.playing = false;
-    if (this.timer) {
-      window.clearInterval(this.timer);
-      this.timer = 0;
-    }
+    this.tensionUntil = 0;
+    if (this.director.tension) this.director.release(this.resumeOffset);
+    this.player?.stop();
     this.setBusGain(this.musicOut, 0);
   }
 
@@ -207,9 +211,14 @@ export class AudioBus {
     this.persist();
   }
 
-  setVolume(key: VolumeKey, value: number) {
+  setVolume(key: 'master' | 'music' | 'sfx' | 'ambient', value: number) {
     this[key] = clamp01(value);
     this.bed?.setGain(this.ambientLevel());
+    if ((key === 'master' || key === 'music') && this.musicLevel) {
+      const now = this.musicLevel.context.currentTime;
+      this.musicLevel.gain.cancelScheduledValues(now);
+      this.musicLevel.gain.setValueAtTime(this.musicLoudness(), now);
+    }
     this.persist();
   }
 
@@ -217,12 +226,32 @@ export class AudioBus {
     if (!isTrackId(id)) return;
     this.track = id;
     this.persist();
-    if (this.playing) this.startMusic();
+    const cmd = this.director.pick(id);
+    if (!cmd || cmd.type !== 'switch' || !this.playing || !this.started || !this.musicOn || this.muted) return;
+    void this.playCommand(cmd);
   }
 
   setMode(mode: 'loop' | 'shuffle') {
     this.mode = mode;
+    this.director.mode = mode;
     this.persist();
+  }
+
+  /**
+   * Combat or a war declaration. Urgent takes the bed for a short hold, then
+   * the exploration track fades back in. Ignored off the map and before unlock.
+   */
+  stirTension() {
+    if (!this.started || this.scene !== 'game' || !this.musicOn || this.muted) return;
+    const now = this.context().currentTime;
+    this.tensionUntil = now + CONFIG.audio.tensionHoldSec;
+    if (this.director.tension) return;
+    this.resumeOffset = this.player?.position() ?? 0;
+    const cmd = this.director.stir();
+    if (!cmd || cmd.type !== 'switch') return;
+    this.playing = true;
+    this.applyBuses();
+    void this.playCommand(cmd);
   }
 
   play(kind: 'click' | 'move' | 'found' | 'terraform' | 'terraformDone' | 'band' | 'attack' | 'turn' | 'error' | 'save' | 'open') {
@@ -296,6 +325,110 @@ export class AudioBus {
     src.start();
   }
 
+  private async playCommand(cmd: SwitchCommand) {
+    const file = MUSIC_FILES[cmd.to];
+    if (!file) return;
+    const gen = ++this.playGen;
+    const player = this.ensurePlayer();
+    const result = await player.play({
+      id: cmd.to,
+      url: musicUrl(file.file),
+      offset: cmd.offset,
+      fade: cmd.duration,
+      lead: this.leadFor(cmd.to),
+      loop: file.loop,
+    });
+    if (gen !== this.playGen) return;
+    if (result === 'ok') {
+      this.prefetchNext();
+      return;
+    }
+    if (result === 'cancelled') return;
+    console.warn(`Proxima music: ${cmd.to} did not load.`);
+    const next = this.director.missing(cmd.to);
+    if (next?.type === 'switch') {
+      void this.playCommand(next);
+      return;
+    }
+    if (next?.type === 'stop' || this.scene === 'intro') {
+      this.playing = false;
+      player.stop();
+      return;
+    }
+    player.startFallback();
+  }
+
+  /** Exploration tracks overlap by a full track crossfade. Loops and Urgent use the short join. */
+  private leadFor(id: string): number {
+    const file = MUSIC_FILES[id];
+    if (!file?.loop) return 0;
+    if (this.scene === 'game' && isExploreTrack(id) && !this.director.tension) return CONFIG.audio.trackCrossfadeSec;
+    return CONFIG.audio.loopCrossfadeSec;
+  }
+
+  private prefetchNext() {
+    if (this.scene !== 'game' || !isExploreTrack(this.director.current)) return;
+    const next = nextExplore(this.director.current, this.mode, () => 0);
+    const file = MUSIC_FILES[next];
+    if (file) this.ensurePlayer().warm(musicUrl(file.file));
+  }
+
+  private ensurePlayer(): MusicPlayer {
+    if (!this.player) {
+      this.player = new MusicPlayer(
+        () => this.context(),
+        () => this.musicDestination(),
+        () => this.onFadeDone(),
+        () => this.onBoundary(),
+        () => this.onTickTension(),
+      );
+    }
+    return this.player;
+  }
+
+  private onFadeDone() {
+    const fade = this.director.fade;
+    if (!fade) return;
+    this.director.step(fade.duration - fade.elapsed);
+  }
+
+  private onBoundary() {
+    const cmd = this.director.loopPoint(Math.random);
+    if (!cmd || cmd.type === 'stop') {
+      if (this.scene === 'intro') this.playing = false;
+      return;
+    }
+    this.followPick();
+    void this.playCommand(cmd);
+  }
+
+  private onTickTension() {
+    if (!this.director.tension || !this.ctx || this.tensionUntil <= 0) return;
+    if (this.ctx.currentTime < this.tensionUntil) return;
+    const cmd = this.director.release(this.resumeOffset);
+    this.tensionUntil = 0;
+    if (!cmd || cmd.type === 'stop') return;
+    this.followPick();
+    void this.playCommand(cmd);
+  }
+
+  private followPick() {
+    if (this.track === this.director.picked) return;
+    this.track = this.director.picked;
+    this.persist();
+  }
+
+  private musicDestination(): AudioNode {
+    const gate = this.bus('music');
+    if (!this.musicLevel) {
+      const node = this.context().createGain();
+      node.gain.value = this.musicLoudness();
+      node.connect(gate);
+      this.musicLevel = node;
+    }
+    return this.musicLevel;
+  }
+
   private bus(kind: 'music' | 'sfx'): GainNode {
     const current = kind === 'music' ? this.musicOut : this.sfxOut;
     if (current) return current;
@@ -312,6 +445,7 @@ export class AudioBus {
   private applyBuses() {
     this.setBusGain(this.musicOut, this.musicOn && !this.muted ? 1 : 0);
     this.setBusGain(this.sfxOut, this.sfxOn && !this.muted ? 1 : 0);
+    if (this.musicLevel) this.musicLevel.gain.value = this.musicLoudness();
   }
 
   private setBusGain(bus: GainNode | null, value: number) {
@@ -339,11 +473,17 @@ export class AudioBus {
     if (typeof data.music === 'number') this.music = clamp01(data.music);
     if (typeof data.sfx === 'number') this.sfx = clamp01(data.sfx);
     if (typeof data.ambient === 'number') this.ambient = clamp01(data.ambient);
-    if (isTrackId(data.track)) this.track = data.track;
-    if (data.mode === 'loop' || data.mode === 'shuffle') this.mode = data.mode;
+    if (isTrackId(data.track)) {
+      this.track = data.track;
+      this.director.picked = data.track;
+    }
+    if (data.mode === 'loop' || data.mode === 'shuffle') {
+      this.mode = data.mode;
+      this.director.mode = data.mode;
+    }
   }
 }
 
-function isTrackId(value: unknown): value is TrackId {
-  return typeof value === 'string' && TRACKS.some((track) => track.id === value);
+function isExploreTrack(id: string | null): id is 'sector' | 'airy' | 'exploration' {
+  return id === 'sector' || id === 'airy' || id === 'exploration';
 }
