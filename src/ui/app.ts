@@ -3,13 +3,14 @@ import { drawEmblem, drawPlanet, drawStar, drawStarfield } from '../art/draw';
 import { AudioBus, TRACKS } from '../audio/engine';
 import { FACTIONS, SOCIAL_OPTIONS, defaultAxes, defaultPersonalities, DIFFICULTIES, PERSONALITY_LEVELS } from '../core/factions';
 import { Game, PROJECTS, projectLabel } from '../core/game';
-import { biomeClass, formatCalendar, terraformFee, terraformTurns } from '../core/rules';
+import { biomeClass, terraformFee, terraformTurns } from '../core/rules';
 import { formerTechLevel, TECHS, techAvailable, techById } from '../core/tech';
 import { starterDesigns, CHASSIS, WEAPONS, ARMORS, SPECIALS, partKnown } from '../core/parts';
 import { FACTION_IDS, type Difficulty, type FactionId, type GameState, type Proposal, type SaveEnvelope, type SocialAxis, type Unit } from '../core/types';
 import { createSaveStore, type SaveStore } from '../platform/saves';
 import { IntroPlayer, INTRO_SCENES } from '../render/intro';
 import { MapView } from '../render/mapview';
+import { renderTutorial } from './tutorial';
 
 type Screen = 'menu' | 'intro' | 'setup' | 'options' | 'profile' | 'game' | 'recap';
 
@@ -499,9 +500,10 @@ export class App {
     else if (action === 'resume') this.closeOverlay();
     else if (action === 'pause-save') void this.openSave('manual');
     else if (action === 'pause-load') void this.openLoad(true);
-    else if (action === 'pause-tutorial') this.openTutorial(0);
-    else if (action === 'tutorial-next') this.openTutorial(Number(node.dataset.step) + 1);
-    else if (action === 'tutorial-back') this.openTutorial(Math.max(0, Number(node.dataset.step) - 1));
+    else if (action === 'pause-tutorial' || action === 'tutorial-next' || action === 'tutorial-back') {
+      const step = action === 'pause-tutorial' ? 0 : Number(node.dataset.step) + (action === 'tutorial-next' ? 1 : -1);
+      this.overlay.innerHTML = renderTutorial(step);
+    }
     else if (action === 'pause-new') this.askSaveFirst('new');
     else if (action === 'pause-exit') this.askSaveFirst('exit');
     else if (action === 'confirm-cancel') this.closeOverlay();
@@ -791,27 +793,6 @@ export class App {
       </div></div>`;
   }
 
-  private openTutorial(step: number) {
-    const pages = TUTORIAL;
-    const index = Math.min(pages.length - 1, Math.max(0, step));
-    const page = pages[index];
-    this.overlay.innerHTML = `
-      <div class="modal-back"><div class="modal narrow" data-testid="tutorial">
-        <p class="eyebrow">Tutorial ${index + 1} / ${pages.length}</p>
-        <h2>${esc(page.title)}</h2>
-        <p>${esc(page.body)}</p>
-        <div class="row">
-          <button class="btn" data-action="tutorial-back" data-step="${index}" ${index === 0 ? 'disabled' : ''}>Back</button>
-          <button class="btn" data-action="tutorial-next" data-testid="tutorial-next" data-step="${index}">${index === pages.length - 1 ? 'Done' : 'Next'}</button>
-          <button class="btn" data-action="close" data-testid="tutorial-close">Close</button>
-        </div>
-      </div></div>`;
-    if (index === pages.length - 1) {
-      const next = this.overlay.querySelector('[data-action="tutorial-next"]');
-      next?.setAttribute('data-action', 'close');
-    }
-  }
-
   private askSaveFirst(mode: 'new' | 'exit') {
     this.pending = { mode };
     const save = mode === 'new' ? 'Save and Start New Game' : 'Save and Exit';
@@ -1059,19 +1040,3 @@ export class App {
 function esc(value: string) {
   return value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char] ?? char);
 }
-
-const TUTORIAL = [
-  { title: 'The twilight band', body: 'Proxima b does not turn. The day side burns, the night side freezes, and a marked band between them is where a city can be founded. Gold lines on the map are the edges of that band.' },
-  { title: 'Weeks', body: 'You move first. Then each rival takes a turn, in an order that changes every week. The top bar shows the year and week, starting at Year 2460, Week 1. There is no turn limit.' },
-  { title: 'Travel', body: 'Units can walk anywhere, including the day and night sides. Outside the livable zone they take damage each turn until they return, die, or you research Sealed Habitats / Geothermal Wells.' },
-  { title: 'Cities', body: 'A colony pod is consumed to found a city inside the band. Cities earn credits equal to their population plus two, and they gather minerals, nutrients, energy, and research from nearby tiles.' },
-  { title: 'Terraforming', body: 'A terraformer works one tile at a time, anywhere, with no need for a neighboring strip. Farms, trees, mines, and solar panels take different numbers of turns and cost more credits on harsh ground. Finished work can pull a tile into the livable zone.' },
-  { title: 'Combat', body: 'An attack shows the odds before you confirm. Terrain such as ridges and forests favors the defender. A weaker unit can still win the roll. Capturing every rival city wins the game.' },
-  { title: 'Society', body: 'Religion, values, economy, and politics each grant +10% when the choice matches your faction. Changing an axis mid-game costs credits and shakes stability for several turns.' },
-  { title: 'Diplomacy', body: 'From the diplomacy screen you can declare war, make peace, offer a non-aggression pact, ally, or sign research and exploration treaties. A pact sits one step below an alliance. Rivals answer according to their personalities.' },
-  { title: 'Spies', body: 'Recruiting a spy costs credits once and never again. Place them in another faction to watch that faction\'s map, stocks, and research. They can steal tech, sabotage works, or frame two rivals so those rivals blame each other. A sweep roots out spies in your own house.' },
-  { title: 'The Waking Reactor', body: 'After a long quiet, the buried ark core starts to pulse. The band frays, unanchored units take rising damage, and yields thin. Terraforming anchors a tile. The exact week it begins is a setting, not a secret calendar.' },
-  { title: 'Saves', body: 'Escape opens the pause menu. Autosave is always listed there and can be turned off. There are nine manual slots plus one autosave. On the desktop build those files live in your Proxima app-data folder.' },
-];
-
-void formatCalendar;
