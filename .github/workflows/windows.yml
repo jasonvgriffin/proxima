@@ -1,0 +1,48 @@
+name: Windows build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - name: Install
+        run: npm ci
+      - name: Unit tests
+        run: npm test
+      - name: Build the renderer
+        run: npm run build
+      - name: Package the Windows app
+        run: npx electron-builder --win --publish never
+        env:
+          CSC_IDENTITY_AUTO_DISCOVERY: false
+      - name: Upload the executables
+        uses: actions/upload-artifact@v4
+        with:
+          name: proxima-windows
+          path: release/*.exe
+          if-no-files-found: error
+      - name: Publish to GitHub Releases
+        if: github.event_name != 'pull_request'
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $tag = "v0.1.0-test"
+          gh release view $tag 2>$null
+          if ($LASTEXITCODE -ne 0) {
+            gh release create $tag --title "Proxima 0.1.0 test build" --notes "Unsigned Windows test build of Proxima. If SmartScreen warns, see the README."
+          }
+          gh release upload $tag (Get-ChildItem release\*.exe).FullName --clobber
