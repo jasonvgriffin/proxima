@@ -26,10 +26,13 @@ Each group decides what Proxima should become, and nobody is right by default. I
 ## Intro
 
 - **Play Intro button:** the start menu (home screen) has a Play Intro button.
-- **What it shows:** an animated sequence that tells the story:
-  - The ark crashes on Proxima, a tidally locked world.
-  - The survivors scatter in every direction.
-  - Six factions wake in the wreckage with no shared memory.
+- **What it shows:** an animated sequence that tells the story (the ark crashing, the survivors scattering, and six factions waking with no shared memory) in six scenes:
+  1. The planet Proxima b in space beside its star.
+  2. The huge ark spaceship approaching and entering the atmosphere.
+  3. The ark crashing onto the planet's surface.
+  4. Escape pods and smaller craft breaking away from the wreck.
+  5. People leaving the ship and heading off in different directions across the land.
+  6. The six factions appearing as separate groups in different places.
 - **On-screen text:** every screen of the intro shows text, so the story can be read.
 - **No audio for now:** the intro is read-only, with no voice narration and no sound. Audio can be added later.
 - **Skipping:** the player can skip the intro at any time by pressing any key or button or clicking the mouse.
@@ -458,3 +461,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added the "Intro" section (a Play Intro button on the start menu; a narrated crash sequence).
 - 2026-10-01: Intro: it can be skipped at any time with any key, button, or mouse click.
 - 2026-10-01: Intro revised: animation with on-screen text and no audio for now (narration removed); it can still be skipped.
+- 2026-10-01: Intro: added the six animation scenes (planet, approach, crash, escape pods, survivors scattering, factions emerging).
