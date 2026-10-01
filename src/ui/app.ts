@@ -1,6 +1,7 @@
 import { CONFIG } from '../config';
 import { drawEmblem, drawPlanet, drawStar, drawStarfield } from '../art/draw';
 import { AudioBus, TRACKS } from '../audio/engine';
+import { difficultyLabel, difficultyProfile, normalizeDifficulty, outsideBandDamage } from '../core/difficulty';
 import { FACTIONS, SOCIAL_OPTIONS, defaultAxes, defaultPersonalities, DIFFICULTIES, PERSONALITY_LEVELS } from '../core/factions';
 import { Game, PROJECTS, projectLabel } from '../core/game';
 import { proposalLabel } from '../core/diplomacy';
@@ -98,10 +99,11 @@ export class App {
           <h1>Proxima</h1>
           <p class="tag">A single-player story of six factions on a tidally locked world. The twilight band is the only home, until someone changes that.</p>
           <div>
-            <p class="muted">Opponent aggressiveness</p>
+            <p class="muted">Difficulty</p>
             <div class="row" data-testid="difficulty">
               ${DIFFICULTIES.map((item) => `<button class="btn small ${this.setup.difficulty === item.id ? 'on' : ''}" data-action="difficulty" data-difficulty="${item.id}" data-testid="difficulty-${item.id}">${esc(item.label)}</button>`).join('')}
             </div>
+            <p class="muted" data-testid="difficulty-blurb">${esc(difficultyProfile(this.setup.difficulty).blurb)}</p>
           </div>
           <label class="row"><input type="checkbox" data-setting="allied" ${this.setup.allied ? 'checked' : ''}/> Allied Victory</label>
           <label class="row"><input type="checkbox" data-setting="events" ${this.setup.events ? 'checked' : ''}/> Random events (saved, not fired in this build)</label>
@@ -160,7 +162,7 @@ export class App {
         <div class="sheet-card">
           <p class="eyebrow">New expedition</p>
           <h2>Choose a faction</h2>
-          <p class="muted">Aggressiveness: ${esc(this.setup.difficulty)}. Seed ${this.setup.seed}.</p>
+          <p class="muted">Difficulty: ${esc(difficultyLabel(this.setup.difficulty))}. Seed ${this.setup.seed}.</p>
           <div class="stack" data-testid="faction-list">
             ${FACTION_IDS.map((id) => this.factionButton(id)).join('')}
           </div>
@@ -188,7 +190,7 @@ export class App {
         <div class="sheet-card" style="grid-column: 1 / -1">
           <p class="eyebrow">Game options</p>
           <h2>Rival personalities</h2>
-          <p class="muted">The aggressiveness setting on the start menu is the baseline. A change here overrides that rival.</p>
+          <p class="muted">Difficulty on the start menu sets how soon rivals attack. A change here overrides that rival's own temperament.</p>
           <table class="grid">
             <tr><th>Faction</th>${traits.map((trait) => `<th>${esc(trait)}</th>`).join('')}</tr>
             ${FACTION_IDS.map((id) => `<tr><td>${esc(FACTIONS[id].name)}</td>${traits.map((trait) => `<td><select data-personality="${id}" data-trait="${trait}">${PERSONALITY_LEVELS[trait].map((level) => `<option value="${level.id}" ${this.setup.personalities[id][trait] === level.id ? 'selected' : ''}>${esc(level.label)}</option>`).join('')}</select></td>`).join('')}</tr>`).join('')}
@@ -286,6 +288,7 @@ export class App {
     this.stage.querySelector('#topbar')!.innerHTML = `
       <strong class="brand">Proxima</strong>
       <div data-testid="calendar">${esc(cal.label)}</div>
+      <div data-testid="hud-difficulty">${esc(difficultyLabel(game.state.setup.difficulty))}</div>
       <div class="resources">
         <div class="chip"><span>Minerals</span><b>${rates.minerals}/t</b></div>
         <div class="chip"><span>Nutrients</span><b>${rates.nutrients}/t</b></div>
@@ -355,7 +358,7 @@ export class App {
         ${city.production ? `<p>${city.production.progress} / ${city.production.cost}</p><button class="btn" data-action="rush" data-city="${city.id}" data-testid="rush-buy">Rush-buy</button>` : ''}
         <p class="muted">Income is 1 credit per population plus 2, before social bonuses.</p>`;
     }
-    return `<h3>${esc(FACTIONS[game.state.playerFaction].name)}</h3><p class="muted">Select a unit or a city. The gold lines on the map are the edges of the twilight band. Outside it, units take ${CONFIG.outsideBand.damagePerTurn} damage a turn until Sealed Habitats / Geothermal Wells.</p>`;
+    return `<h3>${esc(FACTIONS[game.state.playerFaction].name)}</h3><p class="muted">Select a unit or a city. The gold lines on the map are the edges of the twilight band. Outside it, units take ${outsideBandDamage(game.state.setup.difficulty)} damage a turn until Sealed Habitats / Geothermal Wells.</p>`;
   }
 
   private onTile(x: number, y: number) {
@@ -424,7 +427,7 @@ export class App {
       this.screen = 'options';
       this.render();
     } else if (action === 'quit') void this.exitDesktop();
-    else if (action === 'difficulty') this.setup.difficulty = node.dataset.difficulty as Difficulty;
+    else if (action === 'difficulty') this.setup.difficulty = normalizeDifficulty(node.dataset.difficulty);
     else if (action === 'pick-faction') {
       this.setup.faction = node.dataset.faction as FactionId;
       this.setup.axes = defaultAxes(this.setup.faction);
@@ -788,6 +791,7 @@ export class App {
       <div class="modal-back"><div class="modal narrow" data-testid="pause-menu">
         <p class="eyebrow">Paused</p>
         <h2>Proxima</h2>
+        <p data-testid="pause-difficulty">Difficulty: ${esc(difficultyLabel(this.game?.state.setup.difficulty))}. ${esc(difficultyProfile(this.game?.state.setup.difficulty).blurb)}</p>
         <h3>Audio</h3>
         <label class="row"><input type="checkbox" data-setting="music" ${this.audio.musicOn ? 'checked' : ''}/> Music</label>
         <label class="row"><input type="checkbox" data-setting="sfx" ${this.audio.sfxOn ? 'checked' : ''}/> Sound effects</label>

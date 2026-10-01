@@ -46,7 +46,7 @@ export type Domain = 'land' | 'sea';
 
 export type UnitRole = 'settler' | 'terraformer' | 'scout' | 'military' | 'naval';
 
-export type Difficulty = 'easy' | 'normal' | 'very-aggressive';
+export type Difficulty = 'easy' | 'normal' | 'hard' | 'brutal';
 
 export type Aggression = 'very-aggressive' | 'normal' | 'easy';
 export type Expansion = 'expansionist' | 'balanced' | 'builder';
