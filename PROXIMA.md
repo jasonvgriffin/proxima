@@ -328,8 +328,8 @@ Pressing **Escape** during play opens the pause menu. It contains:
    - Volume sliders (for example master, music, effects, and ambient)
    - Choosing a music track (from the five original tracks)
    - A Shuffle / Loop toggle: Shuffle plays tracks in random order, and Loop repeats the current track
-2. **Save game:** save to one of **10** save slots.
-3. **Load game:** load a game from a save slot. The autosave always appears at the top of the load list, above the manual save slots.
+2. **Save game:** there are **10 slots in total: 9 manual save slots and 1 autosave slot.** The player saves manually to any of the 9 manual slots.
+3. **Load game:** load a game from a save slot. The autosave slot always appears at the top of the Load game list, above the 9 manual slots.
 4. **New game:** start a fresh game. A popup first offers to save the current game, with three choices:
    - Save and Start New Game
    - Start New Game Without Saving
@@ -339,8 +339,8 @@ Pressing **Escape** during play opens the pause menu. It contains:
    - Exit Without Saving
    - Cancel
 
-- **Autosave:** the game saves automatically every 10 turns. The autosave takes up one of the 10 save slots and doesn't get a slot of its own.
-- Still to decide: whether the autosave is one of the 10 slots (leaving 9 manual slots) or sits on top of 10 manual slots, since both have been said; whether the autosave always uses the same slot and overwrites itself, and whether players can turn autosave off or protect a slot from being overwritten.
+- **Autosave:** the game saves automatically every 10 turns. It saves to the single autosave slot, which is one of the 10.
+- Still to decide: whether players can turn autosave off or protect a slot from being overwritten.
 
 ## Social axes
 
@@ -440,3 +440,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Pause menu: the autosave uses one of the 10 save slots.
 - 2026-10-01: Pause menu: the autosave always appears first in the Load game list.
 - 2026-10-01: Added the "Calendar" section (Earth years, starting in 2460, one week per turn, shown on the main screen).
+- 2026-10-01: Pause menu: slots are now 9 manual plus 1 autosave (10 total), with the autosave listed first in Load game.
