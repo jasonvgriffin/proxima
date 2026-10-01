@@ -198,7 +198,9 @@ Random events can shake up a game. Where possible, each one ties into the crash 
 
 - **Start-menu toggle:** random events can be turned on or off before a game begins (see Difficulty and personality settings).
 - Random events add to the guiding principle of infinite replayability.
-- Still to decide: how often events happen, whether they're good, bad, or mixed, whether they scale with difficulty, whether players get any warning or a choice in how to respond, and whether events are limited to certain map zones (for example, flares hit the day side harder).
+- **Frequency is random:** how often events happen varies unpredictably from game to game, with no fixed schedule.
+- **Warnings are random:** each event separately decides whether the player gets a warning. Sometimes a hint appears beforehand, and sometimes the event just hits.
+- Still to decide: whether events are good, bad, or mixed, whether they scale with difficulty, whether players get a choice in how to respond, and whether events are limited to certain map zones (for example, flares hit the day side harder).
 
 ## Factions (6)
 
@@ -352,3 +354,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added the "Diplomacy" section (treaties, trade deals, alliances, espionage, diplomacy screen, social-axis influence).
 - 2026-10-01: Added the Allied Victory toggle to the start-menu settings (allies can share a win when it is on).
 - 2026-10-01: Added the "Random events" section and an on/off toggle for it on the start menu.
+- 2026-10-01: Random events: how often they happen and whether a warning comes first are both random.
