@@ -300,7 +300,7 @@ Every faction starts the game with one free tech that fits its identity.
 
 - **Music and soundtrack:** there are no plans for licensed or royalty-free music at this stage.
   - Original music the builder makes himself is welcome, even if it's simple, cheesy, or lo-fi. It can sit alongside the original sound effects.
-  - The builder should write a few original music tracks himself, and the player can choose which track plays.
+  - The builder should write **five** original music tracks himself, and the player can choose which track plays.
 - **Sound effects:** whoever builds the game should make original sound effects themselves where they can, for example:
   - UI clicks and button presses
   - Combat sounds
@@ -312,7 +312,7 @@ Every faction starts the game with one free tech that fits its identity.
   - Turn sound effects on or off
   - Volume sliders (for example master, music, effects, and ambient)
   - Picking which music track plays
-- Still to decide: how many tracks to start with, whether tracks play in order, shuffle, or loop, and what else goes in the pause menu (save, load, settings, quit).
+- Still to decide: whether tracks play in order, shuffle, or loop, and what else goes in the pause menu (save, load, settings, quit).
 
 ## Social axes
 
@@ -403,3 +403,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added the "Audio" section (music on hold; the builder makes original sound effects).
 - 2026-10-01: Audio: original music made by the builder (even cheesy or lo-fi) is welcome.
 - 2026-10-01: Audio: the builder writes several original tracks the player can pick from, plus an Escape pause menu with music and sound toggles and volume sliders.
+- 2026-10-01: Audio: set the number of original music tracks to five.
