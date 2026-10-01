@@ -9,10 +9,14 @@ import { difficultyLabel, difficultyProfile, normalizeDifficulty, outsideBandDam
 import { FACTIONS, SOCIAL_OPTIONS, defaultAxes, defaultPersonalities, DIFFICULTIES, PERSONALITY_LEVELS } from '../core/factions';
 import { Game, PROJECTS, projectLabel } from '../core/game';
 import { proposalLabel } from '../core/diplomacy';
-import { biomeClass, terraformFee, terraformTurns } from '../core/rules';
+import { bundleText } from '../core/diplomacy';
+import { eventPromptFor } from '../core/events';
+import { tileYield } from '../core/economy';
+import { biomeClass, formatCalendar, isSea, rushPayments, terraformEnergy, terraformFee, terraformTurns } from '../core/rules';
+import { historyActor } from '../core/tilelog';
 import { formerTechLevel, TECHS, techAvailable, techById } from '../core/tech';
 import { starterDesigns, CHASSIS, WEAPONS, ARMORS, SPECIALS, partKnown } from '../core/parts';
-import { FACTION_IDS, type Difficulty, type DiplomaticOffer, type FactionId, type Proposal, type SaveEnvelope, type SocialAxis, type Stance, type Unit } from '../core/types';
+import { FACTION_IDS, type Difficulty, type DiplomaticOffer, type FactionId, type Proposal, type SaveEnvelope, type SocialAxis, type Stance, type TradeBundle, type Unit } from '../core/types';
 import { migrateSave, SAVE_VERSION } from '../platform/saveMigrate';
 import { createSaveStore, type SaveStore } from '../platform/saves';
 import { createPlatform, type PlatformClient, type UpdateNotice } from '../platform/updates';
@@ -42,6 +46,8 @@ export class App {
   private backdrop = 0;
   private selectedUnit: number | null = null;
   private selectedCity: number | null = null;
+  private focusTile: { x: number; y: number } | null = null;
+  private preferTile = false;
   private reach = new Set<string>();
   private profileId: FactionId = 'helm';
   private profileReturn: Screen = 'menu';
@@ -77,6 +83,12 @@ export class App {
         showRecap: () => this.debugRecap(),
         showPortraits: () => this.showPortraitSheet(),
         seedDiplomacyOffer: () => this.seedDiplomacyOffer(),
+        showDefeat: () => this.debugDefeat(),
+        showTrade: () => this.debugTrade(),
+        showEvent: () => this.debugEvent(),
+        showTransport: () => this.debugTransport(),
+        showMidgame: () => this.debugMidgame(),
+        finishTerraform: () => this.debugFinishTerraform(),
         state: () => this.game?.serialize() ?? null,
         tilePoint: (x: number, y: number) => this.map?.clientPoint(x, y) ?? null,
         showUpdateBanner: () => this.previewUpdate(),
@@ -128,7 +140,7 @@ export class App {
             <p class="muted" data-testid="difficulty-blurb">${esc(difficultyProfile(this.setup.difficulty).blurb)}</p>
           </div>
           <label class="row"><input type="checkbox" data-setting="allied" ${this.setup.allied ? 'checked' : ''}/> Allied Victory</label>
-          <label class="row"><input type="checkbox" data-setting="events" ${this.setup.events ? 'checked' : ''}/> Random events (saved, not fired in this build)</label>
+          <label class="row"><input type="checkbox" data-setting="events" ${this.setup.events ? 'checked' : ''}/> Random events</label>
           <label class="row" data-testid="update-check-toggle"><input type="checkbox" data-setting="updates" ${this.updateCheck ? 'checked' : ''}/> Check for updates when Proxima starts</label>
           <div class="stack">
             <button class="btn primary" data-action="play-intro" data-testid="play-intro">Play Introduction</button>
@@ -271,7 +283,7 @@ export class App {
         this.stage.querySelector('#map-canvas') as HTMLCanvasElement,
         () => this.game!,
         () => ({ unitId: this.selectedUnit, cityId: this.selectedCity, reach: this.reach }),
-        (x, y) => this.onTile(x, y),
+        (x, y, mods) => this.onTile(x, y, mods),
         (label) => {
           const node = this.stage.querySelector('#hover-label');
           if (node) node.textContent = label;
@@ -291,6 +303,7 @@ export class App {
   private refreshGame() {
     const game = this.game;
     if (!game || !this.gameMounted) return;
+    game.noteSight();
     const faction = game.state.factions[game.state.playerFaction];
     const rates = game.ratesFor(game.state.playerFaction);
     const cal = game.calendar();
@@ -306,6 +319,7 @@ export class App {
         <div class="chip"><span>Research</span><b>${research ? `${faction.researchPoints}/${research.cost}` : faction.researchPoints}</b></div>
         <div class="chip"><span>Credits</span><b>${faction.credits}</b></div>
       </div>
+      <button class="btn small ${this.map?.showTerraform ? 'on' : ''}" data-action="toggle-terraform-overlay" data-testid="terraform-overlay">Terraform</button>
       <button class="btn small" data-action="open-diplomacy" data-testid="open-diplomacy">Diplomacy</button>
       <button class="btn small" data-action="open-spies" data-testid="open-spies">Spies</button>
       <button class="btn primary" data-action="end-turn" data-testid="end-turn">End Turn</button>`;
@@ -314,7 +328,7 @@ export class App {
     this.stage.querySelector('#left')!.innerHTML = `
       <h3>Forces</h3>
       <div data-testid="unit-list">
-        ${units.map((unit) => `<button class="unit-btn ${unit.id === this.selectedUnit ? 'on' : ''}" data-action="select-unit" data-id="${unit.id}" data-testid="unit-${unit.id}" data-role="${unit.role}">${esc(unit.name)} · ${unit.hp}/${unit.maxHp} · ${unit.movesLeft} mp${unit.searching ? ' · search' : ''}${unit.terraform ? ' · working' : ''}</button>`).join('') || '<p class="muted">No units.</p>'}
+        ${units.map((unit) => `<button class="unit-btn ${unit.id === this.selectedUnit ? 'on' : ''}" data-action="select-unit" data-id="${unit.id}" data-testid="unit-${unit.id}" data-role="${unit.role}">${esc(unit.name)} · ${unit.hp}/${unit.maxHp} · ${unit.movesLeft} mp${unit.searching ? ' · search' : ''}${unit.terraform ? ' · working' : ''}${unit.aboard != null ? ' · aboard' : ''}${unit.cargo.length ? ` · carrying ${unit.cargo.length}` : ''}</button>`).join('') || '<p class="muted">No units.</p>'}
       </div>
       <h3>Cities</h3>
       <div data-testid="city-list">
@@ -328,22 +342,32 @@ export class App {
       for (const [key, step] of game.reachable(this.selectedUnit)) if (step.cost > 0) this.reach.add(key);
     }
     if (game.state.winner && !this.overlay.innerHTML) this.openVictory();
+    else if (game.state.playerDefeated && !this.overlay.innerHTML) this.openDefeat();
+    else if (game.state.events.prompt && !this.overlay.innerHTML) this.openEvent();
   }
 
   private inspector(): string {
     const game = this.game!;
+    if (this.preferTile && this.focusTile) return this.tilePanel();
     const unit = this.selectedUnit != null ? game.unitById(this.selectedUnit) : undefined;
     const city = this.selectedCity != null ? game.state.cities.find((entry) => entry.id === this.selectedCity) : undefined;
     if (unit && unit.factionId === game.state.playerFaction) {
       const foe = this.adjacentFoe(unit);
+      const riders = unit.cargo.map((id) => game.unitById(id)).filter((entry): entry is Unit => !!entry);
+      const boarding = unit.transport > 0 ? game.boardableUnits(unit.id) : [];
+      const drops = unit.cargo.length ? game.coastalDrops(unit.id) : [];
       return `
         <h3>${esc(unit.name)}</h3>
-        <p class="muted">${esc(unit.role)} · atk ${unit.attack} · def ${unit.defense} · move ${unit.movesLeft}/${unit.maxMoves}</p>
+        <p class="muted">${esc(unit.role)} · atk ${unit.attack} · def ${unit.defense} · move ${unit.movesLeft}/${unit.maxMoves}${unit.transport ? ` · transport ${unit.cargo.length}/${unit.transport}` : ''}</p>
+        ${unit.aboard != null ? '<p>Aboard a ship. It unloads on a coastal tile.</p>' : ''}
         <div class="stack">
           ${unit.canFound ? `<button class="btn primary" data-action="found-city" data-testid="found-city">Found city</button>` : ''}
           ${unit.canTerraform ? `<button class="btn" data-action="terraform-open" data-testid="terraform-open">Terraform this tile</button>` : ''}
+          <button class="btn" data-action="show-tile" data-testid="show-tile">This tile</button>
           <button class="btn" data-action="toggle-search" data-testid="search-toggle">${unit.searching ? 'Stop searching' : 'Search'}</button>
           ${foe ? `<button class="btn danger" data-action="attack" data-testid="attack-btn">Attack ${esc(foe.name)}</button>` : ''}
+          ${boarding.map((other) => `<button class="btn" data-action="load-unit" data-transport="${unit.id}" data-passenger="${other.id}" data-testid="load-unit">Load ${esc(other.name)}</button>`).join('')}
+          ${riders.flatMap((rider) => drops.slice(0, 3).map((drop) => `<button class="btn" data-action="unload-unit" data-transport="${unit.id}" data-passenger="${rider.id}" data-x="${drop.x}" data-y="${drop.y}" data-testid="unload-unit">Unload ${esc(rider.name)} at ${drop.x},${drop.y}</button>`)).join('')}
         </div>
         ${unit.terraform ? `<p>Working on ${esc(projectLabel(unit.terraform.project))}, ${unit.terraform.turnsLeft} turns left.</p>` : ''}
         <div class="stack">
@@ -365,15 +389,84 @@ export class App {
             ${designs.map((design) => `<option value="${design.id}" ${city.production?.designId === design.id ? 'selected' : ''}>${esc(design.name)} (${design.cost})</option>`).join('')}
           </select>
         </label>
-        ${city.production ? `<p>${city.production.progress} / ${city.production.cost}</p><button class="btn" data-action="rush" data-city="${city.id}" data-testid="rush-buy">Rush-buy</button>` : ''}
-        <p class="muted">Income is 1 credit per population plus 2, before social bonuses.</p>`;
+        ${city.production ? `<p>${city.production.progress} / ${city.production.cost}</p><button class="btn" data-action="rush" data-city="${city.id}" data-testid="rush-buy">Rush-buy (${rushPayments(city.production.cost - city.production.progress).credits} credits + stockpile)</button>` : ''}
+        <p class="muted">Income is 1 credit per population plus 2, before social bonuses.</p>
+        <button class="btn" data-action="show-tile" data-testid="show-tile">This tile</button>`;
     }
-    return `<h3>${esc(FACTIONS[game.state.playerFaction].name)}</h3><p class="muted">Select a unit or a city. The gold lines on the map are the edges of the twilight band. Outside it, units take ${outsideBandDamage(game.state.setup.difficulty)} damage a turn until Sealed Habitats / Geothermal Wells.</p>`;
+    if (this.focusTile) return this.tilePanel();
+    return `<h3>${esc(FACTIONS[game.state.playerFaction].name)}</h3><p class="muted">Select a unit, a city, or a map tile. The gold lines on the map are the edges of the twilight band. Outside it, units take ${outsideBandDamage(game.state.setup.difficulty)} damage a turn until Sealed Habitats / Geothermal Wells.</p>`;
   }
 
-  private onTile(x: number, y: number) {
+  private tilePanel(): string {
+    const game = this.game!;
+    const focus = this.focusTile;
+    if (!focus) return '';
+    const view = game.tileView(focus.x, focus.y);
+    const back = this.selectedUnit != null || this.selectedCity != null
+      ? `<button class="btn" data-action="hide-tile" data-testid="hide-tile">Back</button>`
+      : '';
+    if (view.kind === 'hidden') {
+      return `<div data-testid="tile-panel"><h3>Unexplored</h3><p>This square is still hidden.</p>${back}</div>`;
+    }
+    if (view.kind === 'forgotten') {
+      return `<div data-testid="tile-panel"><h3>Remembered tile</h3><p data-testid="tile-stale">You have seen this square, but Proxima has no record of what was last here. It may have changed.</p>${back}</div>`;
+    }
+    const sight = view.sight!;
+    const asTile = (improvement: typeof sight.improvement) => ({
+      x: focus.x,
+      y: focus.y,
+      zone: sight.zone,
+      terrain: sight.terrain,
+      resource: sight.resource,
+      improvement,
+      livable: sight.livable,
+      road: sight.road,
+      scarred: sight.scarred,
+      history: [],
+    });
+    const bare = tileYield(asTile(null));
+    const now = tileYield(asTile(sight.improvement));
+    const yieldText = (['minerals', 'nutrients', 'energy', 'research'] as const)
+      .map((key) => (now[key] === bare[key] ? `${key} ${now[key]}` : `${key} ${bare[key]} → ${now[key]}`))
+      .join(', ');
+    const zone = sight.zone === 'twilight' ? 'Twilight band' : sight.zone === 'day' ? 'Day side' : 'Night side';
+    const lines = view.lines?.length ? view.lines.join(', ') : 'No terraform improvements';
+    const stale = view.kind === 'stale'
+      ? `<p data-testid="tile-stale">Last seen. This may be out of date.</p>`
+      : '';
+    const working = sight.working
+      ? `<p data-testid="tile-working">${esc(sight.working.unitName)} is building ${esc(projectLabel(sight.working.project))}, ${sight.working.turnsLeft} turns left.</p>`
+      : '';
+    const history = sight.history.length
+      ? sight.history.map((entry) => `<li>${esc(formatCalendar(entry.round))}: ${esc(historyActor(entry, (id) => FACTIONS[id].name))} — ${esc(entry.change)}</li>`).join('')
+      : '<li>No terraform history yet.</li>';
+    return `
+      <div data-testid="tile-panel">
+        <h3>${focus.x}, ${focus.y}</h3>
+        ${stale}
+        <p data-testid="tile-state">${esc(zone)} · ${esc(sight.terrain.replace('-', ' '))}${sight.resource ? ` · ${esc(sight.resource)}` : ''}</p>
+        <p data-testid="tile-improvements">${esc(lines)}</p>
+        <p data-testid="tile-yields">${esc(yieldText)}</p>
+        ${working}
+        <h3>History</h3>
+        <ul data-testid="tile-history">${history}</ul>
+        ${back}
+      </div>`;
+  }
+
+  private openTile(x: number, y: number) {
+    this.focusTile = { x, y };
+    this.preferTile = true;
+    this.refreshGame();
+  }
+
+  private onTile(x: number, y: number, mods: { shift: boolean; alt: boolean } = { shift: false, alt: false }) {
     const game = this.game;
     if (!game) return;
+    if (mods.shift || mods.alt) {
+      this.openTile(x, y);
+      return;
+    }
     const selected = this.selectedUnit != null ? game.unitById(this.selectedUnit) : undefined;
     if (selected && this.reach.has(`${x},${y}`)) {
       const moved = game.moveUnit(selected.id, x, y);
@@ -389,10 +482,12 @@ export class App {
         return;
       }
     }
-    const own = game.state.units.find((unit) => unit.x === x && unit.y === y && unit.factionId === game.state.playerFaction);
+    const own = game.state.units.find((unit) => unit.x === x && unit.y === y && unit.factionId === game.state.playerFaction && unit.aboard == null);
     if (own) {
       this.selectedUnit = own.id;
       this.selectedCity = null;
+      this.focusTile = { x, y };
+      this.preferTile = false;
       this.refreshGame();
       return;
     }
@@ -400,8 +495,12 @@ export class App {
     if (city && city.factionId === game.state.playerFaction) {
       this.selectedCity = city.id;
       this.selectedUnit = null;
+      this.focusTile = { x, y };
+      this.preferTile = false;
       this.refreshGame();
+      return;
     }
+    this.openTile(x, y);
   }
 
   private async onClick(event: MouseEvent) {
@@ -468,10 +567,27 @@ export class App {
     else if (action === 'select-unit') {
       this.selectedUnit = Number(node.dataset.id);
       this.selectedCity = null;
+      this.preferTile = false;
+      const unit = this.game?.unitById(this.selectedUnit);
+      if (unit) this.focusTile = { x: unit.x, y: unit.y };
       this.refreshGame();
     } else if (action === 'select-city') {
       this.selectedCity = Number(node.dataset.id);
       this.selectedUnit = null;
+      this.preferTile = false;
+      const city = this.game?.state.cities.find((entry) => entry.id === this.selectedCity);
+      if (city) this.focusTile = { x: city.x, y: city.y };
+      this.refreshGame();
+    } else if (action === 'show-tile') {
+      const unit = this.selectedUnit != null ? this.game?.unitById(this.selectedUnit) : undefined;
+      const city = this.selectedCity != null ? this.game?.state.cities.find((entry) => entry.id === this.selectedCity) : undefined;
+      const at = unit ?? city ?? this.focusTile;
+      if (at) this.openTile(at.x, at.y);
+    } else if (action === 'hide-tile') {
+      this.preferTile = false;
+      this.refreshGame();
+    } else if (action === 'toggle-terraform-overlay') {
+      if (this.map) this.map.showTerraform = !this.map.showTerraform;
       this.refreshGame();
     } else if (action === 'found-city' && this.selectedUnit != null) this.act(() => this.game!.foundCity(this.selectedUnit!), 'found');
     else if (action === 'terraform-open') this.openTerraform();
@@ -522,6 +638,15 @@ export class App {
     else if (action === 'research-pick') this.act(() => this.game!.chooseResearch(node.dataset.tech ?? ''), 'click');
     else if (action === 'save-design') this.saveDesign();
     else if (action === 'rush') this.act(() => this.game!.rushBuy(Number(node.dataset.city)), 'click');
+    else if (action === 'open-trade') this.openTrade(node.dataset.target as FactionId);
+    else if (action === 'send-trade') this.sendTrade(node.dataset.target as FactionId);
+    else if (action === 'event-choice') {
+      this.act(() => this.game!.chooseEvent(node.dataset.choice ?? ''), 'click');
+    }
+    else if (action === 'load-unit') this.act(() => this.game!.loadUnit(Number(node.dataset.transport), Number(node.dataset.passenger)), 'click');
+    else if (action === 'unload-unit') {
+      this.act(() => this.game!.unloadUnit(Number(node.dataset.transport), Number(node.dataset.passenger), Number(node.dataset.x), Number(node.dataset.y)), 'click');
+    }
     else if (action === 'close') this.closeOverlay();
     else if (action === 'resume') this.closeOverlay();
     else if (action === 'pause-save') await this.runSave(() => this.openSave('manual'), 'Could not open the save list.');
@@ -640,7 +765,7 @@ export class App {
           <h2>${esc(preview.attackerName)} against ${esc(preview.defenderName)}</h2>
           <p data-testid="combat-odds" style="font-family:var(--display);font-size:42px;color:var(--gold)">${preview.percent}%</p>
           <p class="muted">Chance the attacker wins. Terrain ${esc(preview.terrain.replace('-', ' '))} modifies defense by ${preview.terrainMod >= 0 ? '+' : ''}${Math.round(preview.terrainMod * 100)}%.</p>
-          ${preview.navalBombardment ? '<p>A ship can weaken a city. It cannot capture one.</p>' : ''}
+          ${preview.city && preview.navalBombardment ? '<p>A ship can weaken a city. It cannot capture one.</p>' : ''}
           <div class="row">
             <button class="btn danger" data-action="combat-confirm" data-testid="combat-confirm" data-attacker="${attackerId}" data-x="${x}" data-y="${y}">Attack</button>
             <button class="btn" data-action="combat-cancel" data-testid="combat-cancel">Cancel</button>
@@ -659,12 +784,13 @@ export class App {
     this.overlay.innerHTML = `
       <div class="modal-back"><div class="modal narrow" data-testid="terraform-menu">
         <h2>Terraform</h2>
-        <p class="muted">Fee ${fee} credits on this ${esc(biomeClass(tile))} tile. Tech level ${level}. One terraformer to a tile, and they can work anywhere.</p>
+        <p class="muted">Fee ${fee} credits plus energy on this ${esc(biomeClass(tile))} tile. Tech level ${level}. Only atmosphere work makes a tile livable. One terraformer to a tile, and they can work anywhere.</p>
         <div class="stack">
           ${PROJECTS.map((project) => {
             const turns = terraformTurns(project.id, level);
             const locked = project.id === 'atmosphere' && !game.state.factions[unit.factionId].techs.includes('atmosphere');
-            return `<button class="btn" data-action="terraform-pick" data-project="${project.id}" data-testid="terraform-${project.id}" ${locked ? 'disabled' : ''}>${esc(project.label)} · ${turns} turns · ${esc(project.detail)}</button>`;
+            const energy = terraformEnergy(project.id);
+            return `<button class="btn" data-action="terraform-pick" data-project="${project.id}" data-testid="terraform-${project.id}" ${locked ? 'disabled' : ''}>${esc(project.label)} · ${turns} turns · ${energy} energy · ${esc(project.detail)}</button>`;
           }).join('')}
         </div>
         <button class="btn" data-action="close">Close</button>
@@ -686,6 +812,9 @@ export class App {
         from: offer.from,
         fromName: FACTIONS[offer.from].name,
         kind: offer.kind,
+        label: offer.kind === 'trade'
+          ? `${bundleText(offer.trade?.give ?? { credits: 0, minerals: 0, nutrients: 0, energy: 0, tech: null })} for ${bundleText(offer.trade?.want ?? { credits: 0, minerals: 0, nutrients: 0, energy: 0, tech: null })}`
+          : proposalLabel(offer.kind),
       })),
       focus: {
         factionId: focus,
@@ -973,15 +1102,21 @@ export class App {
   private onKey(event: KeyboardEvent) {
     if (event.key === 'Escape') {
       if (this.screen === 'game') {
+        if (this.game?.state.winner || this.game?.state.playerDefeated) return;
+        if (this.game?.state.events.prompt && this.overlay.querySelector('[data-testid="event-popup"]')) return;
         if (this.overlay.innerHTML) this.closeOverlay();
         else this.openPause();
       } else if (this.overlay.querySelector('[data-testid="audio-panel"]')) this.closeOverlay();
       return;
     }
-    if (this.screen !== 'game' || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
-    if (event.key.toLowerCase() !== 'm') return;
     const tag = event.target instanceof HTMLElement ? event.target.tagName : '';
     if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    if ((event.key === 't' || event.key === 'T') && this.screen === 'game' && this.map?.hover && !this.overlay.innerHTML && !event.repeat) {
+      this.openTile(this.map.hover.x, this.map.hover.y);
+      return;
+    }
+    if (this.screen !== 'game' || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (event.key.toLowerCase() !== 'm') return;
     event.preventDefault();
     this.audio.toggleMuted();
     this.syncSoundscape();
@@ -1020,10 +1155,11 @@ export class App {
     const game = this.game!;
     const names = game.state.winner?.factions.map((id) => FACTIONS[id].name).join(', ');
     this.overlay.innerHTML = `
-      <div class="modal-back"><div class="modal narrow">
+      <div class="modal-back" data-testid="victory-dialog"><div class="modal narrow">
         <h2>${game.state.winner?.factions.includes(game.state.playerFaction) ? 'Victory' : 'Defeat'}</h2>
         <p>${esc(names ?? '')} ${game.state.winner?.kind === 'alliance' ? 'share the victory.' : 'holds every city.'}</p>
         <button class="btn primary" data-action="view-recap" data-testid="view-recap">Social recap</button>
+        <button class="btn" data-action="back-menu" data-testid="end-main-menu">Main menu</button>
       </div></div>`;
   }
 
@@ -1039,6 +1175,221 @@ export class App {
         <p class="muted">${esc(leader.line)}</p>
       </div>
     </div>`;
+  }
+
+  private openDefeat() {
+    this.overlay.innerHTML = `
+      <div class="modal-back" data-testid="defeat-screen"><div class="modal narrow">
+        <p class="eyebrow">The band goes on without you</p>
+        <h2>Defeat</h2>
+        <p>${esc(FACTIONS[this.game!.state.playerFaction].name)} has no cities left, and no colony pod that can found another.</p>
+        <div class="stack">
+          <button class="btn primary" data-action="view-recap" data-testid="view-recap">Social recap</button>
+          <button class="btn" data-action="back-menu" data-testid="defeat-menu">Main menu</button>
+        </div>
+      </div></div>`;
+  }
+
+  private openEvent() {
+    const prompt = this.game?.state.events.prompt;
+    if (!prompt) return;
+    this.overlay.innerHTML = `
+      <div class="modal-back" data-testid="event-popup"><div class="modal narrow">
+        <p class="eyebrow">Random event</p>
+        <h2>${esc(prompt.kind.replace('-', ' '))}</h2>
+        <p>${esc(prompt.text)}</p>
+        <div class="stack">
+          ${prompt.choices.map((choice) => `<button class="btn" data-action="event-choice" data-choice="${choice.id}" data-testid="event-${choice.id}">${esc(choice.label)}</button>`).join('')}
+        </div>
+      </div></div>`;
+  }
+
+  private openTrade(target: FactionId) {
+    const game = this.game!;
+    const me = game.state.factions[game.state.playerFaction];
+    const them = game.state.factions[target];
+    const mine = me.techs.filter((tech) => !them.techs.includes(tech));
+    const theirs = them.techs.filter((tech) => !me.techs.includes(tech));
+    const techOptions = (ids: string[]) => `<option value="">No technology</option>${ids.map((id) => `<option value="${id}">${esc(techById(id)?.name ?? id)}</option>`).join('')}`;
+    this.overlay.innerHTML = `
+      <div class="modal-back" data-testid="trade-modal"><div class="modal narrow">
+        <h2>Trade with ${esc(FACTIONS[target].name)}</h2>
+        <p class="muted">You have ${me.credits} credits, ${me.minerals} minerals, ${me.nutrients} nutrients, ${me.energy} energy. They have ${them.credits} credits, ${them.minerals} minerals, ${them.nutrients} nutrients, ${them.energy} energy.</p>
+        <label>You give <select id="trade-give" data-testid="trade-give"><option value="minerals">Minerals</option><option value="nutrients">Nutrients</option><option value="energy">Energy</option><option value="credits">Credits</option></select> <input id="trade-give-amount" type="number" min="0" value="8"/></label>
+        <label>You ask <select id="trade-want"><option value="energy">Energy</option><option value="minerals">Minerals</option><option value="nutrients">Nutrients</option><option value="credits">Credits</option></select> <input id="trade-want-amount" type="number" min="0" value="6"/></label>
+        <label>Technology you give <select id="trade-give-tech">${techOptions(mine)}</select></label>
+        <label>Technology you ask <select id="trade-want-tech">${techOptions(theirs)}</select></label>
+        <div class="row">
+          <button class="btn primary" data-action="send-trade" data-target="${target}" data-testid="send-trade">Send offer</button>
+          <button class="btn" data-action="open-diplomacy">Back</button>
+        </div>
+      </div></div>`;
+  }
+
+  private sendTrade(target: FactionId) {
+    const game = this.game;
+    if (!game) return;
+    const giveKind = (document.querySelector('#trade-give') as HTMLSelectElement | null)?.value ?? 'minerals';
+    const wantKind = (document.querySelector('#trade-want') as HTMLSelectElement | null)?.value ?? 'energy';
+    const giveAmount = Number((document.querySelector('#trade-give-amount') as HTMLInputElement | null)?.value) || 0;
+    const wantAmount = Number((document.querySelector('#trade-want-amount') as HTMLInputElement | null)?.value) || 0;
+    const giveTech = (document.querySelector('#trade-give-tech') as HTMLSelectElement | null)?.value || null;
+    const wantTech = (document.querySelector('#trade-want-tech') as HTMLSelectElement | null)?.value || null;
+    const blank = (): TradeBundle => ({ credits: 0, minerals: 0, nutrients: 0, energy: 0, tech: null });
+    const give = blank();
+    const want = blank();
+    if (giveKind === 'credits' || giveKind === 'minerals' || giveKind === 'nutrients' || giveKind === 'energy') give[giveKind] = giveAmount;
+    if (wantKind === 'credits' || wantKind === 'minerals' || wantKind === 'nutrients' || wantKind === 'energy') want[wantKind] = wantAmount;
+    give.tech = giveTech;
+    want.tech = wantTech;
+    const result = game.proposeTrade(target, give, want);
+    this.toast(result.message);
+    if (result.ok) this.openDiplomacy();
+  }
+
+  private debugDefeat() {
+    const game = this.game;
+    if (!game) return;
+    const player = game.state.playerFaction;
+    game.state.cities = game.state.cities.filter((city) => city.factionId !== player);
+    game.state.units = game.state.units.filter((unit) => unit.factionId !== player);
+    game.state.playerDefeated = true;
+    this.overlay.innerHTML = '';
+    this.refreshGame();
+  }
+
+  private debugTrade() {
+    const game = this.game;
+    if (!game) return;
+    const from = FACTION_IDS.find((id) => id !== game.state.playerFaction) ?? 'verdantia';
+    game.state.offers.push({
+      id: game.state.nextOfferId++,
+      from,
+      to: game.state.playerFaction,
+      kind: 'trade',
+      trade: {
+        give: { credits: 0, minerals: 12, nutrients: 0, energy: 0, tech: null },
+        want: { credits: 0, minerals: 0, nutrients: 0, energy: 8, tech: null },
+      },
+    });
+    this.openDiplomacy();
+  }
+
+  private debugEvent() {
+    const game = this.game;
+    if (!game) return;
+    game.state.events.prompt = eventPromptFor('solar-flare', game.state.events.nextId++);
+    this.overlay.innerHTML = '';
+    this.openEvent();
+  }
+
+  private debugTransport() {
+    const game = this.game;
+    if (!game) return;
+    const player = game.state.playerFaction;
+    const passenger = game.unitsOf(player).find((unit) => unit.domain === 'land' && unit.aboard == null);
+    if (!passenger) return;
+    let coast: { x: number; y: number; sx: number; sy: number } | null = null;
+    for (let y = 0; y < game.state.height && !coast; y++) {
+      for (let x = 0; x < game.state.width && !coast; x++) {
+        if (isSea(game.tile(x, y).terrain)) continue;
+        for (let dy = -1; dy <= 1 && !coast; dy++) {
+          for (let dx = -1; dx <= 1 && !coast; dx++) {
+            if (!dx && !dy) continue;
+            const sx = x + dx;
+            const sy = y + dy;
+            if (!game.inBounds(sx, sy) || !isSea(game.tile(sx, sy).terrain)) continue;
+            if (game.state.units.some((unit) => unit.x === sx && unit.y === sy && unit.aboard == null)) continue;
+            coast = { x, y, sx, sy };
+          }
+        }
+      }
+    }
+    if (!coast) return;
+    passenger.x = coast.x;
+    passenger.y = coast.y;
+    passenger.aboard = null;
+    const design = starterDesigns().find((entry) => entry.transport > 0)!;
+    const ship: Unit = {
+      id: game.state.nextUnitId++,
+      factionId: player,
+      designId: design.id,
+      name: design.name,
+      x: coast.sx,
+      y: coast.sy,
+      hp: design.hp,
+      maxHp: design.hp,
+      movesLeft: design.moves,
+      maxMoves: design.moves,
+      attack: design.attack,
+      defense: design.defense,
+      vision: design.vision,
+      domain: design.domain,
+      canFound: false,
+      canTerraform: false,
+      searchBonus: 0,
+      role: design.role,
+      searching: false,
+      terraform: null,
+      transport: design.transport,
+      cargo: [],
+      aboard: null,
+    };
+    game.state.units.push(ship);
+    game.state.whoseTurn = player;
+    game.loadUnit(ship.id, passenger.id);
+    this.selectedUnit = ship.id;
+    this.overlay.innerHTML = '';
+    this.refreshGame();
+  }
+
+  private debugFinishTerraform(): { x: number; y: number } | null {
+    const game = this.game;
+    if (!game) return null;
+    const unit = game.state.units.find((entry) => entry.factionId === game.state.playerFaction && entry.terraform);
+    if (!unit) return null;
+    game.advanceTerraform(unit.id);
+    this.focusTile = { x: unit.x, y: unit.y };
+    this.preferTile = true;
+    this.refreshGame();
+    return { x: unit.x, y: unit.y };
+  }
+
+  private debugMidgame() {
+    const game = this.game;
+    if (!game) return;
+    const rivals = FACTION_IDS.filter((id) => id !== game.state.playerFaction);
+    for (const id of rivals) {
+      let added = 0;
+      for (let y = 3; y < game.state.height - 2 && added < 2; y += 6) {
+        const x = CONFIG.map.bandStart + ((y + added * 3) % (CONFIG.map.bandEnd - CONFIG.map.bandStart + 1));
+        const tile = game.tile(x, y);
+        if (isSea(tile.terrain) || tile.scarred) continue;
+        const tooClose = game.state.cities.some(
+          (city) => Math.max(Math.abs(city.x - x), Math.abs(city.y - y)) < CONFIG.city.minDistance,
+        );
+        if (tooClose) continue;
+        tile.livable = true;
+        tile.zone = 'twilight';
+        game.state.cities.push({
+          id: game.state.nextCityId++,
+          name: `${FACTIONS[id].name} Outpost ${added + 1}`,
+          factionId: id,
+          x,
+          y,
+          population: 3,
+          nutrientStore: 6,
+          starveTurns: 0,
+          defenseHp: CONFIG.city.militiaHp,
+          production: null,
+        });
+        added++;
+      }
+    }
+    game.state.explored[game.state.playerFaction].fill(true);
+    this.overlay.innerHTML = '';
+    this.map?.centerOn(Math.floor((CONFIG.map.bandStart + CONFIG.map.bandEnd) / 2), Math.floor(game.state.height / 2));
+    this.refreshGame();
   }
 
   private factionButton(id: FactionId) {
@@ -1165,6 +1516,9 @@ export class App {
       role: 'military',
       searching: false,
       terraform: null,
+      transport: 0,
+      cargo: [],
+      aboard: null,
     };
     game.state.units.push(unit);
     game.relation(game.state.playerFaction, foe).stance = 'war';
@@ -1174,6 +1528,8 @@ export class App {
       }
     }
     this.selectedUnit = scout.id;
+    this.selectedCity = null;
+    this.preferTile = false;
     this.refreshGame();
     return { x, y, name: unit.name };
   }
@@ -1455,7 +1811,7 @@ export interface DiplomacyFactionRow {
 }
 
 export interface DiplomacyMarkup {
-  offers: { id: number; from: FactionId; fromName: string; kind: Proposal }[];
+  offers: { id: number; from: FactionId; fromName: string; kind: Proposal | 'trade'; label: string }[];
   focus: { factionId: FactionId; factionName: string; leader: string; title: string; greeting: string };
   factions: DiplomacyFactionRow[];
 }
@@ -1472,9 +1828,9 @@ const DIPLOMACY_ACTIONS: [string, string][] = [
 export function diplomacyMarkup(view: DiplomacyMarkup): string {
   const offers = view.offers
     .map(
-      (offer) => `<p class="offer-line" data-testid="diplomacy-offer">
+      (offer) => `<p class="offer-line" data-testid="${offer.kind === 'trade' ? 'trade-offer' : 'diplomacy-offer'}">
         <canvas data-emblem="${offer.from}" width="64" height="64"></canvas>
-        <span>${esc(offer.fromName)} offers ${esc(proposalLabel(offer.kind))}.</span>
+        <span>${esc(offer.fromName)} offers ${esc(offer.label)}.</span>
         <button class="btn small" data-action="accept-offer" data-id="${offer.id}">Accept</button>
         <button class="btn small" data-action="reject-offer" data-id="${offer.id}">Reject</button>
       </p>`,
@@ -1492,6 +1848,7 @@ export function diplomacyMarkup(view: DiplomacyMarkup): string {
         <p class="muted">Standing: ${esc(standing)}. Grievance ${row.memory}. Research treaty ${row.research ? 'yes' : 'no'}. Exploration treaty ${row.exploration ? 'yes' : 'no'}.</p>
         <div class="row">
           ${DIPLOMACY_ACTIONS.map(([kind, label]) => `<button class="btn small" data-action="propose" data-target="${row.id}" data-kind="${kind}">${esc(label)}</button>`).join('')}
+          <button class="btn small" data-action="open-trade" data-target="${row.id}" data-testid="trade-${row.id}">Trade</button>
         </div>
       </section>`;
     })

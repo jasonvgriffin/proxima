@@ -1,11 +1,13 @@
 import { CONFIG } from '../config';
-import { runAi } from './ai';
+import { chooseDesign, runAi, wantsToFight } from './ai';
 import { crisisTuning, economyRates, normalizeDifficulty, outsideBandDamage, scaleStarting } from './difficulty';
 import {
   acceptanceChance,
+  acceptsTrade,
   applyWar,
   axisOverlap,
   blocksAttack,
+  bundleText,
   canOfferTreaty,
   canSetStance,
   downgradeStance,
@@ -14,13 +16,15 @@ import {
   proposalLabel,
   sharesMaps,
   sharesResearch,
+  tradeValue,
 } from './diplomacy';
+import { blankEvents, EVENT_KINDS, eventPromptFor, eventWarningText } from './events';
 import { frameBlame, missionCaught } from './spies';
 import { socialScale, tileYield, withTechFlats, type Yields } from './economy';
 import { FACTIONS, defaultAxes, defaultPersonalities, socialOption } from './factions';
 import { recordSocialPresent, seedAxisDrift } from './history';
 import { generateMap } from './mapgen';
-import { blockedKeys, reachable as pathReachable } from './path';
+import { blockedKeys, findPath, reachable as pathReachable } from './path';
 import { starterDesigns, designById, compileDesign, type DesignDraft } from './parts';
 import { makeRng, type Rng } from './rng';
 import {
@@ -33,12 +37,16 @@ import {
   emptyExplored,
   evaluateVictory,
   formatCalendar,
+  factionEliminated,
   hasSealedHabitats,
+  unitUpkeep,
   isSea,
   outsideBandOutcome,
   projectAllowed,
-  rushBuyCost,
+  projectMakesLivable,
+  rushPayments,
   shouldAutosave,
+  terraformEnergy,
   terraformFee,
   terraformTurns,
   terrainDefenseMod,
@@ -46,6 +54,7 @@ import {
   winnerHpLoss,
 } from './rules';
 import { formerTechLevel, techAvailable, techById, startingTechs } from './tech';
+import { appendHistory, ensureTileRecords, improvementLines, projectNoun, sightFrom } from './tilelog';
 import type {
   ActionResult,
   City,
@@ -59,9 +68,12 @@ import type {
   SocialAxes,
   SocialAxis,
   Tile,
+  TileSight,
+  TradeBundle,
   Unit,
   UnitDesign,
 } from './types';
+import { FACTION_IDS } from './types';
 
 export interface AttackPreview {
   ok: boolean;
@@ -75,6 +87,14 @@ export interface AttackPreview {
   attackerName: string;
   city: boolean;
   navalBombardment: boolean;
+}
+
+export interface TileView {
+  kind: 'hidden' | 'forgotten' | 'live' | 'stale';
+  x: number;
+  y: number;
+  sight?: TileSight;
+  lines?: string[];
 }
 
 export interface NewGameOptions {
@@ -167,6 +187,10 @@ export class Game {
       nextOfferId: 1,
       axisHistory: [{ round: 1, axes: { ...factions[opts.player].axes } }],
       axisDrift: seedAxisDrift(1, factions[opts.player].axes),
+      playerDefeated: false,
+      eliminated: [],
+      events: blankEvents(),
+      sight: {},
     };
     const game = new Game(state);
     const designs = starterDesigns();
@@ -177,10 +201,11 @@ export class Game {
       for (const design of [colony, former, scout]) game.spawn(start.faction, design, start.x, start.y, false);
     }
     if (setup.randomEvents) {
-      game.say('Random events are switched on. This test build saves that choice and does not fire events yet.');
+      game.say('Random events are on. They follow no schedule, and a warning is not guaranteed.');
     }
     game.say(`${FACTIONS[opts.player].name} wakes in the twilight band. Found a city, then set a terraformer to work.`);
     game.beginTurn(opts.player);
+    game.noteSight();
     game.commit();
     return game;
   }
@@ -197,11 +222,28 @@ export class Game {
     } else {
       copy.setup.difficulty = normalizeDifficulty(copy.setup.difficulty);
     }
+    if (!copy.events) copy.events = blankEvents();
+    if (!copy.eliminated) copy.eliminated = [];
+    if (copy.playerDefeated == null) copy.playerDefeated = false;
+    ensureTileRecords(copy);
+    for (const unit of copy.units) {
+      if (unit.transport == null) unit.transport = 0;
+      if (!unit.cargo) unit.cargo = [];
+      if (unit.aboard == null) unit.aboard = null;
+    }
+    for (const faction of Object.values(copy.factions)) {
+      for (const design of faction.customDesigns) {
+        if (design.transport == null) design.transport = 0;
+      }
+    }
     recordSocialPresent(copy);
-    return new Game(copy);
+    const game = new Game(copy);
+    game.noteSight();
+    return game;
   }
 
   serialize(): GameState {
+    this.noteSight();
     this.commit();
     return JSON.parse(JSON.stringify(this.state)) as GameState;
   }
@@ -272,9 +314,28 @@ export class Game {
     return designById(designId, this.state.factions[factionId].customDesigns);
   }
 
+  /** Seeded draw. Saved with the game, so events and AI rolls survive a load. */
+  roll(): number {
+    return this.rng.next();
+  }
+
+  route(unitId: number, x: number, y: number): { x: number; y: number }[] | null {
+    const unit = this.unitById(unitId);
+    if (!unit || unit.aboard != null || !this.inBounds(x, y)) return null;
+    return findPath({
+      tiles: this.state.tiles,
+      width: this.state.width,
+      height: this.state.height,
+      origin: unit,
+      goal: { x, y },
+      domain: unit.domain,
+      blocked: blockedKeys(this.state.units, this.state.cities, unit),
+    });
+  }
+
   reachable(unitId: number): Map<string, { cost: number; path: { x: number; y: number }[] }> {
     const unit = this.unitById(unitId);
-    if (!unit || unit.terraform || unit.movesLeft <= 0) return new Map();
+    if (!unit || unit.terraform || unit.movesLeft <= 0 || unit.aboard != null) return new Map();
     return pathReachable({
       tiles: this.state.tiles,
       width: this.state.width,
@@ -307,11 +368,12 @@ export class Game {
     );
     const rates = economyRates(faction.isHuman, this.state.setup.difficulty);
     const crisis = crisisTuning(this.state.round, this.state.setup.difficulty).yieldFactor;
+    const dust = this.state.events.dustUntil >= this.state.round ? 1 - CONFIG.events.dustYieldPenalty : 1;
     const yields: Yields = {
-      minerals: Math.max(0, Math.round(raw.minerals * socialScale(faction, 'minerals') * rates.production * crisis)),
-      nutrients: Math.max(0, Math.round(raw.nutrients * socialScale(faction, 'nutrients') * crisis)),
-      energy: Math.max(0, Math.round(raw.energy * socialScale(faction, 'energy') * crisis)),
-      research: Math.max(0, Math.round(raw.research * socialScale(faction, 'research') * rates.research * crisis)),
+      minerals: Math.max(0, Math.round(raw.minerals * socialScale(faction, 'minerals') * rates.production * crisis * dust)),
+      nutrients: Math.max(0, Math.round(raw.nutrients * socialScale(faction, 'nutrients') * crisis * dust)),
+      energy: Math.max(0, Math.round(raw.energy * socialScale(faction, 'energy') * crisis * dust)),
+      research: Math.max(0, Math.round(raw.research * socialScale(faction, 'research') * rates.research * crisis * dust)),
     };
     const credits = this.creditIncome(city, faction);
     return { yields, credits, worked: worked.map((tile) => ({ x: tile.x, y: tile.y })), need: city.population * CONFIG.city.nutrientsPerPop };
@@ -334,6 +396,7 @@ export class Game {
   moveUnit(unitId: number, x: number, y: number): ActionResult & { path?: { x: number; y: number }[] } {
     const unit = this.controlled(unitId);
     if (!unit) return fail('That unit cannot take orders.');
+    if (unit.aboard != null) return fail('That unit is aboard a ship.');
     if (unit.terraform) return fail('This terraformer has to finish the tile first.');
     if (unit.movesLeft <= 0) return fail('No movement left this turn.');
     const step = this.reachable(unitId).get(`${x},${y}`);
@@ -341,6 +404,13 @@ export class Game {
     unit.x = x;
     unit.y = y;
     unit.movesLeft -= step.cost;
+    for (const riderId of unit.cargo) {
+      const rider = this.unitById(riderId);
+      if (rider) {
+        rider.x = x;
+        rider.y = y;
+      }
+    }
     this.revealAround(unit);
     this.commit();
     return { ok: true, message: `${unit.name} moves.`, path: step.path };
@@ -400,14 +470,17 @@ export class Game {
       return fail('Atmosphere work needs Basic Atmosphere and Soil Science.');
     }
     const fee = terraformFee(biomeClass(tile));
+    const energy = terraformEnergy(project);
     if (faction.credits < fee) return fail(`Terraforming costs ${fee} credits.`);
+    if (faction.energy < energy) return fail(`Terraforming costs ${energy} energy.`);
     const turns = terraformTurns(project, formerTechLevel(faction.techs));
     faction.credits -= fee;
+    faction.energy -= energy;
     unit.terraform = { project, turnsLeft: turns, total: turns };
     unit.movesLeft = 0;
-    this.say(`${unit.name} begins ${projectLabel(project)} (${turns} turns, ${fee} credits).`, unit.factionId);
+    this.say(`${unit.name} begins ${projectLabel(project)} (${turns} turns, ${fee} credits, ${energy} energy).`, unit.factionId);
     this.commit();
-    return { ok: true, message: `${projectLabel(project)} started. ${turns} turns, ${fee} credits.` };
+    return { ok: true, message: `${projectLabel(project)} started. ${turns} turns, ${fee} credits, ${energy} energy.` };
   }
 
   toggleSearch(unitId: number): ActionResult {
@@ -479,7 +552,7 @@ export class Game {
       defenderHp,
       attackerName: unit.name,
       city: !!enemyCity,
-      navalBombardment: unit.domain === 'sea' && !!enemyCity,
+      navalBombardment,
     };
   }
 
@@ -567,18 +640,27 @@ export class Game {
     const city = this.controlledCity(cityId);
     if (!city || !city.production) return fail('Nothing is being built here.');
     const remaining = city.production.cost - city.production.progress;
-    const cost = rushBuyCost(remaining);
-    if (cost <= 0) return fail('The build is already finished.');
+    const cost = rushPayments(remaining);
+    if (cost.credits <= 0) return fail('The build is already finished.');
     const faction = this.state.factions[city.factionId];
-    if (faction.credits < cost) return fail(`Rush-buy costs ${cost} credits.`);
+    if (faction.credits < cost.credits) return fail(`Rush-buy costs ${cost.credits} credits.`);
+    if (faction.minerals < cost.minerals || faction.nutrients < cost.nutrients || faction.energy < cost.energy) {
+      return fail(`Rush-buy also needs ${cost.minerals} minerals, ${cost.nutrients} nutrients, and ${cost.energy} energy.`);
+    }
     const design = this.findDesign(city.factionId, city.production.designId);
     if (!design) return fail('The design is gone.');
-    faction.credits -= cost;
-    city.production.progress = 0;
+    faction.credits -= cost.credits;
+    faction.minerals -= cost.minerals;
+    faction.nutrients -= cost.nutrients;
+    faction.energy -= cost.energy;
+    city.production = null;
     this.spawn(city.factionId, design, city.x, city.y, true);
-    this.say(`${city.name} rush-buys ${design.name} for ${cost} credits.`, city.factionId);
+    this.say(
+      `${city.name} rush-buys ${design.name} for ${cost.credits} credits, ${cost.minerals} minerals, ${cost.nutrients} nutrients, and ${cost.energy} energy.`,
+      city.factionId,
+    );
     this.commit();
-    return { ok: true, message: `Rushed ${design.name} for ${cost} credits.` };
+    return { ok: true, message: `Rushed ${design.name} for ${cost.credits} credits and stockpiled resources.` };
   }
 
   chooseResearch(techId: string): ActionResult {
@@ -645,6 +727,48 @@ export class Game {
     return this.mapPartners(viewer).some((id) => this.isExplored(id, x, y));
   }
 
+  /** True when the player, or a faction sharing maps, can see the tile right now. */
+  currentlySeen(x: number, y: number): boolean {
+    const viewer = this.state.playerFaction;
+    if (this.isVisible(viewer, x, y)) return true;
+    return this.mapPartners(viewer).some((id) => this.isVisible(id, x, y));
+  }
+
+  /**
+   * What the tile panel may show. Unexplored tiles are hidden.
+   * Tiles in current vision are live. Remembered tiles use the last look.
+   */
+  tileView(x: number, y: number): TileView {
+    if (!this.inBounds(x, y) || !this.playerSees(x, y)) return { kind: 'hidden', x, y };
+    const live = this.currentlySeen(x, y);
+    if (live) {
+      const tile = this.tile(x, y);
+      return { kind: 'live', x, y, sight: sightFrom(tile, this.workingOn(tile)), lines: improvementLines(tile) };
+    }
+    const remembered = this.state.sight[`${x},${y}`];
+    if (!remembered) return { kind: 'forgotten', x, y };
+    return { kind: 'stale', x, y, sight: remembered, lines: improvementLines(remembered) };
+  }
+
+  /** Refresh the last-seen record for tiles in current vision. */
+  noteSight(): void {
+    for (const tile of this.state.tiles) {
+      if (!this.currentlySeen(tile.x, tile.y)) continue;
+      this.state.sight[`${tile.x},${tile.y}`] = sightFrom(tile, this.workingOn(tile));
+    }
+  }
+
+  /** Finishes a terraforming job immediately. The panel and tests use this to skip the wait. */
+  advanceTerraform(unitId: number): ActionResult {
+    const unit = this.unitById(unitId);
+    if (!unit?.terraform) return fail('Nothing is being built on that tile.');
+    unit.terraform.turnsLeft = 0;
+    this.completeTerraform(unit);
+    this.noteSight();
+    this.commit();
+    return { ok: true, message: 'The work is finished.' };
+  }
+
   intel(host: FactionId): {
     credits: number;
     minerals: number;
@@ -673,6 +797,7 @@ export class Game {
     const actor = this.state.whoseTurn;
     if (this.state.winner) return fail('The game is over.');
     if (actor === target) return fail('A faction cannot treat with itself.');
+    if (kind !== 'war' && this.flareActive()) return fail('A solar flare is scrambling comms.');
     const rel = this.relation(actor, target);
     if (kind === 'war') {
       Object.assign(rel, applyWar(rel));
@@ -715,10 +840,66 @@ export class Game {
     return { ok: true, message: `Agreed: ${proposalLabel(kind)}.` };
   }
 
+  proposeTrade(target: FactionId, give: TradeBundle, want: TradeBundle): ActionResult {
+    const actor = this.state.whoseTurn;
+    if (this.state.winner || this.state.playerDefeated) return fail('The game is over.');
+    if (actor === target) return fail('A faction cannot trade with itself.');
+    if (this.flareActive()) return fail('A solar flare is scrambling comms.');
+    const rel = this.relation(actor, target);
+    if (rel.stance === 'war') return fail('There is no trade in wartime.');
+    if (!this.canPay(actor, give) || (give.tech && !this.state.factions[actor].techs.includes(give.tech))) {
+      return fail('You cannot offer that.');
+    }
+    if (want.tech && !this.state.factions[target].techs.includes(want.tech)) return fail('They do not know that technology.');
+    const targetIsHuman = this.state.factions[target].isHuman;
+    if (targetIsHuman && this.state.factions[actor].isHuman === false) {
+      this.state.offers.push({ id: this.state.nextOfferId++, from: actor, to: target, kind: 'trade', trade: { give, want } });
+      this.say(
+        `${FACTIONS[actor].name} offers ${bundleText(give)} for ${bundleText(want)}.`,
+        actor,
+      );
+      this.commit();
+      return { ok: true, message: 'Trade offered.' };
+    }
+    const personality = this.state.setup.personalities[target];
+    const offered = tradeValue(give, this.state.factions[target].techs.includes(give.tech ?? ''));
+    const asked = tradeValue(want, this.state.factions[actor].techs.includes(want.tech ?? ''));
+    const willing = acceptsTrade({
+      diplomacy: personality.diplomacy,
+      memory: rel.memory,
+      stance: rel.stance,
+      offered,
+      asked,
+    });
+    if (!this.canPay(target, want) || !willing) {
+      rel.memory = Math.min(100, rel.memory + CONFIG.diplomacy.rejectMemory);
+      this.say(`${FACTIONS[target].name} refuses the trade.`, target);
+      this.commit();
+      return { ok: false, message: `${FACTIONS[target].name} refuses the trade.` };
+    }
+    this.transferTrade(actor, target, give, want);
+    this.say(`${FACTIONS[actor].name} and ${FACTIONS[target].name} trade ${bundleText(give)} for ${bundleText(want)}.`, actor);
+    this.commit();
+    return { ok: true, message: 'Trade agreed.' };
+  }
+
   acceptOffer(offerId: number): ActionResult {
     if (this.state.whoseTurn !== this.state.playerFaction) return fail('Not your turn.');
     const offer = this.state.offers.find((entry) => entry.id === offerId && entry.to === this.state.playerFaction);
     if (!offer) return fail('That offer is gone.');
+    if (offer.kind === 'trade' && offer.trade) {
+      const { give, want } = offer.trade;
+      if (!this.canPay(offer.from, give) || !this.canPay(offer.to, want)) return fail('One side can no longer pay.');
+      this.transferTrade(offer.from, offer.to, give, want);
+      this.state.offers = this.state.offers.filter((entry) => entry.id !== offerId);
+      this.say(
+        `${FACTIONS[offer.to].name} accepts a trade of ${bundleText(give)} for ${bundleText(want)}.`,
+        offer.to,
+      );
+      this.commit();
+      return { ok: true, message: 'Trade accepted.' };
+    }
+    if (offer.kind === 'trade') return fail('That trade is incomplete.');
     const rel = this.relation(offer.from, offer.to);
     if (offer.kind === 'peace' || offer.kind === 'nap' || offer.kind === 'alliance') {
       const gate = canSetStance(rel.stance, offer.kind);
@@ -803,6 +984,7 @@ export class Game {
     if (improved?.improvement) {
       const what = improved.improvement;
       improved.improvement = null;
+      this.recordTile(improved, `removed ${projectNoun(what)}`, spy.owner, null);
       this.say(`Sabotage ruins ${what} in ${FACTIONS[spy.host].name}'s territory.`, spy.owner);
     } else {
       const city = this.citiesOf(spy.host!)[0];
@@ -871,6 +1053,8 @@ export class Game {
 
   endTurn(): EndTurnResult {
     if (this.state.winner) return { ok: false, message: 'The game is already over.', autosave: false, aiOrder: [] };
+    if (this.state.playerDefeated) return { ok: false, message: 'Your faction is defeated.', autosave: false, aiOrder: [] };
+    if (this.state.events.prompt) return { ok: false, message: 'Choose a response to the event first.', autosave: false, aiOrder: [] };
     if (this.state.whoseTurn !== this.state.playerFaction) {
       return { ok: false, message: 'Not your turn.', autosave: false, aiOrder: [] };
     }
@@ -893,7 +1077,9 @@ export class Game {
     if (!this.state.winner) {
       this.state.round += 1;
       this.applyCrisis();
-      this.beginTurn(this.state.playerFaction);
+      this.decayGrievances();
+      this.tickEvents();
+      if (!this.state.playerDefeated) this.beginTurn(this.state.playerFaction);
     }
     recordSocialPresent(this.state);
     this.commit();
@@ -916,6 +1102,7 @@ export class Game {
     }
     if (damage > 0) {
       for (const unit of [...this.state.units]) {
+        if (unit.aboard != null) continue;
         if (this.state.factions[unit.factionId].techs.includes('sealed-habitats')) continue;
         const tile = this.tile(unit.x, unit.y);
         if (tile.zone !== 'twilight' || tile.scarred || tile.improvement || this.cityAt(unit.x, unit.y)) continue;
@@ -934,9 +1121,9 @@ export class Game {
       if (this.rng.next() < crisis.scarChance) {
         tile.scarred = true;
         tile.livable = false;
+        this.recordTile(tile, 'the waking reactor scarred this tile and took the air', null, null);
       }
     }
-    this.say(`The Waking Reactor pulses (strength ${Math.round(level * 100)}%). Anchor tiles with terraforming.`);
   }
 
   private enemyFactionAt(attacker: FactionId, x: number, y: number): FactionId | null {
@@ -961,6 +1148,16 @@ export class Game {
 
   private accepts(decider: FactionId, other: FactionId, kind: Proposal): boolean {
     const personality = this.state.setup.personalities[decider];
+    if (
+      (kind === 'peace' || kind === 'nap' || kind === 'alliance') &&
+      wantsToFight(personality, this.state.setup.difficulty, this.state.round) &&
+      (personality.aggression === 'very-aggressive' ||
+        personality.diplomacy === 'alone' ||
+        this.state.setup.difficulty === 'hard' ||
+        this.state.setup.difficulty === 'brutal')
+    ) {
+      return false;
+    }
     const chance = acceptanceChance({
       kind,
       diplomacy: personality.diplomacy,
@@ -998,6 +1195,10 @@ export class Game {
     const faction = this.state.factions[factionId];
     if (faction.stabilityTurns > 0) faction.stabilityTurns -= 1;
     for (const unit of [...this.unitsOf(factionId)]) {
+      if (unit.aboard != null) {
+        unit.movesLeft = 0;
+        continue;
+      }
       if (unit.terraform) {
         unit.terraform.turnsLeft -= 1;
         if (unit.terraform.turnsLeft <= 0) this.completeTerraform(unit);
@@ -1012,6 +1213,7 @@ export class Game {
       if (faction.techs.includes('medicine')) heal += CONFIG.techBonuses.medicineHeal;
       if (heal > 0) unit.hp = Math.min(unit.maxHp, unit.hp + heal);
     }
+    this.applyDust(factionId);
     this.revealFaction(factionId);
     if (faction.isHuman) this.say(`${formatCalendar(this.state.round)}. Your orders.`, factionId);
     else this.say(`${FACTIONS[factionId].name} acts.`, factionId);
@@ -1038,16 +1240,30 @@ export class Game {
       if (city.production) {
         city.production.progress += report.yields.minerals;
         let guard = 0;
-        while (city.production && city.production.progress >= city.production.cost && guard++ < 3) {
+        while (city.production && city.production.progress >= city.production.cost && guard++ < 4) {
           const design = this.findDesign(factionId, city.production.designId);
           if (!design) {
+            faction.minerals += city.production.progress;
             city.production = null;
             break;
           }
-          city.production.progress -= city.production.cost;
-          this.spawn(factionId, design, city.x, city.y, false);
+          const leftover: number = city.production.progress - city.production.cost;
+          const port = design.domain === 'sea' ? this.nearestSea(city.x, city.y, 8) : null;
+          this.spawn(factionId, design, port?.x ?? city.x, port?.y ?? city.y, false);
           this.say(`${city.name} completes ${design.name}.`, factionId);
-          city.production.cost = design.cost;
+          if (faction.isHuman) {
+            city.production.progress = leftover;
+            city.production.cost = design.cost;
+            continue;
+          }
+          const nextId = chooseDesign(this, factionId);
+          const next = nextId ? this.findDesign(factionId, nextId) : undefined;
+          if (!next) {
+            faction.minerals += Math.max(0, leftover);
+            city.production = null;
+            break;
+          }
+          city.production = { designId: next.id, progress: Math.max(0, leftover), cost: next.cost };
         }
       } else {
         faction.minerals += report.yields.minerals;
@@ -1073,6 +1289,7 @@ export class Game {
       }
       faction.credits += report.credits;
     }
+    this.payUpkeep(factionId);
     let shared = 0;
     for (const other of Object.keys(this.state.factions) as FactionId[]) {
       if (other === factionId) continue;
@@ -1100,6 +1317,7 @@ export class Game {
     const sealed = hasSealedHabitats(faction.techs);
     const damage = outsideBandDamage(this.state.setup.difficulty);
     for (const unit of [...this.unitsOf(factionId)]) {
+      if (unit.aboard != null) continue;
       const tile = this.tile(unit.x, unit.y);
       const outcome = outsideBandOutcome(unit.hp, tileIsLivable(tile), sealed, damage);
       if (outcome.destroyed) {
@@ -1114,7 +1332,7 @@ export class Game {
 
   private runPatrols(factionId: FactionId) {
     for (const unit of [...this.unitsOf(factionId)]) {
-      if (!unit.searching || unit.terraform || unit.movesLeft <= 0) continue;
+      if (!unit.searching || unit.terraform || unit.movesLeft <= 0 || unit.aboard != null) continue;
       const options = [...this.reachable(unit.id).entries()].filter(([, step]) => step.cost > 0);
       if (!options.length) {
         this.rollFind(unit, 0.45);
@@ -1170,6 +1388,9 @@ export class Game {
     if (!unit.terraform) return;
     const tile = this.tile(unit.x, unit.y);
     const project = unit.terraform.project;
+    const previous = tile.improvement;
+    const previousTerrain = tile.terrain;
+    const wasLivable = tile.livable;
     if (project === 'road') tile.road = true;
     else tile.improvement = project;
     if (
@@ -1178,10 +1399,34 @@ export class Game {
     ) {
       tile.terrain = 'forest';
     }
-    tile.livable = true;
+    const opened = projectMakesLivable(project);
+    if (opened) tile.livable = true;
+    const parts: string[] = [];
+    if (project === 'road') parts.push('built a road');
+    else if (previous && previous !== project) parts.push(`replaced ${projectNoun(previous)} with ${projectNoun(project)}`);
+    else parts.push(`built ${projectNoun(project)}`);
+    if (tile.terrain !== previousTerrain) parts.push(`the ground became ${tile.terrain.replace('-', ' ')}`);
+    if (!wasLivable && tile.livable) parts.push('the tile became livable');
+    this.recordTile(tile, parts.join(', '), unit.factionId, unit.name);
     unit.terraform = null;
     unit.movesLeft = unit.maxMoves;
-    this.say(`${unit.name} finishes ${projectLabel(project)}. The tile joins the livable zone.`, unit.factionId);
+    const joined = opened ? ' The tile joins the livable zone.' : '';
+    this.say(`${unit.name} finishes ${projectLabel(project)}.${joined}`, unit.factionId);
+  }
+
+  private workingOn(tile: Tile): TileSight['working'] {
+    const worker = this.state.units.find((unit) => unit.x === tile.x && unit.y === tile.y && unit.terraform && unit.aboard == null);
+    if (!worker?.terraform) return null;
+    return { project: worker.terraform.project, turnsLeft: worker.terraform.turnsLeft, unitName: worker.name };
+  }
+
+  private recordTile(tile: Tile, change: string, factionId: FactionId | null, unitName: string | null) {
+    tile.history = appendHistory(tile.history ?? [], {
+      round: this.state.round,
+      factionId,
+      unitName,
+      change,
+    });
   }
 
   private workedTiles(city: City): Tile[] {
@@ -1209,6 +1454,20 @@ export class Game {
     return Math.max(0, Math.round(scaled));
   }
 
+  private nearestSea(x: number, y: number, radius: number): { x: number; y: number } | null {
+    let best: { x: number; y: number; d: number } | null = null;
+    for (let dy = -radius; dy <= radius; dy++) {
+      for (let dx = -radius; dx <= radius; dx++) {
+        const nx = x + dx;
+        const ny = y + dy;
+        if (!this.inBounds(nx, ny) || !isSea(this.tile(nx, ny).terrain)) continue;
+        const d = Math.max(Math.abs(dx), Math.abs(dy));
+        if (!best || d < best.d) best = { x: nx, y: ny, d };
+      }
+    }
+    return best ? { x: best.x, y: best.y } : null;
+  }
+
   private spawn(factionId: FactionId, design: UnitDesign, x: number, y: number, ready: boolean): Unit {
     const unit: Unit = {
       id: this.state.nextUnitId++,
@@ -1231,12 +1490,24 @@ export class Game {
       role: design.role,
       searching: false,
       terraform: null,
+      transport: design.transport ?? 0,
+      cargo: [],
+      aboard: null,
     };
     this.state.units.push(unit);
     return unit;
   }
 
   private removeUnit(unit: Unit) {
+    if (unit.cargo.length) {
+      const lost = new Set(unit.cargo);
+      this.state.units = this.state.units.filter((other) => other.id !== unit.id && !lost.has(other.id));
+      return;
+    }
+    if (unit.aboard != null) {
+      const ship = this.unitById(unit.aboard);
+      if (ship) ship.cargo = ship.cargo.filter((id) => id !== unit.id);
+    }
     this.state.units = this.state.units.filter((other) => other.id !== unit.id);
   }
 
@@ -1280,7 +1551,8 @@ export class Game {
 
   visionOf(unit: Unit): number {
     const bonus = this.state.factions[unit.factionId].techs.includes('sensors') ? 1 : 0;
-    return unit.vision + bonus;
+    const flare = this.flareActive() ? 1 : 0;
+    return Math.max(1, unit.vision + bonus - flare);
   }
 
   private revealAround(unit: Unit) {
@@ -1302,7 +1574,150 @@ export class Game {
     }
   }
 
+  disband(unitId: number): void {
+    const unit = this.unitById(unitId);
+    if (!unit || unit.factionId !== this.state.whoseTurn) return;
+    this.removeUnit(unit);
+    this.say(`${unit.name} is disbanded.`, unit.factionId);
+    this.noteEliminations();
+    this.commit();
+  }
+
+  boardableUnits(transportId: number): Unit[] {
+    const ship = this.unitById(transportId);
+    if (!ship || ship.domain !== 'sea' || ship.transport <= ship.cargo.length) return [];
+    return this.unitsOf(ship.factionId).filter(
+      (unit) =>
+        unit.id !== ship.id &&
+        unit.domain === 'land' &&
+        unit.aboard == null &&
+        !unit.terraform &&
+        Math.max(Math.abs(unit.x - ship.x), Math.abs(unit.y - ship.y)) === 1 &&
+        !isSea(this.tile(unit.x, unit.y).terrain),
+    );
+  }
+
+  coastalDrops(transportId: number): { x: number; y: number }[] {
+    const ship = this.unitById(transportId);
+    if (!ship || ship.domain !== 'sea') return [];
+    const drops: { x: number; y: number }[] = [];
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy) continue;
+        const x = ship.x + dx;
+        const y = ship.y + dy;
+        if (!this.inBounds(x, y)) continue;
+        const tile = this.tile(x, y);
+        if (isSea(tile.terrain)) continue;
+        if (this.state.units.some((unit) => unit.x === x && unit.y === y && unit.factionId !== ship.factionId && unit.aboard == null)) continue;
+        const city = this.cityAt(x, y);
+        if (city && city.factionId !== ship.factionId) continue;
+        drops.push({ x, y });
+      }
+    }
+    return drops;
+  }
+
+  loadUnit(transportId: number, passengerId: number): ActionResult {
+    const ship = this.controlled(transportId);
+    const passenger = this.unitById(passengerId);
+    if (!ship || ship.domain !== 'sea') return fail('Only a ship can take units aboard.');
+    if (!passenger || passenger.factionId !== ship.factionId || passenger.domain !== 'land') return fail('That unit cannot board.');
+    if (passenger.aboard != null || passenger.terraform) return fail('That unit is not free to board.');
+    if (ship.cargo.length >= ship.transport) return fail('The ship has no room.');
+    if (ship.movesLeft <= 0) return fail('The ship has no move left to take anyone aboard.');
+    if (!this.boardableUnits(ship.id).some((unit) => unit.id === passenger.id)) {
+      return fail('Loading happens from an adjacent coastal tile.');
+    }
+    passenger.aboard = ship.id;
+    passenger.x = ship.x;
+    passenger.y = ship.y;
+    passenger.movesLeft = 0;
+    passenger.searching = false;
+    ship.cargo.push(passenger.id);
+    ship.movesLeft -= 1;
+    this.say(`${passenger.name} boards ${ship.name}.`, ship.factionId);
+    this.commit();
+    return { ok: true, message: `${passenger.name} is aboard ${ship.name}.` };
+  }
+
+  unloadUnit(transportId: number, passengerId: number, x: number, y: number): ActionResult {
+    const ship = this.controlled(transportId);
+    const passenger = this.unitById(passengerId);
+    if (!ship || !passenger || passenger.aboard !== ship.id) return fail('That unit is not aboard this ship.');
+    if (ship.movesLeft <= 0) return fail('The ship cannot unload this turn.');
+    if (!this.coastalDrops(ship.id).some((tile) => tile.x === x && tile.y === y)) {
+      return fail('Unload onto an adjacent coastal tile.');
+    }
+    passenger.aboard = null;
+    passenger.x = x;
+    passenger.y = y;
+    passenger.movesLeft = 0;
+    ship.cargo = ship.cargo.filter((id) => id !== passenger.id);
+    ship.movesLeft -= 1;
+    this.revealAround(passenger);
+    this.say(`${passenger.name} comes ashore from ${ship.name}.`, ship.factionId);
+    this.commit();
+    return { ok: true, message: `${passenger.name} is ashore.` };
+  }
+
+  chooseEvent(choiceId: string): ActionResult {
+    const prompt = this.state.events.prompt;
+    if (!prompt) return fail('Nothing is asking for a decision.');
+    if (this.state.whoseTurn !== this.state.playerFaction) return fail('Not your turn.');
+    if (!prompt.choices.some((choice) => choice.id === choiceId)) return fail('That is not one of the choices.');
+    const faction = this.state.factions[this.state.playerFaction];
+    if (choiceId === 'shield' && faction.energy < CONFIG.events.flareShieldEnergy) {
+      return fail(`Powering down costs ${CONFIG.events.flareShieldEnergy} energy.`);
+    }
+    if (choiceId === 'shore' && faction.minerals < CONFIG.events.seismicMinerals) {
+      return fail(`Shoring the walls costs ${CONFIG.events.seismicMinerals} minerals.`);
+    }
+    this.state.events.prompt = null;
+    this.resolveEvent(prompt.kind, choiceId, prompt.subject);
+    this.commit();
+    return { ok: true, message: 'The faction answers.' };
+  }
+
+  /** One faction, played by the AI. Used by the headless expansion check. */
+  runFactionAi(factionId: FactionId): void {
+    const was = this.state.factions[factionId].isHuman;
+    this.state.factions[factionId].isHuman = false;
+    this.beginTurn(factionId);
+    runAi(this);
+    this.state.factions[factionId].isHuman = was;
+    this.commit();
+  }
+
+  /** A full round in which every surviving faction is played by the AI. */
+  simulateAllAiRound(): void {
+    if (this.state.winner) return;
+    const ids = (Object.keys(FACTIONS) as FactionId[]).filter((id) => this.unitsOf(id).length || this.citiesOf(id).length);
+    const order = ids
+      .map((id) => ({ id, roll: this.rng.next() }))
+      .sort((a, b) => a.roll - b.roll)
+      .map((entry) => entry.id);
+    for (const id of order) {
+      if (this.state.winner) break;
+      if (!this.unitsOf(id).length && !this.citiesOf(id).length) continue;
+      const was = this.state.factions[id].isHuman;
+      this.state.factions[id].isHuman = false;
+      this.beginTurn(id);
+      runAi(this);
+      this.finishFactionTurn(id);
+      this.state.factions[id].isHuman = was;
+    }
+    if (!this.state.winner) {
+      this.state.round += 1;
+      this.applyCrisis();
+      this.decayGrievances();
+      if (this.state.setup.randomEvents) this.tickEvents();
+    }
+    this.commit();
+  }
+
   private checkVictory() {
+    this.noteEliminations();
     const stillFounding = this.state.units.filter((unit) => unit.canFound).map((unit) => unit.factionId);
     const winner = evaluateVictory(
       this.state.cities.map((city) => city.factionId),
@@ -1314,6 +1729,280 @@ export class Game {
     this.state.winner = winner;
     const names = winner.factions.map((id) => FACTIONS[id].name).join(', ');
     this.say(winner.kind === 'alliance' ? `Allied victory: ${names}.` : `${names} holds every city.`);
+  }
+
+  private payUpkeep(factionId: FactionId) {
+    const faction = this.state.factions[factionId];
+    let energyUpkeep = 0;
+    const improved = new Set<string>();
+    for (const city of this.citiesOf(factionId)) {
+      energyUpkeep += CONFIG.economy.cityEnergyUpkeep;
+      const report = this.cityReport(city.id);
+      for (const worked of report?.worked ?? []) {
+        if (this.tile(worked.x, worked.y).improvement) improved.add(`${worked.x},${worked.y}`);
+      }
+    }
+    energyUpkeep += improved.size * CONFIG.economy.improvementEnergy;
+    faction.energy = Math.max(0, faction.energy - energyUpkeep);
+    const units = [...this.unitsOf(factionId)];
+    if (faction.minerals > 0) faction.minerals = Math.max(0, faction.minerals - units.length * CONFIG.upkeep.minerals);
+    if (faction.nutrients > 0) faction.nutrients = Math.max(0, faction.nutrients - units.length * CONFIG.upkeep.nutrients);
+    let creditCost = units.reduce((sum, unit) => sum + unitUpkeep(unit.role), 0);
+    const pods = units.filter((unit) => unit.canFound).sort((a, b) => b.id - a.id);
+    const keep = this.citiesOf(factionId).length === 0 ? 1 : 0;
+    let podCount = pods.length;
+    for (const pod of pods) {
+      if (faction.credits >= creditCost) break;
+      if (podCount <= keep) break;
+      creditCost -= unitUpkeep(pod.role);
+      podCount -= 1;
+      this.removeUnit(pod);
+      this.say(`${pod.name} is disbanded. Upkeep cannot cover another colony pod.`, factionId);
+    }
+    faction.credits = Math.max(0, faction.credits - Math.max(0, creditCost));
+  }
+
+  private decayGrievances() {
+    for (const rel of this.state.relations) {
+      rel.memory = Math.max(0, rel.memory - CONFIG.diplomacy.memoryDecay);
+    }
+  }
+
+  private flareActive(): boolean {
+    return this.state.events.solarFlareUntil >= this.state.round;
+  }
+
+  private canPay(factionId: FactionId, bundle: TradeBundle): boolean {
+    const faction = this.state.factions[factionId];
+    if (faction.credits < bundle.credits || faction.minerals < bundle.minerals) return false;
+    if (faction.nutrients < bundle.nutrients || faction.energy < bundle.energy) return false;
+    if (bundle.tech && !faction.techs.includes(bundle.tech)) return false;
+    return bundle.credits + bundle.minerals + bundle.nutrients + bundle.energy > 0 || !!bundle.tech;
+  }
+
+  private transferTrade(from: FactionId, to: FactionId, give: TradeBundle, want: TradeBundle) {
+    const payer = this.state.factions[from];
+    const receiver = this.state.factions[to];
+    payer.credits -= give.credits;
+    payer.minerals -= give.minerals;
+    payer.nutrients -= give.nutrients;
+    payer.energy -= give.energy;
+    receiver.credits += give.credits;
+    receiver.minerals += give.minerals;
+    receiver.nutrients += give.nutrients;
+    receiver.energy += give.energy;
+    receiver.credits -= want.credits;
+    receiver.minerals -= want.minerals;
+    receiver.nutrients -= want.nutrients;
+    receiver.energy -= want.energy;
+    payer.credits += want.credits;
+    payer.minerals += want.minerals;
+    payer.nutrients += want.nutrients;
+    payer.energy += want.energy;
+    if (give.tech && !receiver.techs.includes(give.tech)) receiver.techs.push(give.tech);
+    if (want.tech && !payer.techs.includes(want.tech)) payer.techs.push(want.tech);
+  }
+
+  private noteEliminations() {
+    for (const id of Object.keys(FACTIONS) as FactionId[]) {
+      if (this.state.eliminated.includes(id)) continue;
+      if (!factionEliminated(this.citiesOf(id).length, this.unitsOf(id))) continue;
+      this.state.eliminated.push(id);
+      this.say(`${FACTIONS[id].name} is eliminated. No cities remain, and no colony pod can found another.`);
+      if (id === this.state.playerFaction && this.state.factions[id].isHuman) this.state.playerDefeated = true;
+    }
+  }
+
+  private applyDust(factionId: FactionId) {
+    if (this.state.events.dustUntil < this.state.round) return;
+    const human = this.state.factions[factionId].isHuman;
+    const push = human && !this.state.events.dustShelter;
+    const cautious = !human && this.state.setup.personalities[factionId].risk === 'cautious';
+    for (const unit of [...this.unitsOf(factionId)]) {
+      if (unit.aboard != null || unit.terraform) continue;
+      const home = this.cityAt(unit.x, unit.y)?.factionId === factionId;
+      if ((human && this.state.events.dustShelter && home) || (cautious && home)) continue;
+      if (push || (!human && !cautious)) {
+        unit.hp -= human ? CONFIG.events.dustPushDamage : 1;
+        if (unit.hp <= 0) {
+          this.removeUnit(unit);
+          this.say(`${unit.name} is lost in the dust.`, factionId);
+        }
+        continue;
+      }
+      unit.movesLeft = Math.max(0, unit.movesLeft - 1);
+    }
+  }
+
+  private tickEvents() {
+    if (!this.state.setup.randomEvents || this.state.winner) return;
+    const events = this.state.events;
+    if (events.prompt) return;
+    if (events.pending && this.state.round >= events.pending.fireRound) {
+      const kind = events.pending.kind;
+      events.pending = null;
+      this.openEvent(kind, true);
+      return;
+    }
+    if (events.pending) return;
+    if (this.state.round < events.nextRollRound) return;
+    if (this.rng.next() > CONFIG.events.chance) {
+      events.nextRollRound = this.state.round + 1 + this.rng.int(4);
+      return;
+    }
+    const kind = EVENT_KINDS[this.rng.int(EVENT_KINDS.length)];
+    const gap = CONFIG.events.gapMin + this.rng.int(Math.max(1, CONFIG.events.gapMax - CONFIG.events.gapMin + 1));
+    if (this.rng.next() < CONFIG.events.warningChance) {
+      const span = CONFIG.events.warningLeadMax - CONFIG.events.warningLeadMin + 1;
+      const lead = CONFIG.events.warningLeadMin + this.rng.int(span);
+      events.pending = { id: events.nextId++, kind, fireRound: this.state.round + lead };
+      events.nextRollRound = events.pending.fireRound + gap;
+      this.say(eventWarningText(kind));
+      return;
+    }
+    events.nextRollRound = this.state.round + gap;
+    this.openEvent(kind, false);
+  }
+
+  private openEvent(kind: import('./types').EventKind, warned: boolean) {
+    const player = this.state.playerFaction;
+    const human = this.state.factions[player].isHuman && !this.state.playerDefeated;
+    if (kind === 'betrayal') {
+      const rel = this.pickBetrayal();
+      if (!rel) {
+        this.say('The rumor of betrayal fades before anyone breaks an oath.');
+        return;
+      }
+      const involvesPlayer = rel.a === player || rel.b === player;
+      if (human && involvesPlayer) {
+        const other = rel.a === player ? rel.b : rel.a;
+        const prompt = eventPromptFor(kind, this.state.events.nextId++);
+        prompt.subject = other;
+        prompt.text = `${FACTIONS[other].name} is about to break with you.`;
+        this.state.events.prompt = prompt;
+        this.say(prompt.text);
+        return;
+      }
+      Object.assign(rel, applyWar(rel));
+      this.syncAlliances();
+      this.say(`${FACTIONS[rel.a].name} betrays ${FACTIONS[rel.b].name}. The standing falls to war.`);
+      return;
+    }
+    if (!human) {
+      this.resolveEvent(kind, kind === 'wreckage' ? 'supplies' : kind === 'solar-flare' ? 'ride' : kind === 'dust-storm' ? 'push' : 'brace');
+      return;
+    }
+    if (kind === 'wreckage' && this.rng.next() > 0.6) {
+      const ids = (Object.keys(FACTIONS) as FactionId[]).filter((id) => this.citiesOf(id).length || this.unitsOf(id).length);
+      const who = ids[this.rng.int(ids.length)] ?? player;
+      this.grantWreckage(who, 'supplies');
+      return;
+    }
+    const prompt = eventPromptFor(kind, this.state.events.nextId++);
+    this.state.events.prompt = prompt;
+    this.say(warned ? `The warning comes due. ${prompt.text}` : prompt.text);
+  }
+
+  private pickBetrayal(): Relation | null {
+    const pacts = this.state.relations.filter((rel) => rel.stance === 'nap' || rel.stance === 'alliance');
+    const pool = pacts.length ? pacts : this.state.relations.filter((rel) => rel.stance === 'peace');
+    if (!pool.length) return null;
+    return pool[this.rng.int(pool.length)] ?? null;
+  }
+
+  private resolveEvent(kind: import('./types').EventKind, choice: string, subject?: FactionId) {
+    const player = this.state.playerFaction;
+    if (kind === 'solar-flare') {
+      const turns = choice === 'shield' ? CONFIG.events.flareShortTurns : CONFIG.events.flareTurns;
+      if (choice === 'shield') {
+        this.state.factions[player].energy = Math.max(0, this.state.factions[player].energy - CONFIG.events.flareShieldEnergy);
+      }
+      this.state.events.solarFlareUntil = this.state.round + turns - 1;
+      this.say(choice === 'shield' ? 'Sensors go dark. The flare passes quickly.' : 'The flare scrambles comms across the band.');
+      return;
+    }
+    if (kind === 'wreckage') {
+      this.grantWreckage(player, choice);
+      return;
+    }
+    if (kind === 'betrayal' && subject) {
+      const rel = this.relation(player, subject);
+      if (choice === 'plead') {
+        rel.stance = 'peace';
+        rel.research = false;
+        rel.exploration = false;
+        rel.memory = Math.min(100, rel.memory + 6);
+        this.syncAlliances();
+        this.say(`${FACTIONS[player].name} sues for peace with ${FACTIONS[subject].name}. The guns stop.`);
+      } else {
+        Object.assign(rel, applyWar(rel));
+        this.syncAlliances();
+        this.state.offers = this.state.offers.filter((offer) => !this.offerTouches(offer, player, subject));
+        this.say(`${FACTIONS[player].name} and ${FACTIONS[subject].name} are at war.`);
+      }
+      return;
+    }
+    if (kind === 'dust-storm') {
+      this.state.events.dustShelter = choice === 'shelter';
+      this.state.events.dustUntil = this.state.round + CONFIG.events.dustTurns - 1;
+      this.say(choice === 'shelter' ? 'Dust closes in. Crews shelter in the cities.' : 'Crews push through the dust and take the wear.');
+      this.applyDust(player);
+      return;
+    }
+    if (kind === 'seismic') {
+      const heavy = choice !== 'shore';
+      if (!heavy) this.state.factions[player].minerals = Math.max(0, this.state.factions[player].minerals - CONFIG.events.seismicMinerals);
+      this.shakeCity(player, heavy);
+    }
+  }
+
+  private grantWreckage(factionId: FactionId, choice: string) {
+    const faction = this.state.factions[factionId];
+    if (choice === 'study') {
+      faction.researchPoints += CONFIG.events.wreckageResearch;
+      this.say(`${FACTIONS[factionId].name} studies the wreck and gains ${CONFIG.events.wreckageResearch} research.`, factionId);
+      return;
+    }
+    if (choice === 'crew') {
+      const scout = starterDesigns().find((design) => design.role === 'scout');
+      const home = this.citiesOf(factionId)[0] ?? this.unitsOf(factionId)[0];
+      if (scout && home) this.spawn(factionId, scout, home.x, home.y, false);
+      this.say(`${FACTIONS[factionId].name} recovers a crew from the wreck.`, factionId);
+      return;
+    }
+    faction.credits += CONFIG.events.wreckageCredits;
+    faction.minerals += CONFIG.events.wreckageMinerals;
+    this.say(
+      `${FACTIONS[factionId].name} salvages ${CONFIG.events.wreckageCredits} credits and ${CONFIG.events.wreckageMinerals} minerals.`,
+      factionId,
+    );
+  }
+
+  private shakeCity(factionId: FactionId, heavy: boolean) {
+    const cities = this.citiesOf(factionId);
+    if (!cities.length) {
+      this.say('The quake rolls through empty ground.', factionId);
+      return;
+    }
+    const city = cities[this.rng.int(cities.length)] ?? cities[0];
+    const loss = heavy ? CONFIG.events.seismicDamage : CONFIG.events.seismicLightDamage;
+    city.defenseHp = Math.max(1, city.defenseHp - loss);
+    if (heavy && city.population > 1) city.population -= 1;
+    for (let dy = -1; dy <= 1; dy++) {
+      for (let dx = -1; dx <= 1; dx++) {
+        if (!dx && !dy || !this.inBounds(city.x + dx, city.y + dy)) continue;
+        const tile = this.tile(city.x + dx, city.y + dy);
+        if (isSea(tile.terrain) || tile.terrain === 'mountain') continue;
+        const before = tile.terrain;
+        tile.terrain = 'rocky';
+        if (before !== 'rocky') {
+          this.recordTile(tile, `a seismic shift turned ${before.replace('-', ' ')} into rocky ground`, null, null);
+        }
+        this.say(`${city.name} is shaken. The ground beside it splits into rock.`, factionId);
+        return;
+      }
+    }
+    this.say(`${city.name} is shaken by a seismic shift.`, factionId);
   }
 
   private say(text: string, factionId?: FactionId) {

@@ -1,7 +1,8 @@
 import type { SaveEnvelope } from '../core/types';
+import { ensureTileRecords } from '../core/tilelog';
 
-/** Proxima 0.2.0 save-file schema. 0.1.0 files are version 1. */
-export const SAVE_VERSION = 2;
+/** Proxima 0.2.0 save-file schema. 0.1.0 files are version 1. Version 3 adds tile history. */
+export const SAVE_VERSION = 3;
 
 export class SaveValidationError extends Error {
   constructor(message: string) {
@@ -47,8 +48,20 @@ function migrateV1ToV2(raw: RawSave): RawSave {
   return { ...raw, version: 2, gameVersion, state };
 }
 
+/** Tile history and the last-seen record are new. Older files load with both empty. */
+function migrateV2ToV3(raw: RawSave): RawSave {
+  const state = raw.state && typeof raw.state === 'object'
+    ? clone(raw.state as Record<string, unknown>)
+    : raw.state;
+  if (state && typeof state === 'object') {
+    ensureTileRecords(state as { tiles?: unknown; sight?: unknown });
+  }
+  return { ...raw, version: 3, state };
+}
+
 const MIGRATIONS: Migration[] = [
   { from: 1, to: 2, run: migrateV1ToV2 },
+  { from: 2, to: 3, run: migrateV2ToV3 },
 ];
 
 function validateSave(raw: RawSave): SaveEnvelope {
