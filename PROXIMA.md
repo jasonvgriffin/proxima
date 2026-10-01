@@ -52,6 +52,21 @@ Each faction gets its own win condition. All six are **TBD**.
 | Comms Array | Signal-wave patterns, with static and broadcast imagery |
 | Life-Support Core | Soft and bio-mechanical, almost medical |
 
+## Social axes
+
+Proxima's social system goes deeper than Alpha Centauri's. Each faction sets four axes:
+
+| Axis | Options |
+|------|---------|
+| Religion | Ancestor worship, Machine faith, Seed cult, Void meditation, None |
+| Values | Survival, Legacy, Curiosity, Dominance, Harmony |
+| Economy | Barter, Command, Market, Gift, Extraction |
+| Politics | Council, Autocracy, Consensus, Warlord, Archive |
+
+- Combining the axes creates distinct societies, such as a market-driven warlord state or a consensus-seeking seed cult.
+- Each combination shifts what a faction is good at.
+- Still to decide: the exact bonuses and penalties for each option and combination, any synergies or conflicts between options, and how changing an axis plays out (cost, unrest, transition time).
+
 ## Team / repo structure
 
 The work is split by folder so several chats or agents can work at the same time without merge conflicts:
@@ -72,3 +87,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Doc created. Renamed from the Planetfall concept to Proxima. Story, six factions, pillars, and team structure recorded.
 - 2026-10-01: Added the "Visuals and gameplay style" section (an Alpha Centauri-like feel with animated units, terrain, and faction visuals).
 - 2026-10-01: Added faction visual styles tied to the module each faction came from.
+- 2026-10-01: Added the "Social axes" section (religion, values, economy, politics).
