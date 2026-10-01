@@ -14,6 +14,7 @@ const TOPICS = [
   'society',
   'diplomacy',
   'spies',
+  'events',
   'crisis',
 ] as const;
 

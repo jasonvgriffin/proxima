@@ -40,7 +40,7 @@ describe('diplomacy crests', () => {
   it('puts a crest canvas on every faction row and on incoming offers', () => {
     const others = FACTION_IDS.filter((id) => id !== 'helm');
     const html = diplomacyMarkup({
-      offers: [{ id: 3, from: 'verdantia', fromName: FACTIONS.verdantia.name, kind: 'nap' }],
+      offers: [{ id: 3, from: 'verdantia', fromName: FACTIONS.verdantia.name, kind: 'nap', label: 'a non-aggression pact' }],
       focus: {
         factionId: 'ironclad',
         factionName: FACTIONS.ironclad.name,

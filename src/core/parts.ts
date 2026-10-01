@@ -11,6 +11,8 @@ export interface ChassisDef {
   req: string | null;
   found?: boolean;
   terraform?: boolean;
+  /** Land units the chassis can carry before special parts are added. */
+  transport?: number;
 }
 
 export interface WeaponDef {
@@ -38,6 +40,8 @@ export interface SpecialDef {
   terraform?: boolean;
   vision?: number;
   searchBonus?: number;
+  /** Land units a ship with this part can carry. */
+  transport?: number;
 }
 
 export const CHASSIS: ChassisDef[] = [
@@ -47,6 +51,7 @@ export const CHASSIS: ChassisDef[] = [
   { id: 'colony', name: 'Colony pod', domain: 'land', moves: 2, hp: 8, vision: 2, cost: 8, req: null, found: true },
   { id: 'former', name: 'Former', domain: 'land', moves: 2, hp: 8, vision: 2, cost: 8, req: 'field-formers', terraform: true },
   { id: 'hull', name: 'Cutter hull', domain: 'sea', moves: 4, hp: 12, vision: 3, cost: 14, req: 'salvage-rigs' },
+  { id: 'barge', name: 'Barge', domain: 'sea', moves: 3, hp: 10, vision: 2, cost: 8, req: null, transport: 2 },
 ];
 
 export const WEAPONS: WeaponDef[] = [
@@ -68,6 +73,7 @@ export const SPECIALS: SpecialDef[] = [
   { id: 'terraform', name: 'Terraform kit', cost: 6, req: 'field-formers', terraform: true },
   { id: 'sensor', name: 'Sensor mast', cost: 6, req: 'sensors', vision: 1 },
   { id: 'search', name: 'Search array', cost: 4, req: null, searchBonus: 0.12 },
+  { id: 'bay', name: 'Transport bay', cost: 6, req: null, transport: 2 },
 ];
 
 export interface DesignDraft {
@@ -128,6 +134,7 @@ export function compileDesign(
     canTerraform,
     searchBonus: specials.reduce((sum, s) => sum + (s.searchBonus ?? 0), 0),
     role: roleFor(chassis.domain, canFound, canTerraform, weapon.attack),
+    transport: (chassis.transport ?? 0) + specials.reduce((sum, s) => sum + (s.transport ?? 0), 0),
   };
   return { ok: true, design };
 }
@@ -138,9 +145,12 @@ export function starterDesigns(): UnitDesign[] {
     { name: 'Terraformer', chassis: 'former', weapon: 'none', armor: 'scrap', specials: [] },
     { name: 'Scout Walker', chassis: 'walker', weapon: 'rifle', armor: 'scrap', specials: [] },
     { name: 'Line Infantry', chassis: 'infantry', weapon: 'rifle', armor: 'scrap', specials: [] },
+    { name: 'Landing Barge', chassis: 'barge', weapon: 'none', armor: 'scrap', specials: [] },
+    { name: 'Troop Transport', chassis: 'hull', weapon: 'none', armor: 'scrap', specials: ['bay'] },
+    { name: 'Troop Cutter', chassis: 'hull', weapon: 'rifle', armor: 'scrap', specials: [] },
   ];
   return specs.map((draft) => {
-    const compiled = compileDesign(draft, ['field-formers'], 'std');
+    const compiled = compileDesign(draft, ['field-formers', 'salvage-rigs'], 'std');
     if (!compiled.ok) throw new Error(compiled.error);
     compiled.design.id = draft.name.toLowerCase().replace(/\s+/g, '-');
     if (draft.chassis === 'walker') compiled.design.role = 'scout';

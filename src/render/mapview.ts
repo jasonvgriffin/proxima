@@ -8,6 +8,7 @@ import type { FactionId } from '../core/types';
 export class MapView {
   camera = { x: 0, y: 0, zoom: 1.25 };
   hover: { x: number; y: number } | null = null;
+  showTerraform = false;
   private raf = 0;
   private dragging = false;
   private dragMoved = false;
@@ -18,7 +19,7 @@ export class MapView {
     private canvas: HTMLCanvasElement,
     private getGame: () => Game,
     private getSelection: () => { unitId: number | null; cityId: number | null; reach: Set<string> },
-    private onTile: (x: number, y: number) => void,
+    private onTile: (x: number, y: number, mods: { shift: boolean; alt: boolean }) => void,
     private onHover: (label: string) => void,
   ) {
     canvas.addEventListener('pointerdown', this.down);
@@ -83,7 +84,7 @@ export class MapView {
   private up = (event: PointerEvent) => {
     if (!this.dragMoved) {
       const tile = this.tileAt(event.clientX, event.clientY);
-      if (tile) this.onTile(tile.x, tile.y);
+      if (tile) this.onTile(tile.x, tile.y, { shift: event.shiftKey, alt: event.altKey });
     }
     this.dragging = false;
   };
@@ -194,6 +195,12 @@ export class MapView {
       ctx.strokeStyle = 'rgba(224,177,92,0.8)';
       ctx.strokeRect(px + 4, py + 4, s - 8, s - 8);
     }
+    if (this.showTerraform && (tile.improvement || tile.road || (tile.livable && tile.zone !== 'twilight'))) {
+      ctx.strokeStyle = 'rgba(182, 227, 138, 0.95)';
+      ctx.lineWidth = 2;
+      ctx.strokeRect(px + 2, py + 2, s - 4, s - 4);
+      ctx.lineWidth = 1;
+    }
     if (tile.scarred) {
       ctx.strokeStyle = 'rgba(225,93,79,0.8)';
       ctx.beginPath();
@@ -258,6 +265,7 @@ export class MapView {
     const selected = this.getSelection().unitId;
     const stacks = new Map<string, number>();
     for (const unit of game.state.units) {
+      if (unit.aboard != null) continue;
       if (unit.x < view.x0 || unit.x > view.x1 || unit.y < view.y0 || unit.y > view.y1) continue;
       const own = unit.factionId === game.state.playerFaction;
       const visible =
@@ -306,6 +314,12 @@ export class MapView {
       if (unit.terraform) {
         ctx.strokeStyle = '#8fd18a';
         ctx.strokeRect(unit.x * s + 2, unit.y * s + 2, s - 4, s - 4);
+      }
+      if (unit.cargo.length) {
+        ctx.fillStyle = '#f4f7fb';
+        ctx.beginPath();
+        ctx.arc(unit.x * s + s - 6, unit.y * s + 6, 4, 0, Math.PI * 2);
+        ctx.fill();
       }
     }
   }

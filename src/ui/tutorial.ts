@@ -51,9 +51,9 @@ export function tutorialPages(): TutorialPage[] {
       id: 'cities',
       title: 'Founding cities',
       paragraphs: [
-        `Select a colony pod and press Found city. The pod is consumed. The site has to be land, at least ${CONFIG.city.minDistance} tiles from any other city, and inside the twilight band or on ground terraforming has already made livable. ${sealed} also allows founding on the day side and the night side.`,
+        `Select a colony pod and press Found city. The pod is consumed. The site has to be land, at least ${CONFIG.city.minDistance} tiles from any other city, and inside the twilight band or on ground that atmosphere work has made livable. ${sealed} also allows founding on the day side and the night side.`,
         `A city starts at population ${CONFIG.city.startingPopulation} and works the tiles within ${CONFIG.city.workRadius} of its center. It builds units from the designs you know. Another faction captures a city by defeating whoever is defending it.`,
-        'The game ends when one faction holds every rival city. With Allied Victory turned on at the start, an alliance that does this together shares the win.',
+        'The game ends when one faction holds every rival city. With Allied Victory turned on at the start, an alliance that does this together shares the win. If you lose every city and have no colony pod left that can found another, the defeat screen offers the social recap and a return to the main menu.',
       ],
     },
     {
@@ -61,7 +61,8 @@ export function tutorialPages(): TutorialPage[] {
       title: 'Economy and resources',
       paragraphs: [
         'The top bar tracks minerals, nutrients, energy, research, and credits. Cities draw minerals, nutrients, energy, and research from the land they work. Grass and forest feed people. Rock and canyons yield minerals. Coasts, toxic ground, and dunes yield energy. A mapped deposit adds more of its own resource, and ark debris also adds research.',
-        `Every city earns ${CONFIG.economy.creditsPerPopulation} credit per population point plus ${CONFIG.economy.creditsFlatPerCity} each turn. Spend credits to rush-buy a unit still in production: ${CONFIG.economy.rushCreditPerProductionPoint} credit for each production point remaining, and never fewer than ${CONFIG.economy.rushMinimumCredits}. The same purse pays terraforming. On Normal you start with ${CONFIG.starting.credits} credits. Easy starts you richer, and Hard and Brutal start you with less. Rival yards also run hotter or cooler with the difficulty you picked.`,
+        `Every city earns ${CONFIG.economy.creditsPerPopulation} credit per population point plus ${CONFIG.economy.creditsFlatPerCity} each turn. Spend credits to rush-buy a unit still in production: ${CONFIG.economy.rushCreditPerProductionPoint} credit for each production point remaining, and never fewer than ${CONFIG.economy.rushMinimumCredits}, plus ${CONFIG.economy.rushMineralsPerPoint} mineral, ${CONFIG.economy.rushNutrientsPerPoint} nutrient, and ${CONFIG.economy.rushEnergyPerPoint} energy from the stockpile for each point. The same purse pays terraforming. On Normal you start with ${CONFIG.starting.credits} credits. Easy starts you richer, and Hard and Brutal start you with less. Rival yards also run hotter or cooler with the difficulty you picked.`,
+        `Units cost upkeep. A colony pod costs ${CONFIG.upkeep.settler} credits a turn, a terraformer ${CONFIG.upkeep.terraformer}, a soldier ${CONFIG.upkeep.military}, and a ship ${CONFIG.upkeep.naval}. Scouts cost ${CONFIG.upkeep.scout}. Each unit also draws ${CONFIG.upkeep.minerals} mineral and ${CONFIG.upkeep.nutrients} nutrient from whatever is stored. A city spends ${CONFIG.economy.cityEnergyUpkeep} energy a turn, and each worked improvement spends ${CONFIG.economy.improvementEnergy} more. If the credits cannot cover another colony pod, the extra pod is disbanded.`,
         'Search, on any land or sea unit, sends that unit looking through the wreck on its own. Finds can be credits, minerals, nutrients, research, or a free unit. Cities starve and shrink if nutrients stay short, and they grow once a stored surplus is large enough.',
       ],
     },
@@ -80,8 +81,9 @@ export function tutorialPages(): TutorialPage[] {
       title: 'Terraformers',
       paragraphs: [
         'A terraformer works one land tile at a time and can be sent anywhere. It does not need a strip of finished ground beside it, and it stays on that tile until the work is done. Only one terraformer can work a given tile.',
-        `Farms and planted trees add nutrients. A mine adds minerals. Solar panels add energy. A road eases travel over rough ground. Atmosphere work needs Basic Atmosphere and Soil Science, and it pulls a harsh tile into the livable zone.`,
-        `The credit fee starts at ${fee} on ordinary ground and rises on harsher biomes, up to ${frozen} times that on frozen ground. At the starting former tech, a farm takes ${turns.farm} turns, trees ${turns['plant-trees']}, a road ${turns.road}, solar panels ${turns.solar}, a mine ${turns.mine}, and atmosphere work ${turns.atmosphere}. Later former techs cut those times.`,
+        `Farms and planted trees add nutrients. A mine adds minerals. Solar panels add energy. A road eases travel over rough ground. Only atmosphere work, which needs Basic Atmosphere and Soil Science, pulls a harsh tile into the livable zone. A farm, a mine, a road, or a solar panel does not.`,
+        `The credit fee starts at ${fee} on ordinary ground and rises on harsher biomes, up to ${frozen} times that on frozen ground. The work also spends energy: a farm ${CONFIG.terraform.energyCost.farm}, trees ${CONFIG.terraform.energyCost['plant-trees']}, a road ${CONFIG.terraform.energyCost.road}, solar panels ${CONFIG.terraform.energyCost.solar}, a mine ${CONFIG.terraform.energyCost.mine}, and atmosphere ${CONFIG.terraform.energyCost.atmosphere}. At the starting former tech, a farm takes ${turns.farm} turns, trees ${turns['plant-trees']}, a road ${turns.road}, solar panels ${turns.solar}, a mine ${turns.mine}, and atmosphere work ${turns.atmosphere}. Later former techs cut those times.`,
+        'Click a tile, or press T while the pointer is over one, to see its terrain, what has been built, how the yields changed, any work still in progress, and a short history. Shift-click when a unit or a city is standing there. A tile you have seen but cannot see now shows the last look, marked as possibly out of date. The Terraform button highlights improved ground.',
       ],
     },
     {
@@ -89,7 +91,7 @@ export function tutorialPages(): TutorialPage[] {
       title: 'Combat',
       paragraphs: [
         'Move next to an enemy and Attack shows the odds before you confirm. The roll compares attack with defense. Ridges, forests, mountains, and a city garrison favor the defender. Open ground favors the attacker. A weaker unit can still win the roll.',
-        'Ships use the same odds. Shore bombardment can weaken a city from the water, but only a land unit moving in captures it. Capturing every rival city is the victory.',
+        'Ships use the same odds. Shore bombardment can weaken a city, or a land unit, from the water, but only a land unit moving in captures a city. A transport\'s capacity comes from its hull and its special parts. Load a land unit from an adjacent coastal tile, and unload it onto one. Capturing every rival city is the victory.',
         'Design a unit from the chassis, weapon, armor, and special parts your technologies have unlocked. Early designs are built from parts salvaged out of the wreck.',
       ],
     },
@@ -108,7 +110,8 @@ export function tutorialPages(): TutorialPage[] {
       paragraphs: [
         'Diplomacy opens from the top bar. You do not need a unit in contact. The buttons run Declare war, Offer peace, Non-aggression, Alliance, Research treaty, and Share maps. Peace is offered from war. A non-aggression pact is offered from peace and sits one step below an alliance. An alliance requires the pact first.',
         'A pact or an alliance stops attacks between you. An alliance also shares maps. Research treaties and exploration treaties can be signed whenever you are not at war. Exploration shares maps. A research treaty shares research.',
-        'Rivals answer from their personalities. Treaty-seekers such as The Helm, Genesis, and Clio are easier to deal with. Verdantia and Mnemosyne lean toward trade. Ironclad goes it alone and is harder to sway. Matching social axes make a yes more likely. Rejecting an offer leaves a grievance they remember.',
+        'Rivals answer from their personalities. Treaty-seekers such as The Helm, Genesis, and Clio are easier to deal with. Verdantia and Mnemosyne lean toward trade. Ironclad goes it alone and is harder to sway. Matching social axes make a yes more likely. Rejecting an offer leaves a grievance, and that grievance fades by a point each week.',
+        'Trade, from the same screen, offers credits, minerals, nutrients, energy, or a technology you know for something they have. Rivals offer trades too. They refuse a deal in wartime, accept a gift, and otherwise weigh what they gain against what they give up. Traders accept a thinner margin.',
       ],
     },
     {
@@ -118,6 +121,15 @@ export function tutorialPages(): TutorialPage[] {
         `Recruit a spy for ${CONFIG.spies.recruitCost} credits. There is no upkeep. Place the spy inside another faction to watch that faction's map, stocks, and current research.`,
         'From inside, a spy can steal a technology, sabotage an improvement or a city\'s yards, or run a frame job that makes two other factions blame each other and downgrade their standing. Each of those missions can be caught, and a caught spy is lost.',
         'Counterintelligence is a sweep of your own house. It can root out foreign spies. It does not always find them.',
+      ],
+    },
+    {
+      id: 'events',
+      title: 'Random events',
+      paragraphs: [
+        'Game Options can turn random events on before the first week. The toggle is saved with the game. When it is off, none of these events fire.',
+        'A solar flare scrambles comms and sensors. Intact ark wreckage can be salvaged for supplies, study, or a crew. A faction betrayal breaks an oath. A dust storm slows the band or wears units that push through. A seismic shift shakes a city. Each event rolls on the game\'s own seed, so a saved game repeats the same rolls.',
+        'There is no schedule. Sometimes a warning arrives a week or more ahead, and sometimes the event just hits. When a choice is offered, pick it before the week can end. Escape does not dismiss that popup.',
       ],
     },
     {
