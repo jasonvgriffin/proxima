@@ -101,7 +101,8 @@ Combat works like Alpha Centauri's: a battle is decided by odds, not by a guaran
   - **Transport capacity:** a transport carries only a limited number of land units. How many depends on how the ship is designed, meaning its chassis and special parts (see Unit design).
 - **Naval combat:** works like land combat, using the same Alpha Centauri-style odds. Water terrain changes the odds (for example open ocean, coastal shallows, and hazardous seas).
 - **Shore bombardment:** naval units can attack land targets from an adjacent water square. Bombardment uses the same Alpha Centauri-style odds, and ships have their own strength values for it.
-- Still to decide: the exact capacity numbers for each chassis and part, whether bombardment can capture a city or only weaken it, exactly what "dangerous" means for hot and frozen seas (damage per turn, or a chance of losing the ship), and whether submarines or aircraft carriers exist.
+  - Bombardment can only weaken a city by lowering its defenses or health. It can't capture or destroy a city by itself. A land unit still has to move in to take the city.
+- Still to decide: the exact capacity numbers for each chassis and part, exactly what "dangerous" means for hot and frozen seas (damage per turn, or a chance of losing the ship), and whether submarines or aircraft carriers exist.
 
 ## Unit design
 
@@ -254,3 +255,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: City construction: cities can be captured in combat, and capturing every rival city wins by military supremacy.
 - 2026-10-01: Added the "Naval rules" section (water movement, hazardous seas, coastlines, transport, naval combat).
 - 2026-10-01: Naval rules: added transport capacity (set by ship design) and shore bombardment.
+- 2026-10-01: Naval rules: bombardment can only weaken a city; capturing it still takes a land unit.
