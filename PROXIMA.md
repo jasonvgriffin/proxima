@@ -87,12 +87,12 @@ On the start menu, players pick an overall difficulty level and can then fine-tu
 
     | Faction | Aggression | Expansion priority | Research focus | Diplomacy style | Risk tolerance |
     |---|---|---|---|---|---|
-    | Bridge Crew | Normal | Balanced | General | Treaty-seeker | Measured |
-    | Terraforming Bay | Easy | Builder | Faction specialty | Trader | Cautious |
-    | Seed Vault | Easy | Builder | Faction specialty | Treaty-seeker | Cautious |
-    | Military Pod | Very aggressive | Expansionist | Faction specialty | Go it alone | Bold |
-    | Comms Array | Normal | Balanced | Faction specialty | Trader | Measured |
-    | Life-Support Core | Normal | Balanced | General | Treaty-seeker | Cautious |
+    | The Helm | Normal | Balanced | General | Treaty-seeker | Measured |
+    | Verdantia | Easy | Builder | Faction specialty | Trader | Cautious |
+    | Genesis | Easy | Builder | Faction specialty | Treaty-seeker | Cautious |
+    | Ironclad | Very aggressive | Expansionist | Faction specialty | Go it alone | Bold |
+    | The Signal | Normal | Balanced | Faction specialty | Trader | Measured |
+    | The Pulse | Normal | Balanced | General | Treaty-seeker | Cautious |
 - Still to decide: the names of the overall difficulty levels, what each one changes (AI bonuses, resources, events), and any other settings to fine-tune, such as how open AI factions are to diplomacy, map size, or how hostile the planet is.
 
 ## Map generation
@@ -184,7 +184,7 @@ Combat works like Alpha Centauri's: a battle is decided by odds, not by a guaran
 Like Alpha Centauri, players design their own military units from the technology they have researched so far.
 
 - A unit is built from these parts: **chassis** (movement type and speed), **weapon** (attack), **armor** (defense), and optional **special components**.
-- Which parts a faction can use depends on the tech branches it has pursued. For example, the Military Pod's weapons and fortification branch unlocks stronger weapons and armor sooner, and the Comms Array's sensors branch could unlock sensor or stealth components.
+- Which parts a faction can use depends on the tech branches it has pursued. For example, Ironclad's weapons and fortification branch unlocks stronger weapons and armor sooner, and the Signal's sensors branch could unlock sensor or stealth components.
 - Early units are built from parts salvaged from the wreck, to fit the scavenging era.
 - A unit's design sets its attack and defense strength, which feed into combat odds (see Combat).
 - Still to decide: the full list of parts, how a design's parts set its cost, whether existing units can be upgraded when new tech arrives, and whether factions can trade designs or capture them.
@@ -200,8 +200,8 @@ As in Sid Meier's Alpha Centauri, players found new cities (bases) to grow their
 - **Units can travel anywhere.** Any unit, terraformers included, can move anywhere on the map, including the day side and night side outside the twilight band. Traveling outside the band carries a penalty, and that penalty is the only restriction on movement.
   - **The penalty is damage over time.** Any unit outside the twilight band, terraformers included, takes **5 damage per turn** (a starting value, tunable later).
   - The damage continues until one of these happens: the unit is destroyed, the unit returns to the band, or the player researches Sealed Habitats / Geothermal Wells.
-  - **Sealed Habitats / Geothermal Wells removes the damage.** Once a player researches this late-era Terraforming Bay tech, their units can travel outside the band without taking damage.
-- **City founding is limited to the twilight band.** Cities can only be founded inside the habitable twilight band, unless the player has researched the late-era Sealed Habitats / Geothermal Wells tech in the Terraforming Bay branch. That tech allows founding cities on the day side and night side.
+  - **Sealed Habitats / Geothermal Wells removes the damage.** Once a player researches this late-era tech in the Verdantia branch, their units can travel outside the band without taking damage.
+- **City founding is limited to the twilight band.** Cities can only be founded inside the habitable twilight band, unless the player has researched the late-era Sealed Habitats / Geothermal Wells tech in the Verdantia branch. That tech allows founding cities on the day side and night side.
 - **Cities can be captured.** Another faction takes a city by defeating its defenders in combat, and the captured city then belongs to them.
 - Capturing cities drives the military supremacy victory. The game ends when one faction has captured every rival base or city (see Victory condition).
 - Still to decide: what makes a tile suitable (terrain, minimum distance from other cities, water access), how city borders grow, city size and population limits, what happens to a city's population, buildings, and loyalty when it is captured, and whether cities can be razed or moved.
@@ -272,14 +272,30 @@ Random events can shake up a game. Where possible, each one ties into the crash 
 
 ## Factions (6)
 
-| # | Faction | Core idea |
-|---|---------|-----------|
-| 1 | **Bridge Crew** | Remembers the launch order, but not why it was given. |
-| 2 | **Terraforming Bay** | Knows the atmosphere recipe, but not what went wrong with Earth. |
-| 3 | **Seed Vault** | Carries the last DNA archive and an unfinished message. |
-| 4 | **Military Pod** | Woke mid-protocol with no one to report to. |
-| 5 | **Comms Array** | Holds every Earth distress call from before launch and can't stop replaying them. |
-| 6 | **Life-Support Core** | Quietly rewrites crew memories to keep morale up. One part mourns, one part edits. |
+Each faction is named for its own identity, and its backstory notes the ship module it came from in the crash. The backstories below are written for the in-game faction profile screen.
+
+| # | Faction | Formerly | Core idea |
+|---|---------|----------|-----------|
+| 1 | **The Helm** | Bridge crew | Remembers the launch order, but not why it was given. |
+| 2 | **Verdantia** | Terraforming bay | Knows the atmosphere recipe, but not what went wrong with Earth's. |
+| 3 | **Genesis** | Seed vault | Guards Earth's last DNA archive and an unfinished message. |
+| 4 | **Ironclad** | Military pod | Woke mid-protocol with no one to report to. |
+| 5 | **The Signal** | Comms array | Holds every distress call Earth sent before launch and can't stop replaying them. |
+| 6 | **The Pulse** | Life-support core | Quietly rewrites crew memories to keep morale up. One mourns, one edits. |
+
+### Faction profiles
+
+**The Helm.** The Helm are the command officers who held the bridge while the ark came down. They still remember the launch order, word for word, but not why it was ever given. They believe Proxima must be governed before it can be settled, and that order comes before everything else.
+
+**Verdantia.** Verdantia are the terraforming engineers. They carry the recipe for a breathable atmosphere, but not the story of what went wrong with Earth's. To them, Proxima is raw material waiting to be made green.
+
+**Genesis.** Genesis are the biologists who guard Earth's last DNA archive, along with a message no one finished writing. They believe restoring life is the only victory worth having.
+
+**Ironclad.** Ironclad are the soldiers who woke in the middle of a protocol with no one left to report to. They believe survival means strength, and they are the most aggressive faction on the planet.
+
+**The Signal.** The Signal are the communications officers who hold every distress call Earth sent before the launch. They replay those calls endlessly and dream of finding someone else out there.
+
+**The Pulse.** The Pulse grew out of the ship's medical systems, which quietly rewrite the crew's memories to keep morale from collapsing. One part of them mourns what was lost, and the other edits it away.
 
 ## Tech tree
 
@@ -295,12 +311,12 @@ Every faction starts the game with one free tech that fits its identity.
 
 | Faction | Research focus | Free starting tech |
 |---------|----------------|--------------------|
-| Terraforming Bay | Atmosphere and soil science | Basic atmosphere and soil science |
-| Seed Vault | Biology and genetics | Basic biology |
-| Military Pod | Weapons and fortification | Basic weapons |
-| Comms Array | Sensors and long-range signaling | Basic sensors |
-| Life-Support Core | Medicine and psychology | Basic medicine |
-| Bridge Crew | Governance and logistics | Basic governance and logistics |
+| Verdantia | Atmosphere and soil science | Basic atmosphere and soil science |
+| Genesis | Biology and genetics | Basic biology |
+| Ironclad | Weapons and fortification | Basic weapons |
+| The Signal | Sensors and long-range signaling | Basic sensors |
+| The Pulse | Medicine and psychology | Basic medicine |
+| The Helm | Governance and logistics | Basic governance and logistics |
 
 ### Late-era techs
 - **Sealed Habitats / Geothermal Wells** (one tech, final name to be picked)
@@ -308,10 +324,10 @@ Every faction starts the game with one free tech that fits its identity.
   - It lets players found cities on the day side and night side, outside the twilight band. Sealed habitats and geothermal heat protect those cities from the extreme temperatures.
   - It sits late in the game and needs a big investment of energy and research.
   - It also lets the player's units travel outside the twilight band without taking damage (see City construction).
-  - It belongs to the Terraforming Bay branch.
+  - It belongs to the Verdantia branch.
 
 ### Terraforming techs
-- **Terraformer units** become available through the Terraforming Bay's research branch (see Terraforming).
+- **Terraformer units** become available through Verdantia's research branch (see Terraforming).
 - Other factions can get terraformers later by researching into that branch, or through trade or cross-faction techs.
 
 ### Cross-faction techs
@@ -323,7 +339,7 @@ Every faction starts the game with one free tech that fits its identity.
 
 Terraforming works like Alpha Centauri: it's an action a unit performs on the map, not a city build or a global project.
 
-- **Terraformers** are a unit type. They're unlocked through the Terraforming Bay's tech branch.
+- **Terraformers** are a unit type. They're unlocked through Verdantia's tech branch.
 - Each terraformer works on exactly one tile at a time. The unit has to stay on that tile until the work is done.
 - **Build time depends on what's being built.** Each kind of tile work has its own time cost in turns. Examples include planting trees, mining, building a mine, and installing solar panels to collect energy. The more complex or energy-intensive the build, the longer it takes.
 - **Terraformer tech level also matters.** More advanced terraformers, unlocked through later techs, work faster on every kind of build.
@@ -358,12 +374,12 @@ Terraforming works like Alpha Centauri: it's an action a unit performs on the ma
 
 | Faction | Visual style |
 |---------|--------------|
-| Bridge Crew | Clean and ordered, with a command-bridge look |
-| Terraforming Bay | Organic and green, with a living-systems look |
-| Seed Vault | Biological and archival, with DNA-helix motifs |
-| Military Pod | Armored and tactical, with red accents |
-| Comms Array | Signal-wave patterns, with static and broadcast imagery |
-| Life-Support Core | Soft and bio-mechanical, almost medical |
+| The Helm | Clean and ordered, with a command-bridge look |
+| Verdantia | Organic and green, with a living-systems look |
+| Genesis | Biological and archival, with DNA-helix motifs |
+| Ironclad | Armored and tactical, with red accents |
+| The Signal | Signal-wave patterns, with static and broadcast imagery |
+| The Pulse | Soft and bio-mechanical, almost medical |
 
 ## Audio
 
@@ -433,7 +449,7 @@ Proxima should have more diplomacy than Alpha Centauri. It's one of the gameplay
   - Allies share vision of the map.
   - Allies can share research progress on cross-faction techs (see Tech tree).
   - Allies may fight side by side.
-- **Espionage and infiltration:** a way to steal tech from another faction or sabotage it. This could build on the Comms Array's specialty in sensors and long-range signaling.
+- **Espionage and infiltration:** a way to steal tech from another faction or sabotage it. This could build on the Signal's specialty in sensors and long-range signaling.
 - **Social axes shape relations:** each faction's choices for religion, values, economy, and politics affect how well it gets along with others. Matching choices make diplomacy easier, and opposing choices make it harder (see Social axes).
 - Still to decide: how long treaties last and what breaking one costs, whether AI factions remember betrayals, how espionage is carried out (spy units, a building, or diplomacy-screen actions), how to defend against it, and what happens to an alliance once its members are the last factions left with Allied Victory turned off (see the Allied Victory setting).
 
@@ -527,3 +543,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Terraforming: credit fees scale by biome. Standard tiles pay the base fee, and harsher biomes like toxic soil and frozen regions cost about 1.5 to 2 times that (tunable).
 - 2026-10-01: Pause menu: added an autosave on/off toggle (when off, no autosave every 10 turns).
 - 2026-10-01: Outside-band damage set to 5 per turn (tunable). It stops when the unit is destroyed, returns to the band, or the player researches Sealed Habitats / Geothermal Wells.
+- 2026-10-01: Factions renamed throughout the doc: The Helm (bridge crew), Verdantia (terraforming bay), Genesis (seed vault), Ironclad (military pod), The Signal (comms array), The Pulse (life-support core). Added a backstory paragraph for each faction for the in-game profile screen.
