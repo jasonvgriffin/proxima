@@ -1,6 +1,6 @@
 {
   "name": "proxima",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
   "description": "Proxima — a single-player turn-based 4X on a tidally locked world.",
   "author": "Jason Griffin",
@@ -18,12 +18,13 @@
   },
   "dependencies": {
     "@fontsource/fraunces": "^5.2.5",
-    "@fontsource/outfit": "^5.2.5"
+    "@fontsource/outfit": "^5.2.5",
+    "semver": "^7.7.2"
   },
   "devDependencies": {
     "@playwright/test": "^1.55.0",
     "@types/node": "^22.15.3",
-    "electron": "^35.7.5",
+    "electron": "^44.4.5",
     "electron-builder": "^26.0.12",
     "typescript": "^5.8.3",
     "vite": "^6.3.5",

@@ -256,7 +256,13 @@ export interface GameState {
 }
 
 export interface SaveEnvelope {
-  version: 1;
+  /**
+   * Save-file schema. 1 is a Proxima 0.1.0 file. 2 is Proxima 0.2.0.
+   * Loaders run the migration chain up to the current schema.
+   */
+  version: number;
+  /** Game-state schema copied from `state.version`. Omitted on 0.1.0 files. */
+  gameVersion?: number;
   slot: number;
   savedAt: string;
   label: string;

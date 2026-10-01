@@ -41,7 +41,13 @@ The game targets desktop (1440x900 is the e2e viewport). Add a phone-size shot (
 
 ## Release flow
 
-`.github/workflows/windows.yml` ("Windows build") runs on every push to `main`, every PR, and manual dispatch: `npm ci`, `npm test`, `npm run build`, then `electron-builder --win`. It uploads the `proxima-windows` artifact. On pushes to `main` (not PRs) it publishes the `.exe` files to the GitHub release tagged `v0.1.0-test`. Merging to `main` is the release, so `npm test` and `npm run build` must pass first.
+The version players see is `package.json` `version` (0.2.0). Do not hard-code it in `src/config.ts`.
+
+`.github/workflows/windows.yml` ("Windows build") runs on pushes to `main` and `release/**`, on tags `v*.*.*`, on every pull request, and on manual dispatch. A concurrency group cancels an older run for the same ref. Each run does `npm ci`, `npm test`, `npm run build`, `electron-builder --win`, uploads the `.exe` files as the `proxima-windows` artifact, then runs the install/uninstall no-trace job against that artifact.
+
+Publishing is separate. A GitHub Release is created only for a `vX.Y.Z` tag whose name matches `package.json` (so 0.2.0 publishes as `v0.2.0`). The publish job waits until the install/uninstall check has passed, creates a new release with notes, and attaches the executables. It fails if the tag does not match, or if that release already exists. It does not upload with `--clobber` and it does not touch the existing `v0.1.0-test` release. Do not create or push a tag unless Jason asked for a release.
+
+`npm test` and `npm run build` must pass before a pull request is opened.
 
 ## Conventions
 

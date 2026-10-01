@@ -3,8 +3,6 @@
  * Game rules read these values; they are not scattered through the code.
  */
 export const CONFIG = {
-  version: '0.1.0',
-
   calendar: {
     startYear: 2460,
     weeksPerYear: 52,

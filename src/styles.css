@@ -196,6 +196,34 @@ table.grid th, table.grid td { border-bottom: 1px solid var(--line-dim); padding
   pointer-events: none;
 }
 
+#update-banner { position: fixed; inset: 0; z-index: 18; pointer-events: none; }
+#update-banner:empty { display: none; }
+.update-banner {
+  position: fixed;
+  pointer-events: auto;
+  z-index: 18;
+  top: 84px;
+  left: 488px;
+  right: 24px;
+  max-height: 280px;
+  overflow: auto;
+  background: rgba(18, 24, 38, 0.96);
+  border: 1px solid var(--gold);
+  padding: 14px 16px;
+  box-shadow: var(--shadow);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.update-banner-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; }
+.update-notes {
+  white-space: pre-wrap;
+  margin: 0;
+  max-height: 120px;
+  overflow: auto;
+  line-height: 1.45;
+}
+
 .recap-sheet {
   grid-template-columns: minmax(0, 1fr);
   justify-items: center;

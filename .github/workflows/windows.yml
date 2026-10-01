@@ -2,9 +2,17 @@ name: Windows build
 
 on:
   push:
-    branches: [main]
+    branches:
+      - main
+      - 'release/**'
+    tags:
+      - 'v*.*.*'
   pull_request:
   workflow_dispatch:
+
+concurrency:
+  group: proxima-windows-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
 
 permissions:
   contents: write
@@ -34,19 +42,6 @@ jobs:
           name: proxima-windows
           path: release/*.exe
           if-no-files-found: error
-      - name: Publish to GitHub Releases
-        if: github.event_name != 'pull_request'
-        shell: pwsh
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          $tag = "v0.1.0-test"
-          gh release view $tag 2>$null
-          if ($LASTEXITCODE -ne 0) {
-            gh release create $tag --title "Proxima 0.1.0 test build" --notes "Unsigned Windows test build of Proxima. If SmartScreen warns, see the README."
-          }
-          gh release upload $tag (Get-ChildItem release\*.exe).FullName --clobber
-
   verify-uninstall:
     name: Install / uninstall leaves no trace
     needs: windows
@@ -146,3 +141,49 @@ jobs:
           Write-Host 'Uninstall left nothing behind. Confirmed removed:'
           @($installDir, $appData, "$env:LOCALAPPDATA\Proxima*", "$env:LOCALAPPDATA\proxima-updater", $desktopLnk, $startMenuLnk, "$uninstallRoot\$guid") + $softwareKeys |
             ForEach-Object { Write-Host "  $_" }
+
+  publish:
+    name: Publish GitHub Release
+    needs: [windows, verify-uninstall]
+    if: startsWith(github.ref, 'refs/tags/v')
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Download the executables
+        uses: actions/download-artifact@v4
+        with:
+          name: proxima-windows
+          path: release
+      - name: Create a new release without replacing an existing one
+        shell: pwsh
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $tag = '${{ github.ref_name }}'
+          $version = (Get-Content -Raw package.json | ConvertFrom-Json).version
+          if ($tag -notmatch '^v[0-9]+\.[0-9]+\.[0-9]+$') {
+            Write-Error "Tag $tag is not a vX.Y.Z release tag."
+            exit 1
+          }
+          if ($tag -ne "v$version") {
+            Write-Error "Tag $tag does not match package.json version $version. Refusing to publish."
+            exit 1
+          }
+          $ErrorActionPreference = 'Continue'
+          gh release view $tag --json tagName 1>$null 2>$null
+          $exists = $LASTEXITCODE -eq 0
+          $ErrorActionPreference = 'Stop'
+          if ($exists) {
+            Write-Error "Release $tag already exists. Proxima will not replace it."
+            exit 1
+          }
+          $notes = @(
+            "Proxima $version"
+            ''
+            "Unsigned Windows installer (Proxima-Setup-$version.exe) and portable build (Proxima-Portable-$version.exe)."
+            'If SmartScreen warns, see the README.'
+            "This release was created from the $tag tag. Older releases, including v0.1.0-test, are left as they are."
+          ) -join "`n"
+          gh release create $tag --title "Proxima $version" --notes $notes (Get-ChildItem release\*.exe).FullName
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }

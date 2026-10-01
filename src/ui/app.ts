@@ -1,3 +1,4 @@
+import { APP_VERSION } from '../version';
 import { CONFIG } from '../config';
 import { drawEmblem, drawPlanet, drawStar, drawStarfield } from '../art/draw';
 import { AudioBus, TRACKS } from '../audio/engine';
@@ -9,8 +10,11 @@ import { proposalLabel } from '../core/diplomacy';
 import { biomeClass, terraformFee, terraformTurns } from '../core/rules';
 import { formerTechLevel, TECHS, techAvailable, techById } from '../core/tech';
 import { starterDesigns, CHASSIS, WEAPONS, ARMORS, SPECIALS, partKnown } from '../core/parts';
-import { FACTION_IDS, type Difficulty, type FactionId, type GameState, type Proposal, type SaveEnvelope, type SocialAxis, type Unit } from '../core/types';
+import { FACTION_IDS, type Difficulty, type FactionId, type Proposal, type SaveEnvelope, type SocialAxis, type Unit } from '../core/types';
+import { migrateSave, SAVE_VERSION } from '../platform/saveMigrate';
 import { createSaveStore, type SaveStore } from '../platform/saves';
+import { createPlatform, type PlatformClient, type UpdateNotice } from '../platform/updates';
+import { renderDownloadConsent, renderDownloadDone, renderDownloadFailed, renderDownloadProgress, renderUpdateBanner, renderUpdatePrompt } from './updateUi';
 import { IntroPlayer, INTRO_SCENES } from '../render/intro';
 import { MapView } from '../render/mapview';
 import { renderSocialRecap } from './recap';
@@ -23,6 +27,10 @@ export class App {
   private overlay: HTMLElement;
   private audio = new AudioBus();
   private saves: SaveStore = createSaveStore();
+  private platform: PlatformClient = createPlatform();
+  private updateCheck = false;
+  private updateNotice: UpdateNotice | null = null;
+  private updateDismissed = false;
   private screen: Screen = 'menu';
   private game: Game | null = null;
   private introIndex = 0;
@@ -47,7 +55,7 @@ export class App {
   };
 
   constructor(root: HTMLElement) {
-    root.innerHTML = '<div id="stage"></div><div id="overlay"></div><div id="toast" hidden></div>';
+    root.innerHTML = '<div id="stage"></div><div id="update-banner"></div><div id="overlay"></div><div id="toast" hidden></div>';
     this.stage = root.querySelector('#stage')!;
     this.overlay = root.querySelector('#overlay')!;
     root.addEventListener('click', (event) => this.onClick(event));
@@ -66,9 +74,13 @@ export class App {
         showRecap: () => this.debugRecap(),
         state: () => this.game?.serialize() ?? null,
         tilePoint: (x: number, y: number) => this.map?.clientPoint(x, y) ?? null,
+        showUpdateBanner: () => this.previewUpdate(),
+        showDownloadConsent: () => this.previewDownloadConsent(),
+        showSaveError: () => this.showSaveError('Could not save the game, so Proxima stayed open.', new Error('Save file is unreadable (slot-1.json).')),
       };
     }
     this.render();
+    void this.bootUpdates();
   }
 
   private render() {
@@ -80,6 +92,7 @@ export class App {
     else if (this.screen === 'profile') this.renderProfile();
     else if (this.screen === 'recap') this.renderRecap();
     else this.mountGame();
+    this.paintBanner();
   }
 
   private stopMotion() {
@@ -110,6 +123,7 @@ export class App {
           </div>
           <label class="row"><input type="checkbox" data-setting="allied" ${this.setup.allied ? 'checked' : ''}/> Allied Victory</label>
           <label class="row"><input type="checkbox" data-setting="events" ${this.setup.events ? 'checked' : ''}/> Random events (saved, not fired in this build)</label>
+          <label class="row" data-testid="update-check-toggle"><input type="checkbox" data-setting="updates" ${this.updateCheck ? 'checked' : ''}/> Check for updates when Proxima starts</label>
           <div class="stack">
             <button class="btn primary" data-action="play-intro" data-testid="play-intro">Play Introduction</button>
             <button class="btn" data-action="new-game" data-testid="new-game">New Game</button>
@@ -378,10 +392,11 @@ export class App {
     }
   }
 
-  private onClick(event: MouseEvent) {
+  private async onClick(event: MouseEvent) {
     const node = (event.target as HTMLElement).closest('[data-action]') as HTMLElement | null;
     if (!node) return;
     const action = node.dataset.action;
+    if (await this.handleUpdateAction(action, node)) return;
     if (action === 'play-intro') {
       this.audio.stopMusic();
       this.introIndex = 0;
@@ -437,8 +452,8 @@ export class App {
       this.setup.axes[axis] = node.dataset.option ?? this.setup.axes[axis];
       this.render();
     } else if (action === 'start-game') this.startGame();
-    else if (action === 'load-game') void this.openLoad(false);
-    else if (action === 'end-turn') this.endTurn();
+    else if (action === 'load-game') await this.runSave(() => this.openLoad(false), 'Could not open the save list.');
+    else if (action === 'end-turn') await this.endTurn();
     else if (action === 'select-unit') {
       this.selectedUnit = Number(node.dataset.id);
       this.selectedCity = null;
@@ -491,8 +506,8 @@ export class App {
     else if (action === 'rush') this.act(() => this.game!.rushBuy(Number(node.dataset.city)), 'click');
     else if (action === 'close') this.closeOverlay();
     else if (action === 'resume') this.closeOverlay();
-    else if (action === 'pause-save') void this.openSave('manual');
-    else if (action === 'pause-load') void this.openLoad(true);
+    else if (action === 'pause-save') await this.runSave(() => this.openSave('manual'), 'Could not open the save list.');
+    else if (action === 'pause-load') await this.runSave(() => this.openLoad(true), 'Could not open the save list.');
     else if (action === 'pause-tutorial' || action === 'tutorial-next' || action === 'tutorial-back') {
       const step = action === 'pause-tutorial' ? 0 : Number(node.dataset.step) + (action === 'tutorial-next' ? 1 : -1);
       this.overlay.innerHTML = renderTutorial(step);
@@ -501,9 +516,9 @@ export class App {
     else if (action === 'pause-exit') this.askSaveFirst('exit');
     else if (action === 'confirm-cancel') this.closeOverlay();
     else if (action === 'confirm-discard') void this.finishPending(false);
-    else if (action === 'confirm-save') void this.openSave(this.pending?.mode === 'exit' ? 'then-exit' : 'then-new');
-    else if (action === 'save-slot') void this.writeSlot(Number(node.dataset.slot), node.dataset.purpose ?? 'manual');
-    else if (action === 'load-slot') void this.readSlot(Number(node.dataset.slot));
+    else if (action === 'confirm-save') await this.runSave(() => this.openSave(this.pending?.mode === 'exit' ? 'then-exit' : 'then-new'), 'Could not open the save list. Proxima stayed open.');
+    else if (action === 'save-slot') await this.runSave(() => this.writeSlot(Number(node.dataset.slot), node.dataset.purpose ?? 'manual'), 'Could not save the game. Proxima stayed open.');
+    else if (action === 'load-slot') await this.runSave(() => this.readSlot(Number(node.dataset.slot)), 'Could not load that save.');
     else if (action === 'view-recap') {
       this.screen = 'recap';
       this.render();
@@ -529,6 +544,10 @@ export class App {
     if (target.dataset.setting === 'events') this.setup.events = (target as HTMLInputElement).checked;
     if (target.dataset.setting === 'autosave' && this.game) {
       this.game.state.autosaveEnabled = (target as HTMLInputElement).checked;
+    }
+    if (target.dataset.setting === 'updates') {
+      this.updateCheck = (target as HTMLInputElement).checked;
+      void this.persistUpdateCheck(this.updateCheck);
     }
     if (target.dataset.setting === 'music') this.audio.setMusic((target as HTMLInputElement).checked);
     if (target.dataset.setting === 'sfx') this.audio.setSfx((target as HTMLInputElement).checked);
@@ -574,7 +593,7 @@ export class App {
     this.audio.unlock();
   }
 
-  private endTurn() {
+  private async endTurn() {
     const game = this.game;
     if (!game) return;
     const logBefore = snapshotLog(game.state.log);
@@ -584,8 +603,8 @@ export class App {
     playTerraformProgress(this.audio, workBefore, snapshotTerraform(game.state.units, game.state.playerFaction));
     playLoggedCues(this.audio, logBefore, game.state.log, game.state.playerFaction);
     this.toast(ended.message);
-    if (ended.autosave) void this.writeSlot(0, 'autosave');
     this.refreshGame();
+    if (ended.autosave) await this.runSave(() => this.writeSlot(0, 'autosave'), 'Autosave failed. Your game is still running.');
   }
 
   private act(fn: () => { ok: boolean; message: string }, sound: 'click' | 'found' | 'terraform' | 'attack') {
@@ -768,6 +787,7 @@ export class App {
       <div class="modal-back"><div class="modal narrow" data-testid="pause-menu">
         <p class="eyebrow">Paused</p>
         <h2>Proxima</h2>
+        <p class="muted">Version ${esc(APP_VERSION)}</p>
         <p data-testid="pause-difficulty">Difficulty: ${esc(difficultyLabel(this.game?.state.setup.difficulty))}. ${esc(difficultyProfile(this.game?.state.setup.difficulty).blurb)}</p>
         <h3>Audio</h3>
         <label class="row"><input type="checkbox" data-setting="music" ${this.audio.musicOn ? 'checked' : ''}/> Music</label>
@@ -777,6 +797,9 @@ export class App {
         <label class="row">Order <select data-setting="mode"><option value="loop" ${this.audio.mode === 'loop' ? 'selected' : ''}>Loop</option><option value="shuffle" ${this.audio.mode === 'shuffle' ? 'selected' : ''}>Shuffle</option></select></label>
         <h3>Saves</h3>
         <label class="row" data-testid="autosave-toggle"><input type="checkbox" data-setting="autosave" ${autosave ? 'checked' : ''}/> Autosave every ${CONFIG.autosaveEveryTurns} turns</label>
+        <h3>Updates</h3>
+        <label class="row" data-testid="update-check-toggle"><input type="checkbox" data-setting="updates" ${this.updateCheck ? 'checked' : ''}/> Check for updates when Proxima starts</label>
+        <p class="muted">Off unless you turn it on. Proxima only notifies you. It never downloads or installs anything unless you ask.</p>
         <div class="stack">
           <button class="btn" data-action="pause-save" data-testid="pause-save">Save game</button>
           <button class="btn" data-action="pause-load" data-testid="pause-load">Load game</button>
@@ -804,57 +827,78 @@ export class App {
   }
 
   private async openSave(purpose: string) {
-    const list = await this.saves.list();
-    this.overlay.innerHTML = `
-      <div class="modal-back"><div class="modal narrow" data-testid="save-list">
-        <h2>Save game</h2>
-        <p class="muted">Nine manual slots. The autosave is separate and always listed first when you load.</p>
-        <div class="stack">
-          ${list.filter((slot) => slot.slot !== 0).map((slot) => `<button class="btn" data-action="save-slot" data-testid="save-slot-${slot.slot}" data-slot="${slot.slot}" data-purpose="${purpose}">Slot ${slot.slot}${slot.empty ? ' · empty' : ` · ${esc(slot.label ?? '')}`}</button>`).join('')}
-        </div>
-        <button class="btn" data-action="close">Cancel</button>
-      </div></div>`;
+    try {
+      const list = await this.saves.list();
+      this.overlay.innerHTML = `
+        <div class="modal-back"><div class="modal narrow" data-testid="save-list">
+          <h2>Save game</h2>
+          <p class="muted">Nine manual slots. The autosave is separate and always listed first when you load.</p>
+          <div class="stack">
+            ${list.filter((slot) => slot.slot !== 0).map((slot) => `<button class="btn" data-action="save-slot" data-testid="save-slot-${slot.slot}" data-slot="${slot.slot}" data-purpose="${purpose}">Slot ${slot.slot}${slot.empty ? ' · empty' : ` · ${esc(slot.label ?? '')}`}${slot.corrupt ? ' · unreadable' : ''}</button>`).join('')}
+          </div>
+          <button class="btn" data-action="close">Cancel</button>
+        </div></div>`;
+    } catch (error) {
+      this.showSaveError(purpose === 'then-exit' ? 'Could not open the save list, so Proxima stayed open.' : 'Could not open the save list.', error);
+    }
   }
 
-  private async openLoad(fromGame: boolean) {
-    const list = await this.saves.list();
-    const html = `
-      <div class="modal-back"><div class="modal narrow">
-        <h2>Load game</h2>
-        <div class="stack" data-testid="load-list">
-          ${list.map((slot) => `<button class="btn" data-action="load-slot" data-testid="load-slot-${slot.slot}" data-slot="${slot.slot}" ${slot.empty ? 'disabled' : ''}>${slot.slot === 0 ? 'Autosave' : `Slot ${slot.slot}`}${slot.empty ? ' · empty' : ` · ${esc(slot.label ?? '')}`}</button>`).join('')}
-        </div>
-        <button class="btn" data-action="close">Close</button>
-      </div></div>`;
-    if (!fromGame && this.screen !== 'game') {
-      this.overlay.innerHTML = html;
-    } else this.overlay.innerHTML = html;
+  private async openLoad(_fromGame: boolean) {
+    try {
+      const list = await this.saves.list();
+      this.overlay.innerHTML = `
+        <div class="modal-back"><div class="modal narrow">
+          <h2>Load game</h2>
+          <div class="stack" data-testid="load-list">
+            ${list.map((slot) => `<button class="btn" data-action="load-slot" data-testid="load-slot-${slot.slot}" data-slot="${slot.slot}" ${slot.empty && !slot.corrupt ? 'disabled' : ''}>${slot.slot === 0 ? 'Autosave' : `Slot ${slot.slot}`}${slot.corrupt ? ' · unreadable' : slot.empty ? ' · empty' : ` · ${esc(slot.label ?? '')}`}</button>`).join('')}
+          </div>
+          <button class="btn" data-action="close">Close</button>
+        </div></div>`;
+    } catch (error) {
+      this.showSaveError('Could not open the save list.', error);
+    }
   }
 
   private async writeSlot(slot: number, purpose: string) {
     if (!this.game) return;
-    const envelope = this.envelope(slot);
-    await this.saves.write(slot, envelope);
-    this.audio.play('save');
-    this.toast(slot === 0 ? 'Autosaved.' : `Saved to slot ${slot}.`);
-    if (purpose === 'then-new' || purpose === 'then-exit') await this.finishPending(true);
-    else if (purpose === 'manual') this.openPause();
+    try {
+      const envelope = this.envelope(slot);
+      await this.saves.write(slot, envelope);
+      this.audio.play('save');
+      this.toast(slot === 0 ? 'Autosaved.' : `Saved to slot ${slot}.`);
+      if (purpose === 'then-new' || purpose === 'then-exit') await this.finishPending(true);
+      else if (purpose === 'manual') this.openPause();
+    } catch (error) {
+      const message = purpose === 'then-exit'
+        ? 'Could not save the game, so Proxima stayed open.'
+        : purpose === 'then-new'
+          ? 'Could not save the game, so the new game was not started.'
+          : purpose === 'autosave'
+            ? 'Autosave failed. Your game is still running.'
+            : `Could not save to slot ${slot}.`;
+      this.showSaveError(message, error);
+    }
   }
 
   private async readSlot(slot: number) {
-    const data = await this.saves.read(slot);
-    if (!data?.state) {
-      this.toast('That slot is empty.');
-      return;
+    try {
+      const data = await this.saves.read(slot);
+      if (!data) {
+        this.showSaveError('That save is missing.');
+        return;
+      }
+      const migrated = migrateSave(data);
+      this.game = Game.fromState(migrated.state);
+      this.selectedUnit = null;
+      this.selectedCity = null;
+      this.overlay.innerHTML = '';
+      this.screen = 'game';
+      this.gameMounted = false;
+      this.render();
+      this.toast(`Loaded ${migrated.label}.`);
+    } catch (error) {
+      this.showSaveError('Could not load that save.', error);
     }
-    this.game = Game.fromState(data.state as GameState);
-    this.selectedUnit = null;
-    this.selectedCity = null;
-    this.overlay.innerHTML = '';
-    this.screen = 'game';
-    this.gameMounted = false;
-    this.render();
-    this.toast(`Loaded ${data.label}.`);
   }
 
   private async finishPending(saved: boolean) {
@@ -884,7 +928,8 @@ export class App {
     const cal = game.calendar();
     const faction = FACTIONS[game.state.playerFaction];
     return {
-      version: 1,
+      version: SAVE_VERSION,
+      gameVersion: 1,
       slot,
       savedAt: new Date().toISOString(),
       label: `${faction.name} — ${cal.label}`,
@@ -1021,6 +1066,186 @@ export class App {
     this.overlay.innerHTML = '';
     this.screen = 'recap';
     this.render();
+  }
+
+  private async runSave(work: () => Promise<void>, fallback: string) {
+    try {
+      await work();
+    } catch (error) {
+      this.showSaveError(fallback, error);
+    }
+  }
+
+  private showSaveError(message: string, error?: unknown) {
+    const detail = error instanceof Error ? error.message : '';
+    const text = detail && !message.includes(detail) ? `${message} ${detail}` : message;
+    void this.platform.reportError(error instanceof Error && error.stack ? `${text}\n${error.stack}` : text);
+    this.overlay.innerHTML = `
+      <div class="modal-back" data-testid="save-error">
+        <div class="modal narrow">
+          <h2>Save problem</h2>
+          <p data-testid="save-error-message">${esc(text)}</p>
+          <button class="btn" data-action="close" data-testid="save-error-ok">OK</button>
+        </div>
+      </div>`;
+  }
+
+  private paintBanner() {
+    const host = document.querySelector('#update-banner');
+    if (!host) return;
+    host.innerHTML = !this.updateDismissed && this.updateNotice?.status === 'available' ? renderUpdateBanner(this.updateNotice) : '';
+  }
+
+  private async bootUpdates() {
+    try {
+      const settings = await this.platform.getSettings();
+      this.updateCheck = settings.updateCheck;
+      if (this.platform.kind === 'desktop' && !settings.updatePromptSeen && this.screen === 'menu') {
+        this.overlay.innerHTML = renderUpdatePrompt();
+        return;
+      }
+      if (settings.updateCheck) await this.pollUpdates();
+    } catch (error) {
+      void this.platform.reportError(error instanceof Error ? (error.stack || error.message) : String(error));
+    }
+  }
+
+  private async persistUpdateCheck(enabled: boolean) {
+    try {
+      await this.platform.setUpdateCheck(enabled);
+      if (enabled) await this.pollUpdates();
+      else {
+        this.updateNotice = null;
+        this.paintBanner();
+      }
+    } catch (error) {
+      this.toast('Could not store the update setting.');
+      void this.platform.reportError(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  private async pollUpdates() {
+    const result = await this.platform.checkForUpdates();
+    if (result.status !== 'available' || this.updateDismissed) return;
+    this.updateNotice = result;
+    this.paintBanner();
+  }
+
+  private async handleUpdateAction(action: string | undefined, node: HTMLElement) {
+    if (action === 'update-dismiss') {
+      this.updateDismissed = true;
+      this.paintBanner();
+      return true;
+    }
+    if (action === 'update-skip') {
+      const version = this.updateNotice?.version;
+      this.updateDismissed = true;
+      this.updateNotice = null;
+      this.paintBanner();
+      if (version) {
+        try { await this.platform.skipVersion(version); } catch { /* logged in the desktop app */ }
+      }
+      return true;
+    }
+    if (action === 'update-open') {
+      const url = node.dataset.url || this.updateNotice?.url || '';
+      const opened = await this.platform.openReleasePage(url);
+      if (!opened) this.toast('That page is not a Proxima release.');
+      return true;
+    }
+    if (action === 'update-download') {
+      await this.openDownloadConsent();
+      return true;
+    }
+    if (action === 'update-download-cancel') {
+      await this.platform.cancelDownload();
+      this.closeOverlay();
+      return true;
+    }
+    if (action === 'update-download-confirm') {
+      await this.runDownload();
+      return true;
+    }
+    if (action === 'update-show-folder') {
+      await this.platform.showInFolder(node.dataset.file || '');
+      return true;
+    }
+    if (action === 'update-prompt-yes') {
+      await this.answerUpdatePrompt(true);
+      return true;
+    }
+    if (action === 'update-prompt-no') {
+      await this.answerUpdatePrompt(false);
+      return true;
+    }
+    return false;
+  }
+
+  private async answerUpdatePrompt(enable: boolean) {
+    this.updateCheck = enable;
+    try {
+      await this.platform.answerUpdatePrompt(enable);
+    } catch (error) {
+      this.toast('Could not store that choice.');
+      void this.platform.reportError(error instanceof Error ? error.message : String(error));
+    }
+    this.closeOverlay();
+    if (this.screen === 'menu') this.render();
+    if (enable) await this.pollUpdates();
+  }
+
+  private async openDownloadConsent() {
+    try {
+      const offer = await this.platform.prepareDownload();
+      if (!offer) {
+        this.toast('No installer is listed for this release.');
+        return;
+      }
+      this.overlay.innerHTML = renderDownloadConsent(offer);
+    } catch (error) {
+      this.toast('Could not prepare the download.');
+      void this.platform.reportError(error instanceof Error ? error.message : String(error));
+    }
+  }
+
+  private async runDownload() {
+    const fileName = this.overlay.querySelector('[data-testid="download-name"]')?.textContent ?? 'Installer';
+    this.overlay.innerHTML = renderDownloadProgress(fileName.replace(/^File\s*/, ''));
+    const stop = this.platform.onDownloadProgress((progress) => {
+      const node = this.overlay.querySelector('[data-testid="download-progress"]');
+      if (node) node.textContent = progress.total > 0 ? `${progress.percent}%` : `${progress.received} bytes`;
+    });
+    try {
+      const result = await this.platform.downloadUpdate();
+      if (!result.ok || !result.file) {
+        this.overlay.innerHTML = renderDownloadFailed(result.message || 'The download did not finish.');
+        return;
+      }
+      this.overlay.innerHTML = renderDownloadDone(result.file, Boolean(result.verifiedSha256));
+    } catch (error) {
+      this.overlay.innerHTML = renderDownloadFailed(error instanceof Error ? error.message : 'The download did not finish.');
+    } finally {
+      stop();
+    }
+  }
+
+  private previewUpdate() {
+    this.updateDismissed = false;
+    this.updateNotice = {
+      status: 'available',
+      version: '0.3.0',
+      notes: 'Save files from 0.1.0 load in this build.\nProxima can tell you when a newer version is published.\nNothing is downloaded until you ask.',
+      url: 'https://github.com/jasonvgriffin/proxima/releases/tag/v0.3.0',
+    };
+    this.paintBanner();
+  }
+
+  private previewDownloadConsent() {
+    this.overlay.innerHTML = renderDownloadConsent({
+      fileName: 'Proxima-Setup-0.3.0.exe',
+      size: 86_016_000,
+      destination: 'C:\\Users\\Jason\\Downloads\\Proxima-Setup-0.3.0.exe',
+    });
   }
 
   private toast(message: string) {
