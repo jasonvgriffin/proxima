@@ -1,0 +1,10 @@
+{
+  "install": "npm ci && npx playwright install --with-deps chromium",
+  "terminals": [
+    {
+      "name": "Vite dev server",
+      "command": "npm run dev -- --host 127.0.0.1",
+      "description": "Browser build of Proxima at http://127.0.0.1:5173. Playwright (npm run test:e2e) reuses this server."
+    }
+  ]
+}
