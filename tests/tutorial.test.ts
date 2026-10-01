@@ -5,7 +5,7 @@ import { formatCalendar } from '../src/core/rules';
 import { renderTutorial, renderTutorialPage, tutorialIndex, tutorialPages } from '../src/ui/tutorial';
 
 const TOPICS = [
-  'twilight',
+  'world',
   'cities',
   'economy',
   'research',
@@ -27,11 +27,12 @@ describe('pause tutorial', () => {
       expect(text).toContain(faction.name);
     }
     expect(text).toContain(formatCalendar(1));
-    expect(text).toContain(String(CONFIG.outsideBand.damagePerTurn));
+    expect(text).toContain(String(CONFIG.exposure.damagePerTurn));
     expect(text).toContain(String(CONFIG.spies.recruitCost));
     expect(text).toContain(String(CONFIG.social.switchCost));
     expect(text).toContain(formatCalendar(CONFIG.crisis.startRound));
-    expect(text).toContain('Sealed Habitats / Geothermal Wells');
+    expect(text).toContain('Sealed Habitats');
+    expect(text).toContain('Geothermal Wells');
     expect(text).toContain('Waking Reactor');
     expect(text).toContain('Salvage Formers');
     expect(text).toContain('optional');
@@ -45,7 +46,7 @@ describe('pause tutorial', () => {
     const first = renderTutorial(0);
     expect(first).toContain('data-testid="tutorial"');
     expect(first).toContain('data-tutorial-step="0"');
-    expect(first).toContain('The twilight band');
+    expect(first).toContain('The world');
     expect(first).toContain('data-action="tutorial-back"');
     expect(first).toContain('disabled');
     expect(first).toContain('data-action="tutorial-next"');

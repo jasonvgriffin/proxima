@@ -3,9 +3,10 @@ import { crisisTuning } from './difficulty';
 import { acceptsTrade, emptyTrade } from './diplomacy';
 import { FACTIONS } from './factions';
 import type { Game } from './game';
+import { isHostileClimate, settleScore } from './geography';
 import { buildableDesigns } from './parts';
 import { nextQueuedResearch, pathToGoal } from './researchPath';
-import { attackThreshold, canFoundCity, isSea, peaceWindow, projectAllowed, tileIsLivable } from './rules';
+import { attackThreshold, canFoundCity, isSea, peaceWindow, projectAllowed } from './rules';
 import { TECHS, techAvailable, techById } from './tech';
 import { FACTION_IDS, type FactionId, type ImprovementId, type Personality, type TradeBundle, type Unit } from './types';
 
@@ -48,11 +49,11 @@ function pickProject(game: Game, unit: Unit): ImprovementId | null {
   if (!tile || isSea(tile.terrain)) return null;
   const techs = game.state.factions[unit.factionId].techs;
   if (!tile.improvement) {
-    if (!tileIsLivable(tile) && projectAllowed('atmosphere', techs)) return 'atmosphere';
+    if (isHostileClimate(tile.terrain) && projectAllowed('atmosphere', techs)) return 'atmosphere';
     if (tile.terrain === 'rocky' || tile.terrain === 'mountain' || tile.terrain === 'canyon' || tile.terrain === 'ridge') {
       return 'mine';
     }
-    if (tile.zone === 'day' || tile.terrain === 'thin-air' || tile.terrain === 'scorched' || tile.terrain === 'dunes') {
+    if (tile.terrain === 'thin-air' || tile.terrain === 'scorched' || tile.terrain === 'dunes' || tile.terrain === 'lava') {
       return 'solar';
     }
     if (tile.terrain === 'frozen-plain' || tile.terrain === 'toxic' || tile.terrain === 'ice-ridge') {
@@ -111,12 +112,21 @@ function tryAttack(game: Game, unit: Unit, threshold: number, bold: boolean): bo
       const preview = game.previewAttack(unit.id, unit.x + dx, unit.y + dy);
       if (!preview.ok) continue;
       const odds = supportOdds(game, unit, unit.x + dx, unit.y + dy, preview.odds);
-      if (odds < threshold) continue;
-      const rank = (bold ? (preview.city ? 3 : 1) : 0) + odds;
+      const need = preview.city ? Math.min(threshold, 0.45) : threshold;
+      if (odds < need) continue;
+      const rank = (bold ? (preview.city ? 3 : 1) : preview.city ? 2 : 0) + odds;
       if (!best || rank > best.rank) best = { x: unit.x + dx, y: unit.y + dy, rank };
     }
   }
   if (!best) return false;
+  const occupant = game.state.units.find((other) => other.x === best.x && other.y === best.y && other.factionId !== unit.factionId);
+  const city = game.cityAt(best.x, best.y);
+  const foe = occupant?.factionId ?? (city && city.factionId !== unit.factionId ? city.factionId : null);
+  const aggression = game.state.setup.personalities[unit.factionId].aggression;
+  if (foe) {
+    const stance = game.relation(unit.factionId, foe).stance;
+    if (aggression !== 'easy' && (stance === 'nap' || stance === 'alliance')) game.propose(foe, 'war');
+  }
   return game.confirmAttack(unit.id, best.x, best.y).ok;
 }
 
@@ -192,9 +202,8 @@ export function countFoundingSites(game: Game, factionId: FactionId): number {
     const check = canFoundCity({
       canFound: true,
       sea: false,
-      livable: tile.livable,
-      inBand: tile.zone === 'twilight',
-      hasSealed,
+      hostile: isHostileClimate(tile.terrain),
+      sealed: hasSealed,
       nearestCity: game.nearestCityDistance(tile.x, tile.y),
       cityHere: !!game.cityAt(tile.x, tile.y),
     });
@@ -213,6 +222,18 @@ function nearSea(game: Game, x: number, y: number): boolean {
     }
   }
   return false;
+}
+
+function atWarWith(game: Game, factionId: FactionId): boolean {
+  return FACTION_IDS.some(
+    (id) => id !== factionId && game.citiesOf(id).length > 0 && game.relation(factionId, id).stance === 'war',
+  );
+}
+
+function mustFinishWar(game: Game, factionId: FactionId): boolean {
+  if (game.state.setup.alliedVictory || game.state.round < 110) return false;
+  const rivals = FACTION_IDS.filter((id) => id !== factionId && game.citiesOf(id).length > 0);
+  return rivals.length === 1;
 }
 
 function cityGoal(game: Game, factionId: FactionId): number {
@@ -273,10 +294,19 @@ export function chooseDesign(game: Game, factionId: FactionId): string | null {
   const formerTarget =
     personality.expansion === 'builder' ? Math.max(1, cities.length) : Math.max(1, Math.ceil(cities.length / 2));
   const coast = cities.some((city) => nearSea(game, city.x, city.y));
-  const fighting = wantsToFight(personality, difficulty, game.state.round);
+  const fighting =
+    wantsToFight(personality, difficulty, game.state.round) || atWarWith(game, factionId) || mustFinishWar(game, factionId);
   const barge = designs.find((design) => design.domain === 'sea' && design.transport > 0 && design.attack <= 0);
 
   if (cities.length > 0 && military < cities.length) return (byRole('military') ?? byRole('scout'))?.id ?? null;
+  const leaderCities = FACTION_IDS.reduce(
+    (best, id) => (id === factionId ? best : Math.max(best, game.citiesOf(id).length)),
+    0,
+  );
+  const behind = leaderCities > cities.length && personality.aggression !== 'easy' && fighting;
+  if (behind && military < Math.min(leaderCities, cities.length + 2)) {
+    return (byRole('military') ?? byRole('scout'))?.id ?? null;
+  }
   if (pods < podCap && cities.length < cityTarget) return byRole('settler')?.id ?? null;
   const bargesBuilding = barge ? cities.filter((city) => city.production?.designId === barge.id).length : 0;
   if (cutOff(game, factionId) && transports + bargesBuilding < 2 && barge) return barge.id;
@@ -303,17 +333,15 @@ function bestFoundingPath(game: Game, unit: Unit, factionId: FactionId): { x: nu
     const check = canFoundCity({
       canFound: true,
       sea: false,
-      livable: tile.livable,
-      inBand: tile.zone === 'twilight',
-      hasSealed,
+      hostile: isHostileClimate(tile.terrain),
+      sealed: hasSealed,
       nearestCity: game.nearestCityDistance(tile.x, tile.y),
       cityHere: !!game.cityAt(tile.x, tile.y),
     });
     if (!check.ok) continue;
     const nearestOwn = own.reduce((best, city) => Math.min(best, dist(city, tile)), 99);
-    let score = 8 + Math.min(nearestOwn, 8);
-    if (tile.resource) score += 3;
-    if (tile.zone === 'twilight') score += 4;
+    let score = 8 + Math.min(nearestOwn, 8) + Math.max(0, settleScore(tile));
+    if (tile.resource || tile.special) score += 3;
     if (tile.terrain === 'grass' || tile.terrain === 'forest' || tile.terrain === 'coast') score += 2;
     score -= dist(unit, tile) * 0.45;
     ranked.push({ x: tile.x, y: tile.y, score });
@@ -375,6 +403,7 @@ function strikeTarget(game: Game, factionId: FactionId, unit: Unit): Strike | nu
     if (rel.stance === 'war') score += 12;
     if (game.citiesOf(city.factionId).length <= 1) score += 8;
     if (weakest && city.factionId === weakest) score += 28;
+    if (mine < bestOther && game.citiesOf(city.factionId).length === bestOther) score += 22;
     consider(city.x, city.y, score);
   }
   for (const other of game.state.units) {
@@ -474,9 +503,11 @@ function garrisonIds(game: Game, factionId: FactionId): Set<number> {
   const held = new Set<number>();
   const soldiers = game.unitsOf(factionId).filter((unit) => unit.role === 'military' && unit.attack > 0 && unit.aboard == null);
   const cities = game.citiesOf(factionId);
+  const powers = FACTION_IDS.filter((id) => game.citiesOf(id).length > 0).length;
+  const span = powers === 2 ? 2 : 6;
   for (const city of cities) {
     const threatened = game.state.cities.some(
-      (other) => other.factionId !== factionId && dist(other, city) <= 6 && game.relation(factionId, other.factionId).stance !== 'alliance',
+      (other) => other.factionId !== factionId && dist(other, city) <= span && game.relation(factionId, other.factionId).stance !== 'alliance',
     );
     if (!threatened && cities.length > 1) continue;
     const guard = soldiers.find((unit) => !held.has(unit.id) && dist(unit, city) <= 1);
@@ -664,6 +695,10 @@ function considerPolitics(game: Game, factionId: FactionId, personality: Persona
     });
     if (partner) game.propose(partner, 'research');
   }
+  if (mustFinishWar(game, factionId)) {
+    const last = FACTION_IDS.find((id) => id !== factionId && game.citiesOf(id).length > 0);
+    if (last && game.relation(factionId, last).stance !== 'war') game.propose(last, 'war');
+  }
   considerTrade(game, factionId, personality);
   considerSpies(game, factionId, personality);
 }
@@ -674,18 +709,29 @@ export function runAi(game: Game): void {
   if (!faction || faction.isHuman) return;
   const personality = game.state.setup.personalities[factionId];
   const difficulty = game.state.setup.difficulty;
-  const fighting = wantsToFight(personality, difficulty, game.state.round);
+  const fighting =
+    wantsToFight(personality, difficulty, game.state.round) || atWarWith(game, factionId) || mustFinishWar(game, factionId);
   let threshold = oddsThreshold(personality, difficulty);
+  const mineNow = game.citiesOf(factionId).length;
+  const bestOtherNow = FACTION_IDS.reduce(
+    (best, id) => (id === factionId ? best : Math.max(best, game.citiesOf(id).length)),
+    0,
+  );
+  if (fighting && mineNow + 1 < bestOtherNow && personality.aggression !== 'easy') {
+    threshold = Math.max(0.28, threshold - 0.14);
+  }
   if (game.state.round > 80) {
-    const mine = game.citiesOf(factionId).length;
-    const others = FACTION_IDS.filter((id) => id !== factionId);
-    const bestOther = others.reduce((best, id) => Math.max(best, game.citiesOf(id).length), 0);
     const pressing =
-      mine > bestOther ||
-      (mine === bestOther && mine > 0 && (personality.aggression === 'very-aggressive' || personality.risk === 'bold'));
-    if (pressing) threshold = Math.max(0.28, threshold - 0.2);
+      mineNow > bestOtherNow ||
+      (mineNow === bestOtherNow && mineNow > 0 && (personality.aggression === 'very-aggressive' || personality.risk === 'bold'));
+    if (pressing) {
+      const cut = personality.risk === 'bold' || personality.aggression === 'very-aggressive' ? 0.12 : 0.04;
+      threshold = Math.max(0.28, threshold - cut);
+    }
     const powersLeft = FACTION_IDS.filter((id) => game.citiesOf(id).length > 0).length;
-    if (powersLeft === 2 && game.state.round > 160 && fighting) threshold = Math.max(0.22, threshold - 0.08);
+    if (fighting && powersLeft === 2 && game.state.round > 180) {
+      threshold = Math.max(0.16, threshold - 0.4);
+    }
   }
 
   if (!faction.researching) {
@@ -722,6 +768,25 @@ export function runAi(game: Game): void {
       if (game.foundCity(unit.id).ok) continue;
       const path = bestFoundingPath(game, unit, factionId);
       if (path && path.length) moveAlong(game, unit, path);
+      else {
+        const sealed = faction.techs.includes('sealed-habitats');
+        moveToward(game, unit, (x, y) => {
+          const tile = game.tile(x, y);
+          if (isSea(tile.terrain)) return 0;
+          const hostile = isHostileClimate(tile.terrain);
+          const check = canFoundCity({
+            canFound: true,
+            sea: false,
+            hostile,
+            sealed,
+            nearestCity: game.nearestCityDistance(x, y),
+            cityHere: !!game.cityAt(x, y),
+          });
+          if (check.ok) return 100 + Math.max(0, settleScore(tile));
+          if (hostile && !sealed) return 1;
+          return 4 + game.nearestCityDistance(x, y) * 12 + Math.max(0, settleScore(tile));
+        });
+      }
       game.foundCity(unit.id);
       continue;
     }
@@ -733,9 +798,9 @@ export function runAi(game: Game): void {
         if (faction.credits < CONFIG.terraform.baseFee || faction.energy < (CONFIG.terraform.energyCost[pickProject(game, unit) ?? 'farm'] ?? 0)) {
           return 0;
         }
-        let score = tile.zone === 'twilight' ? 6 : 3;
-        if (tile.resource) score += 2;
-        if (!tileIsLivable(tile)) score += 2;
+        let score = 2 + Math.max(0, settleScore(tile));
+        if (tile.resource || tile.special) score += 2;
+        if (isHostileClimate(tile.terrain) && projectAllowed('atmosphere', faction.techs)) score += 2;
         return score;
       });
       tryTerraform(game, unit);
@@ -743,6 +808,14 @@ export function runAi(game: Game): void {
     }
     if (unit.domain === 'sea' && unit.transport > 0 && unit.attack <= 0) {
       aiTransport(game, unit, factionId);
+      continue;
+    }
+    const sealedNow = faction.techs.includes('sealed-habitats');
+    const pulse = crisisTuning(game.state.round, game.state.setup.difficulty).damage;
+    const shelter = pulse >= 3 && !sealedNow;
+    if (!fighting && unit.role === 'military' && unit.attack > 0) {
+      const home = game.citiesOf(factionId).slice().sort((a, b) => dist(unit, a) - dist(unit, b))[0];
+      if (home && dist(unit, home) > 1) approach(game, unit, home);
       continue;
     }
     if (fighting && unit.attack > 0) {
@@ -753,7 +826,9 @@ export function runAi(game: Game): void {
       if (tryAttack(game, unit, threshold, personality.risk === 'bold')) continue;
       const crisisDamage = crisisTuning(game.state.round, game.state.setup.difficulty).damage;
       const sealed = faction.techs.includes('sealed-habitats');
-      if (!sealed && crisisDamage > 0 && unit.hp <= crisisDamage && !guards.has(unit.id)) {
+      const powersLeft = FACTION_IDS.filter((id) => game.citiesOf(id).length > 0).length;
+      const finishing = powersLeft === 2 && game.state.round > 160;
+      if (!finishing && !sealed && crisisDamage > 0 && unit.hp <= crisisDamage && !guards.has(unit.id)) {
         const home = game.citiesOf(factionId).slice().sort((a, b) => dist(unit, a) - dist(unit, b))[0];
         if (home && dist(unit, home) > 0) {
           approach(game, unit, home);
@@ -774,7 +849,7 @@ export function runAi(game: Game): void {
         }
         continue;
       }
-      const target = strikeTarget(game, factionId, unit);
+      const target = shelter && !atWarWith(game, factionId) ? null : strikeTarget(game, factionId, unit);
       if (target) {
         const ashore = unit.domain === 'land' && game.route(unit.id, target.x, target.y);
         if (unit.domain === 'land' && !ashore) {
@@ -789,14 +864,47 @@ export function runAi(game: Game): void {
       }
     }
     if (!unit.searching && unit.role === 'scout') unit.searching = true;
+    const here = game.tile(unit.x, unit.y);
+    if (shelter && (here.improvement || here.scarred || game.cityAt(unit.x, unit.y))) continue;
+    const home = game.citiesOf(factionId)[0];
+    const angle = ((unit.id * 47) % 8) * (Math.PI / 4);
+    const goal = shelter || unit.attack > 0 ? null : exploreGoal(game, factionId, unit, angle, home);
     moveToward(game, unit, (x, y) => {
       const seen = game.isExplored(factionId, x, y);
       const tile = game.tile(x, y);
-      let score = seen ? 1 : 9;
-      if (tile.zone === 'twilight') score += 2;
-      if (tile.resource && !seen) score += 2;
+      let score = seen ? 1 : 14;
+      if (!isSea(tile.terrain)) score += 1;
+      if (tile.river) score += 1;
+      if ((tile.resource || tile.special) && !seen) score += 2;
+      if (isHostileClimate(tile.terrain)) score -= 2;
+      if (tile.road) score += 2;
+      if (tile.improvement || tile.scarred || game.cityAt(x, y)) score += shelter ? 48 : 3;
+      if (goal) score += 36 - dist({ x, y }, goal);
       return score;
     });
   }
   considerPolitics(game, factionId, personality);
+}
+
+function exploreGoal(
+  game: Game,
+  factionId: FactionId,
+  unit: Unit,
+  angle: number,
+  home: { x: number; y: number } | undefined,
+): { x: number; y: number } | null {
+  let best: { x: number; y: number } | null = null;
+  let bestScore = -Infinity;
+  for (const tile of game.state.tiles) {
+    if (isSea(tile.terrain) || game.isExplored(factionId, tile.x, tile.y)) continue;
+    let score = -dist(unit, tile);
+    if (home) {
+      score += ((tile.x - home.x) * Math.cos(angle) + (tile.y - home.y) * Math.sin(angle)) * 0.35;
+    }
+    if (score > bestScore) {
+      bestScore = score;
+      best = tile;
+    }
+  }
+  return best;
 }

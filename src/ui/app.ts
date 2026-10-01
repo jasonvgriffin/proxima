@@ -8,13 +8,14 @@ import { unitContactSheetMarkup } from '../art/sheet';
 import { paintUnitIcon, unitIconTag, unitKindFor } from '../art/units';
 import { AudioBus, TRACKS } from '../audio/engine';
 import { playLoggedCues, playTerraformProgress, snapshotLog, snapshotTerraform } from '../audio/listen';
-import { difficultyLabel, difficultyProfile, normalizeDifficulty, outsideBandDamage } from '../core/difficulty';
+import { difficultyLabel, difficultyProfile, normalizeDifficulty } from '../core/difficulty';
 import { FACTIONS, SOCIAL_OPTIONS, defaultAxes, defaultPersonalities, DIFFICULTIES, PERSONALITY_LEVELS } from '../core/factions';
 import { Game, PROJECTS, projectLabel } from '../core/game';
 import { proposalLabel } from '../core/diplomacy';
 import { bundleText } from '../core/diplomacy';
 import { eventPromptFor } from '../core/events';
 import { tileYield } from '../core/economy';
+import { isHostileClimate } from '../core/geography';
 import { biomeClass, formatCalendar, isSea, rushPayments, terraformEnergy, terraformFee, terraformTurns } from '../core/rules';
 import { historyActor } from '../core/tilelog';
 import { formerTechLevel, TECHS, techAvailable, techById } from '../core/tech';
@@ -229,7 +230,7 @@ export class App {
           <p class="tag">${esc(FACTIONS[this.setup.faction].idea)}</p>
           <p class="muted">Social axes start on this faction's strengths. Each match is +10%. Changing one later costs ${CONFIG.social.switchCost} credits.</p>
           ${this.axisEditor(this.setup.axes, 'setup-axis')}
-          <button class="btn primary" data-action="start-game" data-testid="start-game">Begin in the twilight</button>
+          <button class="btn primary" data-action="start-game" data-testid="start-game">Begin the expedition</button>
         </div>
       </div>`;
     this.paintEmblems();
@@ -335,7 +336,7 @@ export class App {
         <button type="button" class="chip chip-btn" data-action="open-research" data-testid="research-chip"><span>Research</span><b>${research ? `${faction.researchPoints}/${research.cost}` : faction.researchPoints}</b></button>
         <div class="chip"><span>Credits</span><b>${faction.credits}</b></div>
       </div>
-      <button class="btn small ${this.map?.showTerraform ? 'on' : ''}" data-action="toggle-terraform-overlay" data-testid="terraform-overlay">Terraform</button>
+      <button class="btn small ${this.map?.showGrid ? 'on' : ''}" data-action="toggle-grid" data-testid="toggle-grid">${this.map?.showGrid ? 'Grid on' : 'Grid'}</button>
       <button class="btn small" data-action="open-diplomacy" data-testid="open-diplomacy">Diplomacy</button>
       <button class="btn small" data-action="open-spies" data-testid="open-spies">Spies</button>
       <button class="btn small" data-action="open-research" data-testid="open-research">Tech Tree</button>
@@ -435,7 +436,7 @@ export class App {
         <button class="btn" data-action="show-tile" data-testid="show-tile">This tile</button>`;
     }
     if (this.focusTile) return this.tilePanel();
-    return `<h3>${esc(FACTIONS[game.state.playerFaction].name)}</h3><p class="muted">Select a unit, a city, or a map tile. Press I over a tile, or shift-click it, for its history. Press T for the tech tree. The gold lines on the map are the edges of the twilight band. Outside it, units take ${outsideBandDamage(game.state.setup.difficulty)} damage a turn until Sealed Habitats / Geothermal Wells.</p>`;
+    return `<h3>${esc(FACTIONS[game.state.playerFaction].name)}</h3><p class="muted">Select a unit, a city, or a map tile. Press I over a tile, or shift-click it, for its history. Press T for the tech tree. Unexplored ground stays dark. Ground you have seen stays dim, including the works last seen there. Harsh climates wear a unit down until you research Sealed Habitats. Geothermal Wells later add energy on rocky ground.</p>`;
   }
 
   private tilePanel(): string {
@@ -453,24 +454,28 @@ export class App {
       return `<div data-testid="tile-panel"><h3>Remembered tile</h3><p data-testid="tile-stale">You have seen this square, but Proxima has no record of what was last here. It may have changed.</p>${back}</div>`;
     }
     const sight = view.sight!;
+    const techs = game.state.factions[game.state.playerFaction].techs;
     const asTile = (improvement: typeof sight.improvement) => ({
       x: focus.x,
       y: focus.y,
-      zone: sight.zone,
       terrain: sight.terrain,
+      elevation: sight.elevation,
+      rainfall: sight.rainfall,
+      temperature: sight.temperature,
+      river: sight.river,
       resource: sight.resource,
+      special: sight.special,
       improvement,
-      livable: sight.livable,
       road: sight.road,
       scarred: sight.scarred,
       history: [],
     });
-    const bare = tileYield(asTile(null));
-    const now = tileYield(asTile(sight.improvement));
+    const bare = tileYield(asTile(null), techs);
+    const now = tileYield(asTile(sight.improvement), techs);
     const yieldText = (['minerals', 'nutrients', 'energy', 'research'] as const)
       .map((key) => (now[key] === bare[key] ? `${key} ${now[key]}` : `${key} ${bare[key]} → ${now[key]}`))
       .join(', ');
-    const zone = sight.zone === 'twilight' ? 'Twilight band' : sight.zone === 'day' ? 'Day side' : 'Night side';
+    const climate = sight.terrain.replace(/-/g, ' ');
     const lines = view.lines?.length ? view.lines.join(', ') : 'No terraform improvements';
     const stale = view.kind === 'stale'
       ? `<p data-testid="tile-stale">Last seen. This may be out of date.</p>`
@@ -485,7 +490,7 @@ export class App {
       <div data-testid="tile-panel">
         <h3>${focus.x}, ${focus.y}</h3>
         ${stale}
-        <p data-testid="tile-state">${esc(zone)} · ${esc(sight.terrain.replace('-', ' '))}${sight.resource ? ` · ${esc(sight.resource)}` : ''}</p>
+        <p data-testid="tile-state">${esc(climate)}${sight.river ? ' · river' : ''}${sight.resource ? ` · ${esc(sight.resource)}` : ''}${sight.special ? ` · ${esc(sight.special)}` : ''}</p>
         <p data-testid="tile-improvements">${esc(lines)}</p>
         <p data-testid="tile-yields">${esc(yieldText)}</p>
         ${working}
@@ -605,7 +610,10 @@ export class App {
       this.render();
     } else if (action === 'start-game') this.startGame();
     else if (action === 'load-game') await this.runSave(() => this.openLoad(false), 'Could not open the save list.');
-    else if (action === 'end-turn') await this.endTurn();
+    else if (action === 'toggle-grid') {
+      this.map?.toggleGrid();
+      this.refreshGame();
+    } else if (action === 'end-turn') await this.endTurn();
     else if (action === 'select-unit') {
       this.selectedUnit = Number(node.dataset.id);
       this.selectedCity = null;
@@ -627,9 +635,6 @@ export class App {
       if (at) this.openTile(at.x, at.y);
     } else if (action === 'hide-tile') {
       this.preferTile = false;
-      this.refreshGame();
-    } else if (action === 'toggle-terraform-overlay') {
-      if (this.map) this.map.showTerraform = !this.map.showTerraform;
       this.refreshGame();
     } else if (action === 'found-city' && this.selectedUnit != null) this.act(() => this.game!.foundCity(this.selectedUnit!), 'found');
     else if (action === 'terraform-open') this.openTerraform();
@@ -841,7 +846,7 @@ export class App {
     this.overlay.innerHTML = `
       <div class="modal-back"><div class="modal narrow" data-testid="terraform-menu">
         <h2>Terraform</h2>
-        <p class="muted">Fee ${fee} credits plus energy on this ${esc(biomeClass(tile))} tile. Tech level ${level}. Only atmosphere work makes a tile livable. One terraformer to a tile, and they can work anywhere.</p>
+        <p class="muted">Fee ${fee} credits plus energy on this ${esc(biomeClass(tile))} tile. Tech level ${level}. Only atmosphere work softens a harsh climate. One terraformer to a tile, and they can work anywhere.</p>
         <div class="stack">
           ${PROJECTS.map((project) => {
             const turns = terraformTurns(project.id, level);
@@ -1543,33 +1548,33 @@ export class App {
     for (const id of rivals) {
       let added = 0;
       for (let y = 3; y < game.state.height - 2 && added < 2; y += 6) {
-        const x = CONFIG.map.bandStart + ((y + added * 3) % (CONFIG.map.bandEnd - CONFIG.map.bandStart + 1));
-        const tile = game.tile(x, y);
-        if (isSea(tile.terrain) || tile.scarred) continue;
-        const tooClose = game.state.cities.some(
-          (city) => Math.max(Math.abs(city.x - x), Math.abs(city.y - y)) < CONFIG.city.minDistance,
-        );
-        if (tooClose) continue;
-        tile.livable = true;
-        tile.zone = 'twilight';
-        game.state.cities.push({
-          id: game.state.nextCityId++,
-          name: `${FACTIONS[id].name} Outpost ${added + 1}`,
-          factionId: id,
-          x,
-          y,
-          population: 3,
-          nutrientStore: 6,
-          starveTurns: 0,
-          defenseHp: CONFIG.city.militiaHp,
-          production: null,
-        });
-        added++;
+        for (let x = 2; x < game.state.width - 2 && added < 2; x += 5) {
+          const tile = game.tile(x, y);
+          if (isSea(tile.terrain) || tile.scarred || isHostileClimate(tile.terrain)) continue;
+          const tooClose = game.state.cities.some(
+            (city) => Math.max(Math.abs(city.x - x), Math.abs(city.y - y)) < CONFIG.city.minDistance,
+          );
+          if (tooClose) continue;
+          game.state.cities.push({
+            id: game.state.nextCityId++,
+            name: `${FACTIONS[id].name} Outpost ${added + 1}`,
+            factionId: id,
+            x,
+            y,
+            population: 3,
+            nutrientStore: 6,
+            starveTurns: 0,
+            defenseHp: CONFIG.city.militiaHp,
+            production: null,
+          });
+          added++;
+        }
       }
     }
     game.state.explored[game.state.playerFaction].fill(true);
     this.overlay.innerHTML = '';
-    this.map?.centerOn(Math.floor((CONFIG.map.bandStart + CONFIG.map.bandEnd) / 2), Math.floor(game.state.height / 2));
+    const home = game.citiesOf(game.state.playerFaction)[0];
+    this.map?.centerOn(home?.x ?? 0, home?.y ?? Math.floor(game.state.height / 2));
     this.refreshGame();
   }
 
@@ -1683,8 +1688,6 @@ export class App {
     const y = scout.y;
     const tile = game.tile(x, y);
     tile.terrain = 'grass';
-    tile.zone = 'twilight';
-    tile.livable = true;
     tile.scarred = false;
     const unit: Unit = {
       id: game.state.nextUnitId++,

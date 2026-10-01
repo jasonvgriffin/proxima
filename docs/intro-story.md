@@ -24,7 +24,7 @@ At four-tenths of an astronomical unit, a flare drove a proton storm through the
 
 ## 5. Opened along her berths
 
-The shield did not hold the heat, and the rings that joined the modules tore over the dayside, where the ground is a furnace under a star that never sets. Fragments carried on into the night, where the ice has no morning. The boundary between those faces is only the place the light stops: wind, rime, and stone. Halcyon broke open along her berths, and the sections came down in pieces, each on its own stretch of ground.
+The shield did not hold the heat, and the rings that joined the modules tore over the dayside, where the ground is a furnace under a star that never sets. Fragments carried on into the night, where the ice has no morning. Between those faces the continents keep their own weather, and a person can stand where the climate allows: wind, rain, and stone. Halcyon broke open along her berths, and the sections came down in pieces, each on its own stretch of ground.
 
 ## 6. Beyond the horizon
 

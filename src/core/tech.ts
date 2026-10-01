@@ -416,7 +416,7 @@ export const TECHS: TechDef[] = [
   },
   {
     id: 'sealed-habitats',
-    name: 'Sealed Habitats / Geothermal Wells',
+    name: 'Sealed Habitats',
     branch: 'Verdantia',
     lane: 'industry',
     column: 3,
@@ -424,20 +424,21 @@ export const TECHS: TechDef[] = [
     cost: 200,
     requires: ['advanced-formers', 'atmosphere'],
     blurb:
-      'Late Verdantia work. Units may travel the day and night sides without environmental damage, and cities may be founded there even on tiles that are not yet livable.',
-    unlocks: [{ kind: 'rule', name: 'Travel and found cities beyond livable ground' }],
+      'Habitats that hold on scorched, frozen, toxic, thin-air, and volcanic ground. Cities can be founded there, and units take no damage from that climate.',
+    unlocks: [{ kind: 'rule', name: 'Found cities on hostile ground and ignore exposure' }],
   },
   {
     id: 'geothermal-grid',
-    name: 'Geothermal Grid',
+    name: 'Geothermal Wells',
     branch: 'Verdantia',
     lane: 'industry',
     column: 4,
     era: 'late',
     cost: 220,
     requires: ['sealed-habitats', 'solar-looms'],
-    blurb: 'Well heat tied into the city grid, past what a single solar loom can hold.',
-    unlocks: [{ kind: 'building', name: 'Geothermal grid' }],
+    blurb:
+      'Taps heat under rock, ridges, canyons, and volcanic ground. A city that works those tiles gains 2 energy.',
+    unlocks: [{ kind: 'rule', name: '+2 energy on rocky, mountain, ridge, canyon, and lava' }],
   },
   {
     id: 'world-garden',

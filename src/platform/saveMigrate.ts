@@ -1,8 +1,9 @@
+import { climateFromTerrain } from '../core/geography';
 import type { SaveEnvelope } from '../core/types';
 import { ensureTileRecords } from '../core/tilelog';
 
-/** Proxima 0.2.0 save-file schema. 0.1.0 files are version 1. Version 3 adds tile history. */
-export const SAVE_VERSION = 3;
+/** Proxima save-file schema. 0.1.0 files are version 1. Version 3 adds tile history. Version 4 drops the climate stripe. */
+export const SAVE_VERSION = 4;
 
 export class SaveValidationError extends Error {
   constructor(message: string) {
@@ -59,9 +60,26 @@ function migrateV2ToV3(raw: RawSave): RawSave {
   return { ...raw, version: 3, state };
 }
 
+/**
+ * 0.2.0 tiles carried a day / twilight / night stripe (`zone`) and a `livable` flag.
+ * Version 4 drops both and keeps any terraform history the file already had.
+ * Climate numbers are filled from the terrain name when the file does not already have them.
+ */
+function migrateV3ToV4(raw: RawSave): RawSave {
+  const state = raw.state && typeof raw.state === 'object'
+    ? clone(raw.state as Record<string, unknown>)
+    : raw.state;
+  if (state && typeof state === 'object') {
+    stripLegacyClimate(state as { tiles?: unknown });
+    ensureTileRecords(state as { tiles?: unknown; sight?: unknown });
+  }
+  return { ...raw, version: 4, state };
+}
+
 const MIGRATIONS: Migration[] = [
   { from: 1, to: 2, run: migrateV1ToV2 },
   { from: 2, to: 3, run: migrateV2ToV3 },
+  { from: 3, to: 4, run: migrateV3ToV4 },
 ];
 
 function validateSave(raw: RawSave): SaveEnvelope {
@@ -89,6 +107,26 @@ function validateSave(raw: RawSave): SaveEnvelope {
     throw new SaveValidationError('This save is missing the map size.');
   }
   return raw as unknown as SaveEnvelope;
+}
+
+/** Drop stripe fields and fill climate numbers on a loaded game, including ones that skipped the envelope. */
+export function stripLegacyClimate(state: { tiles?: unknown }): void {
+  if (!state.tiles || !Array.isArray(state.tiles)) return;
+  for (const entry of state.tiles) {
+    if (!entry || typeof entry !== 'object') continue;
+    const tile = entry as Record<string, unknown>;
+    const terrain = typeof tile.terrain === 'string' ? tile.terrain : 'grass';
+    if (typeof tile.elevation !== 'number' || typeof tile.rainfall !== 'number' || typeof tile.temperature !== 'number') {
+      const climate = climateFromTerrain(terrain);
+      if (typeof tile.elevation !== 'number') tile.elevation = climate.elevation;
+      if (typeof tile.rainfall !== 'number') tile.rainfall = climate.rainfall;
+      if (typeof tile.temperature !== 'number') tile.temperature = climate.temperature;
+    }
+    if (typeof tile.river !== 'boolean') tile.river = false;
+    if (!('special' in tile)) tile.special = null;
+    delete tile.zone;
+    delete tile.livable;
+  }
 }
 
 export function migrateSave(data: unknown): SaveEnvelope {

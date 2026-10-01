@@ -1,6 +1,6 @@
 import { CONFIG } from '../config';
 import { chooseDesign, runAi, wantsToFight } from './ai';
-import { crisisTuning, economyRates, normalizeDifficulty, outsideBandDamage, scaleStarting } from './difficulty';
+import { crisisTuning, economyRates, exposureDamage, normalizeDifficulty, scaleStarting } from './difficulty';
 import {
   acceptanceChance,
   acceptsTrade,
@@ -23,6 +23,7 @@ import { frameBlame, missionCaught } from './spies';
 import { socialScale, tileYield, withTechFlats, type Yields } from './economy';
 import { FACTIONS, defaultAxes, defaultPersonalities, socialOption } from './factions';
 import { recordSocialPresent, seedAxisDrift } from './history';
+import { exposureOutcome, isExposed, isHostileClimate, softenTile } from './geography';
 import { generateMap } from './mapgen';
 import { blockedKeys, findPath, reachable as pathReachable } from './path';
 import { starterDesigns, designById, compileDesign, type DesignDraft } from './parts';
@@ -41,19 +42,18 @@ import {
   hasSealedHabitats,
   unitUpkeep,
   isSea,
-  outsideBandOutcome,
   projectAllowed,
-  projectMakesLivable,
   rushPayments,
   shouldAutosave,
   terraformEnergy,
   terraformFee,
   terraformTurns,
   terrainDefenseMod,
-  tileIsLivable,
   winnerHpLoss,
 } from './rules';
 import { advanceResearchQueue, ensureFactionResearch, nextQueuedResearch, pathToGoal, rememberTech, treatyTechGrants } from './researchPath';
+import { ensureRecall, snapshotRecall } from './sight';
+import { stripLegacyClimate } from '../platform/saveMigrate';
 import { creditFromTechs, formerTechLevel, healFromTechs, startingTechs, techAvailable, techById } from './tech';
 import { appendHistory, ensureTileRecords, improvementLines, projectNoun, sightFrom } from './tilelog';
 import type {
@@ -116,6 +116,8 @@ export interface EndTurnResult extends ActionResult {
 
 export class Game {
   state: GameState;
+  /** Bumps on every committed change so the map can redraw only then. */
+  revision = 0;
   private rng: Rng;
 
   constructor(state: GameState) {
@@ -182,6 +184,7 @@ export class Game {
       nextUnitId: 1,
       nextCityId: 1,
       explored,
+      recall: ensureRecall({ width: map.width, height: map.height, explored } as GameState),
       log: [],
       winner: null,
       alliances: [],
@@ -208,7 +211,7 @@ export class Game {
     if (setup.randomEvents) {
       game.say('Random events are on. They follow no schedule, and a warning is not guaranteed.');
     }
-    game.say(`${FACTIONS[opts.player].name} wakes in the twilight band. Found a city, then set a terraformer to work.`);
+    game.say(`${FACTIONS[opts.player].name} wakes on open ground. Found a city, then set a terraformer to work.`);
     game.beginTurn(opts.player);
     game.noteSight();
     game.commit();
@@ -231,6 +234,8 @@ export class Game {
     if (!copy.eliminated) copy.eliminated = [];
     if (copy.playerDefeated == null) copy.playerDefeated = false;
     ensureTileRecords(copy);
+    stripLegacyClimate(copy);
+    ensureRecall(copy);
     for (const unit of copy.units) {
       if (unit.transport == null) unit.transport = 0;
       if (!unit.cargo) unit.cargo = [];
@@ -363,7 +368,7 @@ export class Game {
     const faction = this.state.factions[city.factionId];
     const worked = this.workedTiles(city);
     const raw = withTechFlats(
-      worked.reduce((sum, tile) => add(sum, tileYield(tile)), {
+      worked.reduce((sum, tile) => add(sum, tileYield(tile, faction.techs)), {
         minerals: CONFIG.city.baseMinerals,
         nutrients: CONFIG.city.baseNutrients,
         energy: CONFIG.city.baseEnergy,
@@ -429,9 +434,8 @@ export class Game {
     const check = canFoundCity({
       canFound: unit.canFound,
       sea: isSea(tile.terrain),
-      livable: tile.livable,
-      inBand: tile.zone === 'twilight',
-      hasSealed: hasSealedHabitats(faction.techs),
+      hostile: isHostileClimate(tile.terrain),
+      sealed: hasSealedHabitats(faction.techs),
       nearestCity: this.nearestCityDistance(unit.x, unit.y),
       cityHere: !!this.cityAt(unit.x, unit.y),
     });
@@ -1125,7 +1129,7 @@ export class Game {
     const round = this.state.round;
     const crisis = crisisTuning(round, this.state.setup.difficulty);
     if (round === crisis.startRound) {
-      this.say('The buried ark reactor wakes under the terminator. The Waking Reactor will fray the twilight band.');
+      this.say('The buried ark reactor wakes. The Waking Reactor will scar open ground.');
     }
     const level = crisis.level;
     if (level <= 0) return;
@@ -1139,7 +1143,7 @@ export class Game {
         if (unit.aboard != null) continue;
         if (this.state.factions[unit.factionId].techs.includes('sealed-habitats')) continue;
         const tile = this.tile(unit.x, unit.y);
-        if (tile.zone !== 'twilight' || tile.scarred || tile.improvement || this.cityAt(unit.x, unit.y)) continue;
+        if (isSea(tile.terrain) || tile.scarred || tile.improvement || this.cityAt(unit.x, unit.y)) continue;
         unit.hp -= damage;
         if (unit.hp <= 0) {
           this.removeUnit(unit);
@@ -1150,11 +1154,10 @@ export class Game {
       }
     }
     for (const tile of this.state.tiles) {
-      if (tile.x !== CONFIG.map.bandStart && tile.x !== CONFIG.map.bandEnd) continue;
-      if (tile.scarred || tile.improvement || tile.road || this.cityAt(tile.x, tile.y)) continue;
+      if (isSea(tile.terrain) || tile.scarred || tile.improvement || tile.road || this.cityAt(tile.x, tile.y)) continue;
+      if ((tile.x * 17 + tile.y * 13 + round) % 23 !== 0) continue;
       if (this.rng.next() < crisis.scarChance) {
         tile.scarred = true;
-        tile.livable = false;
         this.recordTile(tile, 'the waking reactor scarred this tile and took the air', null, null);
       }
     }
@@ -1258,7 +1261,7 @@ export class Game {
     this.state.whoseTurn = factionId;
     this.resolveEconomy(factionId);
     this.runPatrols(factionId);
-    this.applyOutsideDamage(factionId);
+    this.applyExposure(factionId);
     this.state.whoseTurn = previous;
     this.checkVictory();
   }
@@ -1376,20 +1379,20 @@ export class Game {
     if (!faction.researching && next) faction.researching = next;
   }
 
-  private applyOutsideDamage(factionId: FactionId) {
+  private applyExposure(factionId: FactionId) {
     const faction = this.state.factions[factionId];
     const sealed = hasSealedHabitats(faction.techs);
-    const damage = outsideBandDamage(this.state.setup.difficulty);
+    const damage = exposureDamage(this.state.setup.difficulty);
     for (const unit of [...this.unitsOf(factionId)]) {
       if (unit.aboard != null) continue;
       const tile = this.tile(unit.x, unit.y);
-      const outcome = outsideBandOutcome(unit.hp, tileIsLivable(tile), sealed, damage);
+      const outcome = exposureOutcome(unit.hp, isExposed(tile.terrain), sealed, damage);
       if (outcome.destroyed) {
         this.removeUnit(unit);
-        this.say(`${unit.name} is destroyed outside the livable zone.`, factionId);
+        this.say(`${unit.name} is destroyed by the harsh ground.`, factionId);
       } else if (outcome.hp !== unit.hp) {
         unit.hp = outcome.hp;
-        this.say(`${unit.name} takes ${damage} damage outside the twilight band.`, factionId);
+        this.say(`${unit.name} takes ${damage} damage from the harsh ground.`, factionId);
       }
     }
   }
@@ -1454,28 +1457,26 @@ export class Game {
     const project = unit.terraform.project;
     const previous = tile.improvement;
     const previousTerrain = tile.terrain;
-    const wasLivable = tile.livable;
     if (project === 'road') tile.road = true;
     else tile.improvement = project;
-    if (
+    if (project === 'atmosphere') softenTile(tile);
+    else if (
       project === 'plant-trees' &&
-      (tile.terrain === 'grass' || tile.terrain === 'toxic' || tile.terrain === 'scorched' || tile.terrain === 'dunes' || tile.terrain === 'frozen-plain')
+      (tile.terrain === 'grass' || tile.terrain === 'toxic' || tile.terrain === 'scorched' || tile.terrain === 'dunes' || tile.terrain === 'frozen-plain' || tile.terrain === 'coast')
     ) {
       tile.terrain = 'forest';
     }
-    const opened = projectMakesLivable(project);
-    if (opened) tile.livable = true;
+    if (project === 'mine') tile.elevation = Math.max(0.36, tile.elevation - 0.05);
     const parts: string[] = [];
     if (project === 'road') parts.push('built a road');
     else if (previous && previous !== project) parts.push(`replaced ${projectNoun(previous)} with ${projectNoun(project)}`);
     else parts.push(`built ${projectNoun(project)}`);
     if (tile.terrain !== previousTerrain) parts.push(`the ground became ${tile.terrain.replace('-', ' ')}`);
-    if (!wasLivable && tile.livable) parts.push('the tile became livable');
+    if (project === 'atmosphere') parts.push('the climate softened');
     this.recordTile(tile, parts.join(', '), unit.factionId, unit.name);
     unit.terraform = null;
     unit.movesLeft = unit.maxMoves;
-    const joined = opened ? ' The tile joins the livable zone.' : '';
-    this.say(`${unit.name} finishes ${projectLabel(project)}.${joined}`, unit.factionId);
+    this.say(`${unit.name} finishes ${projectLabel(project)}.`, unit.factionId);
   }
 
   private workingOn(tile: Tile): TileSight['working'] {
@@ -1630,10 +1631,19 @@ export class Game {
 
   private reveal(faction: FactionId, cx: number, cy: number, radius: number) {
     const row = this.state.explored[faction];
+    const memory = ensureRecall(this.state)[faction];
     for (let y = cy - radius; y <= cy + radius; y++) {
       for (let x = cx - radius; x <= cx + radius; x++) {
         if (!this.inBounds(x, y)) continue;
-        if (Math.max(Math.abs(x - cx), Math.abs(y - cy)) <= radius) row[y * this.state.width + x] = true;
+        if (Math.max(Math.abs(x - cx), Math.abs(y - cy)) > radius) continue;
+        const index = y * this.state.width + x;
+        row[index] = true;
+        const tile = this.state.tiles[index];
+        memory[index] = snapshotRecall(
+          tile,
+          this.cityAt(x, y),
+          this.state.units.filter((unit) => unit.x === x && unit.y === y),
+        );
       }
     }
   }
@@ -2078,8 +2088,10 @@ export class Game {
 
   private commit() {
     this.state.rngState = this.rng.getState();
+    this.revision += 1;
   }
 }
+
 
 function fail(message: string): ActionResult {
   return { ok: false, message };
@@ -2119,5 +2131,5 @@ export const PROJECTS: { id: ImprovementId; label: string; detail: string }[] = 
   { id: 'mine', label: 'Mine', detail: '+minerals' },
   { id: 'solar', label: 'Solar panels', detail: '+energy' },
   { id: 'road', label: 'Road', detail: 'Easier travel over rough ground' },
-  { id: 'atmosphere', label: 'Atmosphere', detail: 'Pulls a harsh tile into the livable zone' },
+  { id: 'atmosphere', label: 'Atmosphere', detail: 'Softens a harsh climate and raises its yields' },
 ];

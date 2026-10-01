@@ -23,7 +23,8 @@ const AXIS_ORDER = ['religion', 'values', 'economy', 'politics'] as const;
 
 export function tutorialPages(): TutorialPage[] {
   const names = listNames(FACTION_ORDER.map((id) => FACTIONS[id].name));
-  const sealed = techById('sealed-habitats')?.name ?? 'Sealed Habitats / Geothermal Wells';
+  const sealed = techById('sealed-habitats')?.name ?? 'Sealed Habitats';
+  const wells = techById('geothermal-grid')?.name ?? 'Geothermal Wells';
   const bonus = Math.round(CONFIG.social.matchingBonus * 100);
   const share = Math.round(CONFIG.diplomacy.researchShare * 100);
   const fee = CONFIG.terraform.baseFee;
@@ -37,13 +38,14 @@ export function tutorialPages(): TutorialPage[] {
 
   return [
     {
-      id: 'twilight',
-      title: 'The twilight band',
+      id: 'world',
+      title: 'The world',
       paragraphs: [
-        'Proxima keeps one face toward its star. The day side burns, the night side freezes, and the twilight band between them is where a city can begin. Gold lines on the map mark the edges of that band.',
-        `Six groups woke from the wreck with no shared command: ${names}. Each game places them somewhere new inside the band.`,
+        'Proxima is continents, oceans, rivers, and local climates. Elevation, rainfall, and heat decide the ground: forest, rock, ice, scorched flats, and open sea. There is no stripe of safe land.',
+        `Six groups woke from the wreck with no shared command: ${names}. Each game places them somewhere new, far enough apart to build before they meet.`,
         `You move first. Then each rival takes a turn, in an order that changes every week. The top bar shows the year and week, starting at ${formatCalendar(1)}. A turn is one week. There is no turn limit.`,
-        `Any unit can travel the day side and the night side. Outside livable ground it takes damage each turn until it returns, is destroyed, or you research ${sealed}. On Normal that is ${normal.outsideBandDamage} damage. Easy deals ${easy.outsideBandDamage}, Hard deals ${hard.outsideBandDamage}, and Brutal deals ${brutal.outsideBandDamage}.`,
+        `Unexplored ground is dark. Ground you have seen stays dim, with the cities and works you last saw, until a unit is close enough to see it again. The Grid button draws a faint overlay. You can turn it off.`,
+        `Units travel the land. Scorched, frozen, toxic, thin-air, and volcanic ground deals damage each turn until the unit leaves, is destroyed, or you research ${sealed}. On Normal that is ${normal.exposureDamage} damage. Easy deals ${easy.exposureDamage}, Hard deals ${hard.exposureDamage}, and Brutal deals ${brutal.exposureDamage}.`,
         'This guide is optional. Close it, or press Escape, and play continues on the same week. The tutorial does not change your game.',
         'Press M during a game to mute music, sound effects, and the ambient bed. Press M again to restore the same levels. Those controls are also on the start menu and in this pause menu.',
       ],
@@ -52,7 +54,7 @@ export function tutorialPages(): TutorialPage[] {
       id: 'cities',
       title: 'Founding cities',
       paragraphs: [
-        `Select a colony pod and press Found city. The pod is consumed. The site has to be land, at least ${CONFIG.city.minDistance} tiles from any other city, and inside the twilight band or on ground that atmosphere work has made livable. ${sealed} also allows founding on the day side and the night side.`,
+        `Select a colony pod and press Found city. The pod is consumed. The site has to be land, at least ${CONFIG.city.minDistance} tiles from any other city, and not a hostile climate. Atmosphere work can soften that ground. ${sealed} lets you found there anyway.`,
         `A city starts at population ${CONFIG.city.startingPopulation} and works the tiles within ${CONFIG.city.workRadius} of its center. It builds units from the designs you know. Another faction captures a city by defeating whoever is defending it.`,
         'The game ends when one faction holds every rival city. With Allied Victory turned on at the start, an alliance that does this together shares the win. If you lose every city and have no colony pod left that can found another, the defeat screen offers the social recap and a return to the main menu.',
       ],
@@ -75,7 +77,7 @@ export function tutorialPages(): TutorialPage[] {
         'Click a technology you can study to start it. Click a locked one to set it as a goal. Proxima queues the prerequisite path and shows the order. The technology being researched stays highlighted, and so do the later technologies it leads to, including any prerequisites those still need. Hover or select a node to light up its whole chain.',
         'When research finishes, the tree opens with a notice: Research complete, and what that technology unlocks. If nothing is being researched, the tree opens so the work does not sit idle. A technology stolen by a spy is marked Stolen. A technology copied across a research treaty is marked Treaty.',
         `Each faction begins with one free technology. ${freeTechSentences()} Every faction also starts with Salvage Formers, so terraforming gear is available immediately.`,
-        `Deeper Ironclad work unlocks coil guns, plasma lances, and heavier armor. Advanced Formers and Master Formers, in the Verdantia branch, shorten every terraforming project. ${sealed}, late in that same branch, ends environmental damage outside the band and lets cities be founded there.`,
+        `Deeper Ironclad work unlocks coil guns, plasma lances, and heavier armor. Advanced Formers and Master Formers, in the Verdantia branch, shorten every terraforming project. ${sealed}, late in that same branch, ends damage on hostile ground and lets cities be founded there. ${wells} then draws extra energy from rock and volcanic ground.`,
         `A research treaty adds ${share}% of each partner's research from their previous turn to your own.`,
       ],
     },
@@ -84,9 +86,9 @@ export function tutorialPages(): TutorialPage[] {
       title: 'Terraformers',
       paragraphs: [
         'A terraformer works one land tile at a time and can be sent anywhere. It does not need a strip of finished ground beside it, and it stays on that tile until the work is done. Only one terraformer can work a given tile.',
-        `Farms and planted trees add nutrients. A mine adds minerals. Solar panels add energy. A road eases travel over rough ground. Only atmosphere work, which needs Basic Atmosphere and Soil Science, pulls a harsh tile into the livable zone. A farm, a mine, a road, or a solar panel does not.`,
+        `Farms and planted trees add nutrients. A mine adds minerals and cuts into the slope. Solar panels add energy. A road eases travel over rough ground. Atmosphere work needs Basic Atmosphere and Soil Science. It softens a harsh climate. A farm, a mine, a road, or a solar panel does not.`,
         `The credit fee starts at ${fee} on ordinary ground and rises on harsher biomes, up to ${frozen} times that on frozen ground. The work also spends energy: a farm ${CONFIG.terraform.energyCost.farm}, trees ${CONFIG.terraform.energyCost['plant-trees']}, a road ${CONFIG.terraform.energyCost.road}, solar panels ${CONFIG.terraform.energyCost.solar}, a mine ${CONFIG.terraform.energyCost.mine}, and atmosphere ${CONFIG.terraform.energyCost.atmosphere}. At the starting former tech, a farm takes ${turns.farm} turns, trees ${turns['plant-trees']}, a road ${turns.road}, solar panels ${turns.solar}, a mine ${turns.mine}, and atmosphere work ${turns.atmosphere}. Later former techs cut those times.`,
-        'Click a tile, or press I while the pointer is over one, to see its terrain, what has been built, how the yields changed, any work still in progress, and a short history. Shift-click a tile, including one a unit or a city is standing on, to open the same panel. A tile you have seen but cannot see now shows the last look, marked as possibly out of date. The Terraform button highlights improved ground. T opens the tech tree.',
+        'Improved ground is drawn on the map: a farm, a mine, solar panels, planted trees, a road, and atmosphere work each have their own mark, and work still in progress shows a small marker. The Grid button draws a faint overlay on top of those marks. Click a tile, or press I while the pointer is over one, to see its terrain, what has been built, how the yields changed, any work still in progress, and a short history. Shift-click a tile, including one a unit or a city is standing on, to open the same panel. A tile you have seen but cannot see now shows the last look, marked as possibly out of date. T opens the tech tree.',
       ],
     },
     {
@@ -140,7 +142,7 @@ export function tutorialPages(): TutorialPage[] {
       title: 'The Waking Reactor',
       paragraphs: [
         `On Normal the buried ark core wakes at ${crisisWhen}. The log names it the Waking Reactor. That week is the warning. Easy waits until ${formatCalendar(easy.crisisStartRound)}. Hard begins at ${formatCalendar(hard.crisisStartRound)}, and Brutal at ${formatCalendar(brutal.crisisStartRound)}. After the warning, the pulse strengthens over ${CONFIG.crisis.rampRounds} weeks, and harder difficulties hit harder.`,
-        `Units standing in the twilight band on bare ground take rising damage. Yields thin, and a credit tithe is taken from every faction. Terraforming an improvement anchors a tile, and ${sealed} protects your units from the pulse. The edges of the band can scar if they are left bare.`,
+        `Units standing on open ground with no improvement take rising damage. Yields thin, and a credit tithe is taken from every faction. Terraforming an improvement anchors a tile, and ${sealed} protects your units from the pulse. Bare ground can scar if it is left alone.`,
         'The reactor does not end the game. Military supremacy still decides who holds Proxima.',
       ],
     },

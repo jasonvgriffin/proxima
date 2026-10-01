@@ -86,8 +86,17 @@ describe('random events', () => {
 
     const play = (seed: number) => {
       const game = Game.newGame({ seed, player: 'helm', randomEvents: true });
+      const settler = game.unitsOf('helm').find((unit) => unit.canFound)!;
+      game.foundCity(settler.id);
+      const city = game.citiesOf('helm')[0];
+      const infantry = starterDesigns().find((entry) => entry.name === 'Line Infantry')!;
+      pushUnit(game, infantry, 'helm', city.x, city.y);
+      pushUnit(game, infantry, 'helm', city.x, city.y);
+      game.state.factions.helm.credits = 400;
+      game.state.factions.helm.minerals = 80;
+      game.state.factions.helm.nutrients = 80;
       const seen: string[] = [];
-      for (let n = 0; n < 24; n++) {
+      for (let n = 0; n < 36; n++) {
         const turned = game.endTurn();
         if (!turned.ok && game.state.events.prompt) {
           seen.push(game.state.events.prompt.kind);

@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { CONFIG } from '../src/config';
+import { exposureOutcome } from '../src/core/geography';
 import { defaultAxes } from '../src/core/factions';
 import { makeRng } from '../src/core/rng';
 import {
@@ -8,7 +9,6 @@ import {
   calendarForRound,
   combatOdds,
   evaluateVictory,
-  outsideBandOutcome,
   planRoundOrder,
   rushBuyCost,
   shouldAutosave,
@@ -75,13 +75,13 @@ describe('terraforming fees and time', () => {
   });
 });
 
-describe('outside-band damage', () => {
-  it('deals the configured damage until the unit dies, returns, or the faction is sealed', () => {
-    expect(outsideBandOutcome(10, false, false)).toEqual({ hp: 5, destroyed: false });
-    expect(outsideBandOutcome(4, false, false)).toEqual({ hp: -1, destroyed: true });
-    expect(outsideBandOutcome(4, true, false)).toEqual({ hp: 4, destroyed: false });
-    expect(outsideBandOutcome(4, false, true)).toEqual({ hp: 4, destroyed: false });
-    expect(CONFIG.outsideBand.damagePerTurn).toBe(5);
+describe('harsh-ground damage', () => {
+  it('deals the configured damage until the unit dies, leaves, or the faction is sealed', () => {
+    expect(exposureOutcome(10, true, false, 5)).toEqual({ hp: 5, destroyed: false });
+    expect(exposureOutcome(4, true, false, 5)).toEqual({ hp: -1, destroyed: true });
+    expect(exposureOutcome(4, false, false, 5)).toEqual({ hp: 4, destroyed: false });
+    expect(exposureOutcome(4, true, true, 5)).toEqual({ hp: 4, destroyed: false });
+    expect(CONFIG.exposure.damagePerTurn).toBe(5);
   });
 });
 

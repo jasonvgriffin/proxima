@@ -23,8 +23,8 @@ export interface CueHit {
   delay: number;
 }
 
-const TRAVEL_DAMAGE = /takes \d+ damage outside the twilight band/;
-const TRAVEL_LOST = /is destroyed outside the livable zone/;
+const TRAVEL_DAMAGE = /takes \d+ damage from the harsh ground/;
+const TRAVEL_LOST = /is destroyed by the harsh ground/;
 const TERRAFORM_DONE = /finishes /;
 
 const TRAVEL_GAP = 0.11;
