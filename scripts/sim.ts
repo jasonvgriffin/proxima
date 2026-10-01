@@ -268,7 +268,9 @@ function noteFired(text: string, fired: Record<EventKind, number>, warned: Recor
   if (text.startsWith('Sensors stutter')) warned['solar-flare'] += 1;
   else if (text.includes('flare')) fired['solar-flare'] += 1;
   else if (text.includes('intact piece of the ark')) warned.wreckage += 1;
-  else if (text.includes('wreck') || text.includes('salvages')) fired.wreckage += 1;
+  else if (text.includes('studies the wreck') || text.includes('from the wreck') || text.includes(' salvages ')) {
+    fired.wreckage += 1;
+  }
   else if (text.includes('Rumors say an oath') || text.includes('rumor of betrayal')) warned.betrayal += 1;
   else if (text.includes('betrays')) fired.betrayal += 1;
   else if (text.includes('dust storm is building')) warned['dust-storm'] += 1;
