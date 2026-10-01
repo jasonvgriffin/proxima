@@ -71,6 +71,8 @@ interface ProximaBridge {
 interface ProximaDebug {
   spawnRaider(): { x: number; y: number; name: string } | null;
   showRecap(): void;
+  showPortraits(): void;
+  seedDiplomacyOffer(): number | null;
   state(): unknown;
   tilePoint(x: number, y: number): { x: number; y: number } | null;
   showUpdateBanner(): void;

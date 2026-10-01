@@ -1,6 +1,8 @@
 import { APP_VERSION } from '../version';
 import { CONFIG } from '../config';
 import { drawEmblem, drawPlanet, drawStar, drawStarfield } from '../art/draw';
+import { LEADERS, leaderGreeting } from '../art/leaders';
+import { drawPortrait } from '../art/portraits';
 import { AudioBus, TRACKS } from '../audio/engine';
 import { playLoggedCues, playTerraformProgress, snapshotLog, snapshotTerraform } from '../audio/listen';
 import { difficultyLabel, difficultyProfile, normalizeDifficulty, outsideBandDamage } from '../core/difficulty';
@@ -10,7 +12,7 @@ import { proposalLabel } from '../core/diplomacy';
 import { biomeClass, terraformFee, terraformTurns } from '../core/rules';
 import { formerTechLevel, TECHS, techAvailable, techById } from '../core/tech';
 import { starterDesigns, CHASSIS, WEAPONS, ARMORS, SPECIALS, partKnown } from '../core/parts';
-import { FACTION_IDS, type Difficulty, type FactionId, type Proposal, type SaveEnvelope, type SocialAxis, type Unit } from '../core/types';
+import { FACTION_IDS, type Difficulty, type DiplomaticOffer, type FactionId, type Proposal, type SaveEnvelope, type SocialAxis, type Stance, type Unit } from '../core/types';
 import { migrateSave, SAVE_VERSION } from '../platform/saveMigrate';
 import { createSaveStore, type SaveStore } from '../platform/saves';
 import { createPlatform, type PlatformClient, type UpdateNotice } from '../platform/updates';
@@ -43,6 +45,7 @@ export class App {
   private reach = new Set<string>();
   private profileId: FactionId = 'helm';
   private profileReturn: Screen = 'menu';
+  private diplomacyFocus: FactionId = 'verdantia';
   private pending: { mode: 'new' | 'exit' } | null = null;
   private setup = {
     faction: 'helm' as FactionId,
@@ -72,6 +75,8 @@ export class App {
       window.__proximaDebug = {
         spawnRaider: () => this.spawnRaider(),
         showRecap: () => this.debugRecap(),
+        showPortraits: () => this.showPortraitSheet(),
+        seedDiplomacyOffer: () => this.seedDiplomacyOffer(),
         state: () => this.game?.serialize() ?? null,
         tilePoint: (x: number, y: number) => this.map?.clientPoint(x, y) ?? null,
         showUpdateBanner: () => this.previewUpdate(),
@@ -190,7 +195,7 @@ export class App {
           </div>
         </div>
         <div class="sheet-card">
-          <h2>${esc(FACTIONS[this.setup.faction].name)}</h2>
+          ${this.leaderCard(this.setup.faction)}
           <p class="tag">${esc(FACTIONS[this.setup.faction].idea)}</p>
           <p class="muted">Social axes start on this faction's strengths. Each match is +10%. Changing one later costs ${CONFIG.social.switchCost} credits.</p>
           ${this.axisEditor(this.setup.axes, 'setup-axis')}
@@ -223,10 +228,15 @@ export class App {
       <div class="sheet" data-testid="profile-screen">
         <div class="sheet-card" style="grid-column: 1 / -1; max-width: 860px">
           <div class="profile-layout">
-            <canvas data-emblem="${faction.id}" width="120" height="120"></canvas>
+            <div class="profile-art">
+              <canvas data-portrait="${faction.id}" width="440" height="572"></canvas>
+              <canvas class="profile-crest" data-emblem="${faction.id}" width="128" height="128"></canvas>
+            </div>
             <div>
               <p class="eyebrow">${esc(faction.formerly)}</p>
               <h2>${esc(faction.name)}</h2>
+              <p class="leader-line"><strong>${esc(LEADERS[faction.id].name)}</strong> · ${esc(LEADERS[faction.id].title)}</p>
+              <p>${esc(LEADERS[faction.id].line)}</p>
               <p>${esc(faction.backstory)}</p>
               <p class="muted">Look: ${esc(faction.visual)}</p>
               <p class="muted">Free starting tech: ${esc(faction.freeTechName)}.</p>
@@ -481,6 +491,13 @@ export class App {
       this.closeOverlay();
       this.act(() => this.game!.confirmAttack(attacker, x, y), 'attack');
     } else if (action === 'open-diplomacy') this.openDiplomacy();
+    else if (action === 'select-diplomat') {
+      const id = node.dataset.faction as FactionId | undefined;
+      if (id && id !== this.game?.state.playerFaction) {
+        this.diplomacyFocus = id;
+        this.openDiplomacy();
+      }
+    }
     else if (action === 'open-spies') this.openSpies();
     else if (action === 'open-social') this.openSocial();
     else if (action === 'open-research') this.openResearch();
@@ -664,35 +681,42 @@ export class App {
   private openDiplomacy() {
     const game = this.game!;
     const me = game.state.playerFaction;
+    const others = FACTION_IDS.filter((id) => id !== me);
+    if (!others.includes(this.diplomacyFocus)) this.diplomacyFocus = others[0];
+    const focus = this.diplomacyFocus;
+    const focusRel = game.relation(me, focus);
+    const leader = LEADERS[focus];
     const offers = game.state.offers.filter((offer) => offer.to === me);
-    this.overlay.innerHTML = `
-      <div class="modal-back"><div class="modal" data-testid="diplomacy-screen">
-        <p class="eyebrow">Diplomacy</p>
-        <h2>The ladder</h2>
-        <p class="muted">War, then peace, then a non-aggression pact, then an alliance. Research and exploration treaties can sit beside peace or above. No unit has to make contact first.</p>
-        ${offers.map((offer) => `<p>${esc(FACTIONS[offer.from].name)} offers ${esc(proposalLabel(offer.kind))}. <button class="btn small" data-action="accept-offer" data-id="${offer.id}">Accept</button> <button class="btn small" data-action="reject-offer" data-id="${offer.id}">Reject</button></p>`).join('')}
-        ${FACTION_IDS.filter((id) => id !== me).map((id) => {
-          const rel = game.relation(me, id);
-          const standing = rel.stance === 'nap' ? 'non-aggression pact' : rel.stance;
-          const actions: [string, string][] = [
-            ['war', 'Declare war'],
-            ['peace', 'Offer peace'],
-            ['nap', 'Non-aggression'],
-            ['alliance', 'Alliance'],
-            ['research', 'Research treaty'],
-            ['exploration', 'Share maps'],
-          ];
-          return `<section>
-            <h3>${esc(FACTIONS[id].name)}</h3>
-            <p class="muted">Standing: ${esc(standing)}. Grievance ${rel.memory}. Research treaty ${rel.research ? 'yes' : 'no'}. Exploration treaty ${rel.exploration ? 'yes' : 'no'}.</p>
-            <div class="row">
-              ${actions.map(([kind, label]) => `<button class="btn small" data-action="propose" data-target="${id}" data-kind="${kind}">${esc(label)}</button>`).join('')}
-            </div>
-          </section>`;
-        }).join('')}
-        <button class="btn" data-action="close">Close</button>
-      </div></div>`;
+    this.overlay.innerHTML = diplomacyMarkup({
+      offers: offers.map((offer) => ({
+        id: offer.id,
+        from: offer.from,
+        fromName: FACTIONS[offer.from].name,
+        kind: offer.kind,
+      })),
+      focus: {
+        factionId: focus,
+        factionName: FACTIONS[focus].name,
+        leader: leader.name,
+        title: leader.title,
+        greeting: leaderGreeting(focus, focusRel.stance),
+      },
+      factions: others.map((id) => {
+        const rel = game.relation(me, id);
+        return {
+          id,
+          name: FACTIONS[id].name,
+          leader: LEADERS[id].name,
+          stance: rel.stance,
+          memory: rel.memory,
+          research: rel.research,
+          exploration: rel.exploration,
+          selected: id === focus,
+        };
+      }),
+    });
     this.refreshGame();
+    this.paintEmblems();
   }
 
   private openSpies() {
@@ -963,9 +987,24 @@ export class App {
       </div></div>`;
   }
 
+  private leaderCard(id: FactionId) {
+    const faction = FACTIONS[id];
+    const leader = LEADERS[id];
+    return `<div class="leader-pick">
+      <canvas data-portrait="${id}" width="280" height="364"></canvas>
+      <div>
+        <p class="eyebrow">${esc(leader.title)}</p>
+        <h2>${esc(faction.name)}</h2>
+        <h3>${esc(leader.name)}</h3>
+        <p class="muted">${esc(leader.line)}</p>
+      </div>
+    </div>`;
+  }
+
   private factionButton(id: FactionId) {
     const faction = FACTIONS[id];
-    return `<button class="faction-card ${this.setup.faction === id ? 'on' : ''}" data-action="pick-faction" data-faction="${id}" data-testid="faction-${id}"><canvas data-emblem="${id}" width="42" height="42"></canvas><span><strong>${esc(faction.name)}</strong><br/><span class="muted">${esc(faction.idea)}</span></span></button>`;
+    const leader = LEADERS[id];
+    return `<button class="faction-card ${this.setup.faction === id ? 'on' : ''}" data-action="pick-faction" data-faction="${id}" data-testid="faction-${id}"><canvas data-portrait="${id}" width="144" height="188"></canvas><canvas data-emblem="${id}" width="56" height="56"></canvas><span><strong>${esc(faction.name)}</strong><br/><span class="muted">${esc(leader.name)}</span></span></button>`;
   }
 
   private axisEditor(axes: Record<SocialAxis, string>, action: string) {
@@ -987,12 +1026,56 @@ export class App {
   }
 
   private paintEmblems() {
-    this.stage.querySelectorAll('canvas[data-emblem]').forEach((node) => {
+    for (const root of [this.stage, this.overlay]) this.paintMarks(root);
+  }
+
+  private paintMarks(root: ParentNode) {
+    root.querySelectorAll('canvas[data-emblem]').forEach((node) => {
       const canvas = node as HTMLCanvasElement;
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
       drawEmblem(ctx, canvas.dataset.emblem as FactionId, canvas.width / 2, canvas.height / 2, canvas.width / 2 - 4);
     });
+    root.querySelectorAll('canvas[data-portrait]').forEach((node) => {
+      const canvas = node as HTMLCanvasElement;
+      const ctx = canvas.getContext('2d');
+      const faction = canvas.dataset.portrait as FactionId | undefined;
+      if (!ctx || !faction) return;
+      drawPortrait(ctx, faction, canvas.width, canvas.height);
+    });
+  }
+
+  private showPortraitSheet() {
+    this.stopMotion();
+    this.overlay.innerHTML = '';
+    this.screen = 'menu';
+    this.stage.innerHTML = `
+      <div class="portrait-sheet" id="portrait-sheet" data-testid="portrait-sheet">
+        ${FACTION_IDS.map((id) => {
+          const leader = LEADERS[id];
+          return `<figure>
+            <canvas data-portrait="${id}" width="480" height="624"></canvas>
+            <figcaption><strong>${esc(leader.name)}</strong><span>${esc(leader.title)}</span><em>${esc(FACTIONS[id].name)}</em></figcaption>
+          </figure>`;
+        }).join('')}
+      </div>`;
+    this.paintEmblems();
+  }
+
+  private seedDiplomacyOffer() {
+    const game = this.game;
+    if (!game) return null;
+    const from = FACTION_IDS.find((id) => id !== game.state.playerFaction) ?? 'verdantia';
+    const offer: DiplomaticOffer = {
+      id: game.state.nextOfferId++,
+      from,
+      to: game.state.playerFaction,
+      kind: 'nap',
+    };
+    game.state.offers.push(offer);
+    this.diplomacyFocus = from;
+    this.openDiplomacy();
+    return offer.id;
   }
 
   private adjacentFoe(unit: Unit): { x: number; y: number; name: string } | null {
@@ -1261,4 +1344,80 @@ export class App {
 
 function esc(value: string) {
   return value.replace(/[&<>"']/g, (char) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[char] ?? char);
+}
+
+export interface DiplomacyFactionRow {
+  id: FactionId;
+  name: string;
+  leader: string;
+  stance: Stance;
+  memory: number;
+  research: boolean;
+  exploration: boolean;
+  selected: boolean;
+}
+
+export interface DiplomacyMarkup {
+  offers: { id: number; from: FactionId; fromName: string; kind: Proposal }[];
+  focus: { factionId: FactionId; factionName: string; leader: string; title: string; greeting: string };
+  factions: DiplomacyFactionRow[];
+}
+
+const DIPLOMACY_ACTIONS: [string, string][] = [
+  ['war', 'Declare war'],
+  ['peace', 'Offer peace'],
+  ['nap', 'Non-aggression'],
+  ['alliance', 'Alliance'],
+  ['research', 'Research treaty'],
+  ['exploration', 'Share maps'],
+];
+
+export function diplomacyMarkup(view: DiplomacyMarkup): string {
+  const offers = view.offers
+    .map(
+      (offer) => `<p class="offer-line" data-testid="diplomacy-offer">
+        <canvas data-emblem="${offer.from}" width="64" height="64"></canvas>
+        <span>${esc(offer.fromName)} offers ${esc(proposalLabel(offer.kind))}.</span>
+        <button class="btn small" data-action="accept-offer" data-id="${offer.id}">Accept</button>
+        <button class="btn small" data-action="reject-offer" data-id="${offer.id}">Reject</button>
+      </p>`,
+    )
+    .join('');
+  const rows = view.factions
+    .map((row) => {
+      const standing = row.stance === 'nap' ? 'non-aggression pact' : row.stance;
+      return `<section class="diplomacy-faction ${row.selected ? 'on' : ''}" data-testid="diplomacy-row" data-faction="${row.id}">
+        <button class="diplomacy-head ${row.selected ? 'on' : ''}" data-action="select-diplomat" data-faction="${row.id}" data-testid="diplomat-${row.id}">
+          <canvas data-portrait="${row.id}" width="112" height="144"></canvas>
+          <canvas data-emblem="${row.id}" width="64" height="64"></canvas>
+          <span><h3>${esc(row.name)}</h3><p class="muted">${esc(row.leader)}</p></span>
+        </button>
+        <p class="muted">Standing: ${esc(standing)}. Grievance ${row.memory}. Research treaty ${row.research ? 'yes' : 'no'}. Exploration treaty ${row.exploration ? 'yes' : 'no'}.</p>
+        <div class="row">
+          ${DIPLOMACY_ACTIONS.map(([kind, label]) => `<button class="btn small" data-action="propose" data-target="${row.id}" data-kind="${kind}">${esc(label)}</button>`).join('')}
+        </div>
+      </section>`;
+    })
+    .join('');
+  const focus = view.focus;
+  return `<div class="modal-back"><div class="modal diplomacy-modal" data-testid="diplomacy-screen">
+    <p class="eyebrow">Diplomacy</p>
+    <h2>The ladder</h2>
+    <p class="muted">War, then peace, then a non-aggression pact, then an alliance. Research and exploration treaties can sit beside peace or above. No unit has to make contact first.</p>
+    ${offers}
+    <div class="diplomacy-layout">
+      <aside class="diplomat" data-testid="diplomat-panel">
+        <div class="diplomat-art">
+          <canvas data-portrait="${focus.factionId}" width="440" height="572"></canvas>
+          <canvas class="diplomat-crest" data-emblem="${focus.factionId}" width="96" height="96"></canvas>
+        </div>
+        <p class="eyebrow">${esc(focus.title)}</p>
+        <h3>${esc(focus.leader)}</h3>
+        <p class="muted">${esc(focus.factionName)}</p>
+        <p data-testid="diplomat-greeting">${esc(focus.greeting)}</p>
+      </aside>
+      <div class="diplomacy-rows">${rows}</div>
+    </div>
+    <button class="btn" data-action="close">Close</button>
+  </div></div>`;
 }
