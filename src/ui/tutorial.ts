@@ -44,6 +44,7 @@ export function tutorialPages(): TutorialPage[] {
         `You move first. Then each rival takes a turn, in an order that changes every week. The top bar shows the year and week, starting at ${formatCalendar(1)}. A turn is one week. There is no turn limit.`,
         `Any unit can travel the day side and the night side. Outside livable ground it takes damage each turn until it returns, is destroyed, or you research ${sealed}. On Normal that is ${normal.outsideBandDamage} damage. Easy deals ${easy.outsideBandDamage}, Hard deals ${hard.outsideBandDamage}, and Brutal deals ${brutal.outsideBandDamage}.`,
         'This guide is optional. Close it, or press Escape, and play continues on the same week. The tutorial does not change your game.',
+        'Press M during a game to mute music, sound effects, and the ambient bed. Press M again to restore the same levels. Those controls are also on the start menu and in this pause menu.',
       ],
     },
     {

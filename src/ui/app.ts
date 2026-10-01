@@ -61,13 +61,13 @@ export class App {
     root.addEventListener('click', (event) => this.onClick(event));
     root.addEventListener('change', (event) => this.onChange(event));
     root.addEventListener('input', (event) => this.onInput(event));
-    window.addEventListener('keydown', (event) => {
-      if (event.key === 'Escape' && this.screen === 'game') {
-        if (this.overlay.innerHTML) this.closeOverlay();
-        else this.openPause();
-      }
-    });
-    root.addEventListener('pointerdown', () => this.audio.unlock(), { once: true });
+    window.addEventListener('keydown', (event) => this.onKey(event));
+    root.addEventListener('pointerdown', (event) => {
+      this.audio.unlock();
+      const el = event.target instanceof Element ? event.target : null;
+      if (el?.closest('[data-action="play-intro"]')) return;
+      this.syncSoundscape();
+    }, { once: true });
     if (import.meta.env.DEV) {
       window.__proximaDebug = {
         spawnRaider: () => this.spawnRaider(),
@@ -93,6 +93,7 @@ export class App {
     else if (this.screen === 'recap') this.renderRecap();
     else this.mountGame();
     this.paintBanner();
+    this.syncSoundscape();
   }
 
   private stopMotion() {
@@ -129,6 +130,7 @@ export class App {
             <button class="btn" data-action="new-game" data-testid="new-game">New Game</button>
             <button class="btn" data-action="load-game" data-testid="load-game">Load Game</button>
             <button class="btn" data-action="game-options" data-testid="game-options">Game Options</button>
+            <button class="btn" data-action="menu-audio" data-testid="menu-audio">Audio</button>
             <button class="btn" data-action="quit" data-testid="quit">Quit</button>
           </div>
         </div>
@@ -398,7 +400,6 @@ export class App {
     const action = node.dataset.action;
     if (await this.handleUpdateAction(action, node)) return;
     if (action === 'play-intro') {
-      this.audio.stopMusic();
       this.introIndex = 0;
       this.screen = 'intro';
       this.render();
@@ -421,11 +422,11 @@ export class App {
       this.screen = 'menu';
       this.game = null;
       this.render();
-      if (this.audio.musicOn) this.audio.startMusic();
     } else if (action === 'game-options') {
       this.screen = 'options';
       this.render();
-    } else if (action === 'quit') void this.exitDesktop();
+    } else if (action === 'menu-audio') this.openAudioPanel();
+    else if (action === 'quit') void this.exitDesktop();
     else if (action === 'difficulty') this.setup.difficulty = normalizeDifficulty(node.dataset.difficulty);
     else if (action === 'pick-faction') {
       this.setup.faction = node.dataset.faction as FactionId;
@@ -539,6 +540,7 @@ export class App {
   }
 
   private onChange(event: Event) {
+    if (this.applyAudioSettings(event)) return;
     const target = event.target as HTMLInputElement | HTMLSelectElement;
     if (target.dataset.setting === 'allied') this.setup.allied = (target as HTMLInputElement).checked;
     if (target.dataset.setting === 'events') this.setup.events = (target as HTMLInputElement).checked;
@@ -549,10 +551,6 @@ export class App {
       this.updateCheck = (target as HTMLInputElement).checked;
       void this.persistUpdateCheck(this.updateCheck);
     }
-    if (target.dataset.setting === 'music') this.audio.setMusic((target as HTMLInputElement).checked);
-    if (target.dataset.setting === 'sfx') this.audio.setSfx((target as HTMLInputElement).checked);
-    if (target.dataset.setting === 'mode') this.audio.setMode((target as HTMLSelectElement).value as 'loop' | 'shuffle');
-    if (target.dataset.setting === 'track') this.audio.setTrack(target.value as (typeof TRACKS)[number]['id']);
     if (target.dataset.personality && target.dataset.trait) {
       const id = target.dataset.personality as FactionId;
       const trait = target.dataset.trait as keyof (typeof this.setup.personalities)[FactionId];
@@ -565,13 +563,7 @@ export class App {
   }
 
   private onInput(event: Event) {
-    const target = event.target as HTMLInputElement;
-    const key = target.dataset.volume as 'master' | 'music' | 'sfx' | 'ambient' | undefined;
-    if (!key) return;
-    this.audio[key] = Number(target.value);
-    this.audio.persist();
-    const label = target.parentElement?.querySelector('b');
-    if (label) label.textContent = String(Math.round(Number(target.value) * 100));
+    this.applyAudioSettings(event);
   }
 
   private startGame() {
@@ -591,6 +583,7 @@ export class App {
     this.gameMounted = false;
     this.render();
     this.audio.unlock();
+    this.syncSoundscape();
   }
 
   private async endTurn() {
@@ -790,11 +783,7 @@ export class App {
         <p class="muted">Version ${esc(APP_VERSION)}</p>
         <p data-testid="pause-difficulty">Difficulty: ${esc(difficultyLabel(this.game?.state.setup.difficulty))}. ${esc(difficultyProfile(this.game?.state.setup.difficulty).blurb)}</p>
         <h3>Audio</h3>
-        <label class="row"><input type="checkbox" data-setting="music" ${this.audio.musicOn ? 'checked' : ''}/> Music</label>
-        <label class="row"><input type="checkbox" data-setting="sfx" ${this.audio.sfxOn ? 'checked' : ''}/> Sound effects</label>
-        ${(['master', 'music', 'sfx', 'ambient'] as const).map((key) => `<label class="slider">${key} <input type="range" min="0" max="1" step="0.01" value="${this.audio[key]}" data-volume="${key}"/><b>${Math.round(this.audio[key] * 100)}</b></label>`).join('')}
-        <label class="row">Track <select data-setting="track">${TRACKS.map((track) => `<option value="${track.id}" ${this.audio.track === track.id ? 'selected' : ''}>${esc(track.name)}</option>`).join('')}</select></label>
-        <label class="row">Order <select data-setting="mode"><option value="loop" ${this.audio.mode === 'loop' ? 'selected' : ''}>Loop</option><option value="shuffle" ${this.audio.mode === 'shuffle' ? 'selected' : ''}>Shuffle</option></select></label>
+        ${renderAudioSettings(this.audio)}
         <h3>Saves</h3>
         <label class="row" data-testid="autosave-toggle"><input type="checkbox" data-setting="autosave" ${autosave ? 'checked' : ''}/> Autosave every ${CONFIG.autosaveEveryTurns} turns</label>
         <h3>Updates</h3>
@@ -808,6 +797,16 @@ export class App {
           <button class="btn danger" data-action="pause-exit" data-testid="pause-exit">Exit to desktop</button>
           <button class="btn primary" data-action="resume" data-testid="pause-resume">Resume</button>
         </div>
+      </div></div>`;
+  }
+
+  private openAudioPanel() {
+    this.overlay.innerHTML = `
+      <div class="modal-back"><div class="modal narrow" data-testid="audio-panel">
+        <p class="eyebrow">Before the expedition</p>
+        <h2>Audio</h2>
+        ${renderAudioSettings(this.audio)}
+        <button class="btn primary" data-action="close" data-testid="audio-close">Close</button>
       </div></div>`;
   }
 
@@ -945,7 +944,48 @@ export class App {
   private exitIntro() {
     this.screen = 'menu';
     this.render();
-    if (this.audio.musicOn) this.audio.startMusic();
+  }
+
+  private onKey(event: KeyboardEvent) {
+    if (event.key === 'Escape') {
+      if (this.screen === 'game') {
+        if (this.overlay.innerHTML) this.closeOverlay();
+        else this.openPause();
+      } else if (this.overlay.querySelector('[data-testid="audio-panel"]')) this.closeOverlay();
+      return;
+    }
+    if (this.screen !== 'game' || event.repeat || event.ctrlKey || event.metaKey || event.altKey) return;
+    if (event.key.toLowerCase() !== 'm') return;
+    const tag = event.target instanceof HTMLElement ? event.target.tagName : '';
+    if (tag === 'INPUT' || tag === 'TEXTAREA' || tag === 'SELECT') return;
+    event.preventDefault();
+    this.audio.toggleMuted();
+    this.syncSoundscape();
+    this.syncMuteControls();
+    this.toast(this.audio.muted ? 'Muted.' : 'Sound restored.');
+  }
+
+  /** Music previews on the menu once a click unlocks audio. The ambient bed plays only in a game. */
+  private syncSoundscape() {
+    if (this.screen === 'game') this.audio.startAmbient();
+    else this.audio.stopAmbient();
+    if (this.screen === 'intro') {
+      this.audio.stopMusic();
+      return;
+    }
+    this.audio.ensureMusic();
+  }
+
+  private syncMuteControls() {
+    this.overlay.querySelectorAll<HTMLInputElement>('[data-setting="mute"]').forEach((box) => {
+      box.checked = this.audio.muted;
+    });
+  }
+
+  private applyAudioSettings(event: Event): boolean {
+    if (!handleAudioSettings(this.audio, event)) return false;
+    this.syncSoundscape();
+    return true;
   }
 
   private closeOverlay() {
@@ -1257,6 +1297,63 @@ export class App {
       node.hidden = true;
     }, 2200);
   }
+}
+
+const VOLUME_KEYS = ['master', 'music', 'sfx', 'ambient'] as const;
+
+/** The music, effects, ambient, and mute controls shared by the start menu and the pause menu. */
+function renderAudioSettings(audio: AudioBus): string {
+  const sliders = VOLUME_KEYS.map((key) => {
+    const value = audio[key];
+    return `<label class="slider">${key} <input type="range" min="0" max="1" step="0.01" value="${value}" data-volume="${key}" data-testid="audio-volume-${key}"/><b>${Math.round(value * 100)}</b></label>`;
+  }).join('');
+  return `
+    <div class="audio-settings" data-testid="audio-settings">
+      <label class="row"><input type="checkbox" data-setting="mute" data-testid="audio-mute" ${audio.muted ? 'checked' : ''}/> Mute all</label>
+      <p class="muted audio-note">Mute all silences music, effects, and ambient, then restores these same levels. Press M in a game. Ambient is a low wind and reactor hum during play, and it rests on the menu and the recap.</p>
+      <label class="row"><input type="checkbox" data-setting="music" data-testid="audio-music" ${audio.musicOn ? 'checked' : ''}/> Music</label>
+      <label class="row"><input type="checkbox" data-setting="sfx" data-testid="audio-sfx" ${audio.sfxOn ? 'checked' : ''}/> Sound effects</label>
+      ${sliders}
+      <label class="row">Track <select data-setting="track" data-testid="audio-track">${TRACKS.map((track) => `<option value="${track.id}" ${audio.track === track.id ? 'selected' : ''}>${esc(track.name)}</option>`).join('')}</select></label>
+      <label class="row">Order <select data-setting="mode" data-testid="audio-mode"><option value="loop" ${audio.mode === 'loop' ? 'selected' : ''}>Loop</option><option value="shuffle" ${audio.mode === 'shuffle' ? 'selected' : ''}>Shuffle</option></select></label>
+    </div>`;
+}
+
+/** One handler for both menus. Returns true when the event belonged to these controls. */
+function handleAudioSettings(audio: AudioBus, event: Event): boolean {
+  const target = event.target;
+  if (!(target instanceof HTMLInputElement) && !(target instanceof HTMLSelectElement)) return false;
+  if (event.type === 'input' && target instanceof HTMLInputElement) {
+    const key = target.dataset.volume;
+    if (key !== 'master' && key !== 'music' && key !== 'sfx' && key !== 'ambient') return false;
+    audio.setVolume(key, Number(target.value));
+    const label = target.parentElement?.querySelector('b');
+    if (label) label.textContent = String(Math.round(audio[key] * 100));
+    return true;
+  }
+  if (event.type !== 'change') return false;
+  const setting = target.dataset.setting;
+  if (setting === 'mute' && target instanceof HTMLInputElement) {
+    audio.setMuted(target.checked);
+    return true;
+  }
+  if (setting === 'music' && target instanceof HTMLInputElement) {
+    audio.setMusic(target.checked);
+    return true;
+  }
+  if (setting === 'sfx' && target instanceof HTMLInputElement) {
+    audio.setSfx(target.checked);
+    return true;
+  }
+  if (setting === 'mode' && target instanceof HTMLSelectElement) {
+    audio.setMode(target.value === 'shuffle' ? 'shuffle' : 'loop');
+    return true;
+  }
+  if (setting === 'track' && target instanceof HTMLSelectElement) {
+    audio.setTrack(target.value);
+    return true;
+  }
+  return false;
 }
 
 function esc(value: string) {
