@@ -1,4 +1,5 @@
 import { CONFIG } from '../config';
+import { playGameSfx, type GameSfx } from './sfx';
 
 export const TRACKS = [
   { id: 'meridian-dust', name: 'Meridian Dust' },
@@ -154,11 +155,8 @@ export class AudioBus {
       this.tone(392, 0.18, 0.06 * vol, 'triangle');
       this.tone(523, 0.22, 0.05 * vol, 'sine');
     }
-    if (kind === 'terraform') this.earth(vol);
-    if (kind === 'terraformDone') {
-      this.tone(494, 0.2, 0.05 * vol, 'sine');
-      this.tone(740, 0.28, 0.04 * vol, 'triangle');
-    }
+    if (kind === 'terraform') playGameSfx(this.context(), 'terraform-start', vol);
+    if (kind === 'terraformDone') playGameSfx(this.context(), 'terraform-complete', vol);
     if (kind === 'band') this.bandDamage(vol);
     if (kind === 'attack') this.noise(0.12, 900, vol * 0.2);
     if (kind === 'turn') this.tone(180, 0.12, 0.05 * vol, 'sine');
@@ -167,27 +165,13 @@ export class AudioBus {
     if (kind === 'open') this.tone(480, 0.06, 0.03 * vol, 'triangle');
   }
 
-  /** A low rising scrape, like soil and metal working a tile. */
-  private earth(vol: number) {
-    const ctx = this.context();
-    const osc = ctx.createOscillator();
-    const filter = ctx.createBiquadFilter();
-    const gain = ctx.createGain();
-    osc.type = 'sawtooth';
-    osc.frequency.setValueAtTime(90, ctx.currentTime);
-    osc.frequency.exponentialRampToValueAtTime(240, ctx.currentTime + 0.35);
-    filter.type = 'lowpass';
-    filter.frequency.setValueAtTime(400, ctx.currentTime);
-    filter.frequency.linearRampToValueAtTime(1400, ctx.currentTime + 0.35);
-    gain.gain.setValueAtTime(0.0001, ctx.currentTime);
-    gain.gain.exponentialRampToValueAtTime(0.08 * vol, ctx.currentTime + 0.05);
-    gain.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.4);
-    osc.connect(filter);
-    filter.connect(gain);
-    gain.connect(ctx.destination);
-    osc.start();
-    osc.stop(ctx.currentTime + 0.42);
-    this.tone(196, 0.3, 0.03 * vol, 'triangle');
+  /**
+   * Terraforming and outside-band travel damage.
+   * Uses the same mute, unlock, and sfx loudness as play().
+   */
+  playCue(kind: GameSfx, delay = 0) {
+    if (!this.sfxOn || !this.started) return;
+    playGameSfx(this.context(), kind, this.level('sfx'), delay);
   }
 
   /** Air failing: a dry hiss falling into a dull knock. */

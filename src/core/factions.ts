@@ -234,11 +234,7 @@ export function factionMatches(faction: FactionId, optionId: string): boolean {
   return FACTIONS[faction].matches.includes(optionId);
 }
 
-export const DIFFICULTIES: { id: 'easy' | 'normal' | 'very-aggressive'; label: string; blurb: string }[] = [
-  { id: 'easy', label: 'Easy', blurb: 'Rivals wait longer and work a thinner economy.' },
-  { id: 'normal', label: 'Normal', blurb: 'The baseline. Each faction still keeps its own temperament.' },
-  { id: 'very-aggressive', label: 'Very aggressive', blurb: 'The quiet years shrink, and rival yards run hot.' },
-];
+export { DIFFICULTIES } from './difficulty';
 
 export const DIPLOMACY_LABEL: Record<Personality['diplomacy'], string> = {
   treaty: 'Treaty-seeker',

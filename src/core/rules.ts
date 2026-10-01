@@ -1,4 +1,5 @@
 import { CONFIG, type BiomeClass } from '../config';
+import { aggressionAdjust } from './difficulty';
 import { FACTIONS, socialOption } from './factions';
 import { formerTechLevel } from './tech';
 import type {
@@ -100,7 +101,7 @@ export function outsideBandOutcome(
   hp: number,
   livable: boolean,
   hasSealed: boolean,
-  damage = CONFIG.outsideBand.damagePerTurn,
+  damage: number = CONFIG.outsideBand.damagePerTurn,
 ): { hp: number; destroyed: boolean } {
   if (livable || hasSealed) return { hp, destroyed: false };
   const next = hp - damage;
@@ -131,8 +132,7 @@ export function shouldAutosave(playerTurnsCompleted: number, enabled: boolean): 
 
 export function peaceWindow(aggression: string, difficulty: string): number {
   const base = CONFIG.peace.byAggression[aggression] ?? CONFIG.peace.byAggression.normal;
-  const adjust = CONFIG.peace.difficultyAdjust[difficulty] ?? 0;
-  return Math.max(CONFIG.peace.minimum, base + adjust);
+  return Math.max(CONFIG.peace.minimum, base + aggressionAdjust(difficulty));
 }
 
 export function statMultiplier(faction: FactionId, axes: SocialAxes, stat: SocialStat): number {
