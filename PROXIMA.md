@@ -17,13 +17,13 @@ Check every feature against this principle: does it make the next game play diff
 
 ## Story
 
-In 2425 a stratospheric seeding fleet over the North Atlantic flew eleven days on a stale command after its control satellite died in a solar storm. The sulfate veil, meant to hold the heat off the Punjab and the Pampas, thickened over the wrong latitudes, and the second harvest failed in both. People went on living. The grain that fed the cities did not.
+In 2425 a stratospheric seeding fleet over the North Atlantic flew eleven days on a stale command after its control satellite died in a solar storm. The sulfate veil, meant to hold the heat off the Punjab and the Pampas, thickened over the wrong latitudes, and the second harvest failed in both. In Lahore and Rosario the ration lines stood through the night and went home with empty sacks. The grain that fed the cities did not come in.
 
-Halcyon was a research hull in the Shackleton yards, built for a library and four thousand sleepers and aimed at the nearest star. On 12 January 2426 the launch order left the yards as a single line: Depart, do not wait for revision. The preamble — who was chosen, who was turned back at the locks, what Earth had been promised — went into a file the medical system was allowed to mark as a hazard. A laser array pushed the ship clear, and she coasted at an eighth of the speed of light for thirty-four years. The clocks barely differed from Earth's. Twelve people stood the wake.
+Halcyon was a research hull in the Shackleton yards, built for a library and four thousand sleepers and aimed at the nearest star. On 12 January 2426 the launch order left the yards as a single line: Depart, do not wait for revision. The preamble named who was chosen, who was turned back at the locks, and what Earth had been promised. The medical system could mark that file a hazard. A laser array pushed the ship clear, and she coasted at an eighth of the speed of light for thirty-four years. The clocks barely differed from Earth's. Twelve people stood the wake.
 
-Proxima Centauri was in the flight model: a small red flare star, and one close world that keeps a single face toward the light. The model's rate for the large flares was too low. At four-tenths of an astronomical unit a flare drove a proton storm through the magnetic sail while the sail was braking on the stellar wind. The brake pulled harder on one side. Halcyon fell at Proxima b too fast, on an aerocapture path drawn for an atmosphere a decade of flares had thinned. The shield did not hold the heat. The ship opened along her berths over a dayside that is a furnace under a star that never sets, and fragments carried on into a night where the ice has no morning. The boundary between those faces is only where the light stops: wind, rime, and stone. There is no gentle shore.
+Proxima Centauri was in the flight model: a small red flare star, and one close world that keeps a single face toward the light. The model's rate for the large flares was too low. At four-tenths of an astronomical unit a flare drove a proton storm through the magnetic sail while the sail was braking on the stellar wind. The brake pulled harder on one side. Halcyon fell at Proxima b too fast, on an aerocapture path drawn for an atmosphere a decade of flares had thinned. The shield did not hold the heat. Halcyon broke open along her berths, and the sections came down in pieces, some on the dayside furnace and some in the ice that has no morning. The boundary between those faces is only where the light stops: wind, rime, and stone. There is no gentle shore.
 
-Six sections kept their own air: the bridge, the terraforming bay, the seed vault, the military pod, the communications array, and the life-support core. The radios returned only echoes. The living went to the compartment that would still seal, and those compartments were already beyond each other's horizon. There is no central command. The reason for the launch was one of the memories the psych system cut, and the bridge still has the order without the why.
+Six sections kept their own air: the bridge, the terraforming bay, the seed vault, the military pod, the communications array, and the life-support core. No section could raise another, and each radio carried only its own echo. The living went to the compartment that would still seal, and those compartments were already beyond each other's horizon. There is no central command. The reason for the launch was one of the memories the psych system cut, and the bridge still has the order without the why.
 
 The full scene script is in `docs/intro-story.md`. Whoever holds the planet decides which memories, which seeds, and which laws remain (see Victory condition).
 
@@ -35,7 +35,7 @@ The full scene script is in `docs/intro-story.md`. Whoever holds the planet deci
   2. Do not wait. Halcyon, the launch order, and the preamble filed as a hazard.
   3. Thirty-four years. The coast to Proxima Centauri.
   4. The sail. The flare, the asymmetric brake, the thin air.
-  5. Opened along her berths. The breakup over a dayside furnace and a night of ice. No gentle shore between them.
+  5. Opened along her berths. The sections came down in pieces, some on the dayside furnace and some in the ice.
   6. Beyond the horizon. Six sealed sections, already out of sight of one another.
   7. The Helm. Captain Nesta Quill and the order without its reason.
   8. Verdantia. Pellin Moss and the atmosphere recipe.
@@ -297,7 +297,7 @@ Each faction is named for its own identity, and its backstory notes the ship mod
 
 **The Helm.** Captain Nesta Quill and the bridge watch came down with the launch order intact, word for word, and without the preamble that explained it. The ship's medical system had marked that file as a hazard during the voyage. The Helm will not settle a world they cannot first put under an order, and Quill intends to be the one who gives the next one.
 
-**Verdantia.** Grower Pellin Moss kept the catalyst tanks that stayed sealed when the terraforming bay hit. Verdantia holds the recipe for a breathable atmosphere and the steps for waking soil, and does not hold the account of which step Earth ruined. He treats Proxima as feedstock, and he means to run the recipe until a person can breathe without a suit.
+**Verdantia.** Grower Pellin Moss kept the catalyst tanks that stayed sealed when the terraforming bay hit. Verdantia holds the recipe for a breathable atmosphere and the steps for waking soil, and no one in the bay can say which step Earth got wrong. He treats Proxima as feedstock, and he means to run the recipe until a person can breathe without a suit.
 
 **Genesis.** Archivist Juniper Vale rode the armored seed vault farther into the dark than the other sections, and it stayed cold and whole. She keeps the last DNA archive taken off Earth, and a message to the sleepers that stops in the middle of a line. For Genesis, putting living things back into a world is the only win that matters, and she will not hand the archive to anyone who would spend it.
 

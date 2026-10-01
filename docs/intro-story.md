@@ -8,11 +8,11 @@ The section leaders are the ones already used on the faction profiles: Nesta Qui
 
 ## 1. The second harvest
 
-In 2425 a seeding fleet over the North Atlantic flew eleven days on a stale command after its control satellite died in a solar storm. The sulfate veil, meant to hold the heat off the Punjab and the Pampas, thickened over the wrong latitudes, and the second harvest failed in both. People went on living. The grain that fed the cities did not come in.
+In 2425 a seeding fleet over the North Atlantic flew eleven days on a stale command after its control satellite died in a solar storm. The sulfate veil, meant to hold the heat off the Punjab and the Pampas, thickened over the wrong latitudes, and the second harvest failed in both. In Lahore and Rosario the ration lines stood through the night and went home with empty sacks. The grain that fed the cities did not come in.
 
 ## 2. Do not wait
 
-Halcyon was a research hull in the Shackleton yards, sized for a library and four thousand sleepers and aimed at the nearest star if the century worsened. On 12 January 2426 the launch order left the yards as a single line: Depart, do not wait for revision. The preamble, naming who was chosen, who was turned back at the locks, and what Earth had been promised, went into a file the medical system was allowed to mark as a hazard.
+Halcyon was a research hull in the Shackleton yards, sized for a library and four thousand sleepers and aimed at the nearest star if the century worsened. On 12 January 2426 the launch order left the yards as a single line: Depart, do not wait for revision. The preamble named who was chosen, who was turned back at the locks, and what Earth had been promised. The medical system could mark that file a hazard.
 
 ## 3. Thirty-four years
 
@@ -24,11 +24,11 @@ At four-tenths of an astronomical unit, a flare drove a proton storm through the
 
 ## 5. Opened along her berths
 
-The shield did not hold the heat, and the rings that joined the modules tore over the dayside, where the ground is a furnace under a star that never sets. Fragments carried on into the night, where the ice has no morning. The boundary between those faces is only the place the light stops: wind, rime, and stone. Halcyon never made landfall, and she broke open along her berths.
+The shield did not hold the heat, and the rings that joined the modules tore over the dayside, where the ground is a furnace under a star that never sets. Fragments carried on into the night, where the ice has no morning. The boundary between those faces is only the place the light stops: wind, rime, and stone. Halcyon broke open along her berths, and the sections came down in pieces, each on its own stretch of ground.
 
 ## 6. Beyond the horizon
 
-Six sections kept their own air when the hull between them did not: the bridge, the terraforming bay, the seed vault, the military pod, the communications array, and the life-support core. The radios returned only copies of one another. Walking out meant open ground under a sun that never moves, or a cold no dawn was coming to break. The living went to the compartment that would still seal, and those compartments were already beyond each other's horizon.
+Six sections kept their own air when the hull between them did not: the bridge, the terraforming bay, the seed vault, the military pod, the communications array, and the life-support core. No section could raise another, and each radio carried only its own echo. Walking out meant open ground under a sun that never moves, or a cold no dawn was coming to break. The living went to the compartment that would still seal, and those compartments were already beyond each other's horizon.
 
 ## 7. The Helm
 
@@ -36,7 +36,7 @@ Captain Nesta Quill came down in the bridge seats with the launch order intact, 
 
 ## 8. Verdantia
 
-Pellin Moss kept the catalyst tanks that were still sealed and lost the ones that split on the hot rock. Verdantia holds the recipe for a breathable atmosphere and the steps for waking soil, and does not hold the account of which step Earth ruined. He looks at this world as feedstock. He means to run the recipe until the air is something a person can take in without a suit.
+Pellin Moss kept the catalyst tanks that were still sealed and lost the ones that split on the hot rock. Verdantia holds the recipe for a breathable atmosphere and the steps for waking soil, and no one in the bay can say which step Earth got wrong. He looks at this world as feedstock. He means to run the recipe until the air is something a person can take in without a suit.
 
 ## 9. Genesis
 
@@ -48,7 +48,7 @@ Calder Venn's pod blew its own separation bolts under a protocol that treated an
 
 ## 11. Mnemosyne
 
-Orla Vesper's array kept every distress call Earth sent in the years before launch: the ports, the hospital nets, and the Shackleton locks, where berths ran out and the doors stayed shut. The buffer still cycles them, because Proxima's sky has offered no living frequency to put in their place. Mnemosyne will trade power, data, and safe ground for any signal that is not a recording. Vesper is listening farther than anyone else will spend the power to reach.
+Orla Vesper's array kept every distress call Earth sent in the years before launch: the ports, the hospital nets, and the Shackleton locks, where berths ran out and the doors stayed shut. The buffer still cycles them, because Proxima's sky has offered no living frequency to put in their place. Mnemosyne will trade power, data, and safe ground for any signal that is not a recording. She keeps listening past the point where everyone else has powered down.
 
 ## 12. What you keep
 

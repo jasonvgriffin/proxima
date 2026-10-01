@@ -43,7 +43,7 @@ export const FACTIONS: Record<FactionId, FactionDef> = {
     formerly: 'Terraforming bay',
     idea: 'Knows the atmosphere recipe, but not what went wrong with Earth\'s.',
     backstory:
-      'Grower Pellin Moss kept the catalyst tanks that stayed sealed when the terraforming bay hit. Verdantia holds the recipe for a breathable atmosphere and the steps for waking soil, and does not hold the account of which step Earth ruined. He treats Proxima as feedstock, and he means to run the recipe until a person can breathe without a suit.',
+      'Grower Pellin Moss kept the catalyst tanks that stayed sealed when the terraforming bay hit. Verdantia holds the recipe for a breathable atmosphere and the steps for waking soil, and no one in the bay can say which step Earth got wrong. He treats Proxima as feedstock, and he means to run the recipe until a person can breathe without a suit.',
     visual: 'Organic and green, with a living-systems look.',
     freeTech: 'atmosphere',
     freeTechName: 'Basic atmosphere and soil science',
