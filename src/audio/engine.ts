@@ -40,7 +40,7 @@ export class AudioBus {
   music: number = CONFIG.audio.defaultMusic;
   sfx: number = CONFIG.audio.defaultSfx;
   ambient: number = CONFIG.audio.defaultAmbient;
-  track: TrackId = 'title';
+  track: TrackId = 'exploration';
   mode: 'loop' | 'shuffle' = 'loop';
   private ctx: AudioContext | null = null;
   private started = false;
