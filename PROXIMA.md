@@ -33,6 +33,14 @@ Each faction gets its own win condition. All six are **TBD**.
 - Competing ideologies
 - More diplomacy than Alpha Centauri
 
+## Visuals and gameplay style
+
+- Look, animation, and gameplay should feel somewhat like Sid Meier's Alpha Centauri: a turn-based 4X with animated units, detailed terrain, and distinct visuals for each faction.
+- Animated units: moving, attacking, building, and terraforming each have their own animation.
+- Terrain shows elevation, rockiness, moisture, alien growth, and visible terraforming changes over time.
+- Each faction has its own visual identity: colors, emblem, base and unit styles, and a leader or faction portrait.
+- Every art asset, name, and piece of text must be original. Take inspiration from the feel only, and never copy art or assets from Alpha Centauri or any other game.
+
 ## Team / repo structure
 
 The work is split by folder so several chats or agents can work at the same time without merge conflicts:
@@ -51,3 +59,4 @@ The work is split by folder so several chats or agents can work at the same time
 ## Changelog
 
 - 2026-10-01: Doc created. Renamed from the Planetfall concept to Proxima. Story, six factions, pillars, and team structure recorded.
+- 2026-10-01: Added the "Visuals and gameplay style" section (an Alpha Centauri-like feel with animated units, terrain, and faction visuals).
