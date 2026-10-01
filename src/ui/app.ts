@@ -101,7 +101,7 @@ export class App {
         seedDiplomacyOffer: () => this.seedDiplomacyOffer(),
         showDefeat: () => this.debugDefeat(),
         showTrade: () => this.debugTrade(),
-        showEvent: () => this.debugEvent(),
+        showEvent: (kind?: string) => this.debugEvent(kind),
         showDiplomacy: (faction?: string) => this.debugDiplomacy(faction),
         showTransport: () => this.debugTransport(),
         showMidgame: () => this.debugMidgame(),
@@ -1489,10 +1489,16 @@ export class App {
     this.openDiplomacy();
   }
 
-  private debugEvent() {
+  private debugEvent(kind?: string) {
     const game = this.game;
     if (!game) return;
-    game.state.events.prompt = eventPromptFor('solar-flare', game.state.events.nextId++);
+    const eventKind = kind === 'wreckage' || kind === 'betrayal' || kind === 'dust-storm' || kind === 'seismic' ? kind : 'solar-flare';
+    const prompt = eventPromptFor(eventKind, game.state.events.nextId++);
+    if (eventKind === 'betrayal') {
+      const other = FACTION_IDS.find((id) => id !== game.state.playerFaction);
+      if (other) prompt.subject = other;
+    }
+    game.state.events.prompt = prompt;
     this.overlay.innerHTML = '';
     this.openEvent();
   }

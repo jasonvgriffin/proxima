@@ -76,7 +76,7 @@ interface ProximaDebug {
   seedDiplomacyOffer(): number | null;
   showDefeat(): void;
   showTrade(): void;
-  showEvent(): void;
+  showEvent(kind?: string): void;
   showDiplomacy(faction?: string): void;
   showTransport(): void;
   showMidgame(): void;
