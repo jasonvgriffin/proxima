@@ -248,6 +248,11 @@ export interface GameState {
   nextSpyId: number;
   nextOfferId: number;
   axisHistory: AxisMark[];
+  /**
+   * Per-turn social stance for the recap. Saves written before this field omit it;
+   * loading rebuilds the record from `axisHistory` and the current axes.
+   */
+  axisDrift?: import('./history').AxisDrift;
 }
 
 export interface SaveEnvelope {
