@@ -18,6 +18,7 @@ Use Node 22 (what CI uses).
 | Unit tests (vitest, `tests/**/*.test.ts`) | `npm test` |
 | Build renderer | `npm run build` (outputs `dist/`) |
 | E2E smoke (Playwright, Chromium) | `npm run test:e2e` |
+| AI-only simulation | `npm run sim -- --games N --seed S` |
 | Electron against a build | `npm run build && npm run electron` |
 | Electron against dev server | `npx electron . --dev` (with `npm run dev` running) |
 | Windows package | `npm run dist:win` (Windows only; CI does this) |
