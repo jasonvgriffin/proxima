@@ -92,7 +92,7 @@ function response(status: number, headers: Record<string, string> = {}, body?: u
 describe('version compare', () => {
   it('reads the app version from package.json', () => {
     expect(APP_VERSION).toBe(packageJson.version);
-    expect(APP_VERSION).toBe('0.2.0');
+    expect(APP_VERSION).toMatch(/^\d+\.\d+\.\d+$/);
     expect('version' in CONFIG).toBe(false);
   });
 
