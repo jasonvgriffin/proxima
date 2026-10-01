@@ -70,11 +70,11 @@ On the start menu, players pick an overall difficulty level and can then fine-tu
     |---|---|---|---|---|---|
     | Bridge Crew | Normal | Balanced | General | Treaty-seeker | Measured |
     | Terraforming Bay | Easy | Builder | Faction specialty | Trader | Cautious |
-    | Seed Vault | Easy | Builder | Faction specialty | Trader | Cautious |
+    | Seed Vault | Easy | Builder | Faction specialty | Treaty-seeker | Cautious |
     | Military Pod | Very aggressive | Expansionist | Faction specialty | Go it alone | Bold |
     | Comms Array | Normal | Balanced | Faction specialty | Trader | Measured |
     | Life-Support Core | Normal | Balanced | General | Treaty-seeker | Cautious |
-- Still to decide: whether Terraforming Bay and Seed Vault should get different defaults (right now they're identical), the names of the overall difficulty levels, what each one changes (AI bonuses, resources, events), and any other settings to fine-tune, such as how open AI factions are to diplomacy, map size, or how hostile the planet is.
+- Still to decide: the names of the overall difficulty levels, what each one changes (AI bonuses, resources, events), and any other settings to fine-tune, such as how open AI factions are to diplomacy, map size, or how hostile the planet is.
 
 ## Map generation
 
@@ -381,3 +381,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Start menu: added a Game Options button with editable AI personalities for each rival faction (defaults match each faction).
 - 2026-10-01: Game Options: defined five editable AI traits (aggression, expansion priority, research focus, diplomacy style, risk tolerance).
 - 2026-10-01: Game Options: set default AI trait levels for all six factions.
+- 2026-10-01: Game Options: Seed Vault default diplomacy style changed to Treaty-seeker.
