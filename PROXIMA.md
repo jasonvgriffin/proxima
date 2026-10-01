@@ -129,7 +129,7 @@ As in Sid Meier's Alpha Centauri, players found new cities (bases) to grow their
 - A settler unit, such as a colony pod, is used up to found a new city on a suitable tile.
 - Each new city extends the faction's territory around it.
 - Cities produce resources, research, and military units.
-- Where cities can go ties into the map. The twilight band is the easiest place to live, and the day and night sides are harsher until terraforming or technology opens them up.
+- Where cities can go ties into the map. The twilight band is the easiest place to live, and the day and night sides are harsher until terraforming or technology opens them up. Founding cities outside the band takes the late-era Sealed Habitats / Geothermal Wells tech (see Tech tree).
 - **Cities can be captured.** Another faction takes a city by defeating its defenders in combat, and the captured city then belongs to them.
 - Capturing cities drives the military supremacy victory. The game ends when one faction has captured every rival base or city (see Victory condition).
 - Still to decide: what makes a tile suitable (terrain, minimum distance from other cities, water access), how city borders grow, city size and population limits, what happens to a city's population, buildings, and loyalty when it is captured, and whether cities can be razed or moved.
@@ -208,6 +208,13 @@ The tech tree grows out of the crash story.
 | Comms Array | Sensors and long-range signaling |
 | Life-Support Core | Medicine and psychology |
 | Bridge Crew | Governance and logistics |
+
+### Late-era techs
+- **Sealed Habitats / Geothermal Wells** (one tech, final name to be picked)
+  - It's a technology, not a victory goal.
+  - It lets players found cities on the day side and night side, outside the twilight band. Sealed habitats and geothermal heat protect those cities from the extreme temperatures.
+  - It sits late in the game and needs a big investment of energy and research.
+  - It belongs to the Terraforming Bay or Bridge Crew branch (to be decided).
 
 ### Cross-faction techs
 - Trading with or allying another faction unlocks research neither side could do alone.
@@ -301,3 +308,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added the "Turn structure" section (strictly alternating turns, none taken at the same time).
 - 2026-10-01: Turn structure: AI turn order is shuffled every round.
 - 2026-10-01: Turn structure: no turn limit; games run until a military supremacy victory.
+- 2026-10-01: Tech tree: added the late-era Sealed Habitats / Geothermal Wells tech (lets players found cities on the day and night sides).
