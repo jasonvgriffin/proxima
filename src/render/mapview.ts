@@ -267,11 +267,12 @@ export class MapView {
       for (let x = 0; x < width; x++) {
         let state = 0;
         for (const id of watchers) {
-          if (game.isVisible(id, x, y)) {
+          const fog = game.fogState(id, x, y);
+          if (fog === 2) {
             state = 2;
             break;
           }
-          if (state < 1 && game.isExplored(id, x, y)) state = 1;
+          if (state < 1 && fog === 1) state = 1;
         }
         mask[y * width + x] = state;
       }
@@ -284,8 +285,9 @@ export class MapView {
     const watchers = [viewer, ...game.mapPartners(viewer)];
     let state = 0;
     for (const id of watchers) {
-      if (game.isVisible(id, x, y)) return 2;
-      if (game.isExplored(id, x, y)) state = 1;
+      const fog = game.fogState(id, x, y);
+      if (fog === 2) return 2;
+      if (fog === 1) state = 1;
     }
     return state;
   }

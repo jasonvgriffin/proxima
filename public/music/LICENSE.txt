@@ -1,4 +1,4 @@
-Music: SRG774, Cleyton Kauffman, vitalezzz (CC0, OpenGameArt)
+Music: Cleyton Kauffman, SRG774, vitalezzz (CC0, OpenGameArt)
 
 These tracks are dedicated to the public domain under Creative Commons Zero (CC0 1.0 Universal).
 https://creativecommons.org/publicdomain/zero/1.0/
@@ -6,13 +6,13 @@ Full legal code: https://creativecommons.org/publicdomain/zero/1.0/legalcode
 
 The person who associated a work with this deed has dedicated the work to the public domain by waiving all of their rights to the work worldwide under copyright law, including all related and neighboring rights, to the extent allowed by law. You can copy, modify, distribute, and perform the work, even for commercial purposes, all without asking permission.
 
-Title, Sector, Airy, and Urgent — SRG774
+Sector, Airy, and Urgent — SRG774
 https://opengameart.org/content/dark-sci-fi-audio-pack
 The page lists the license as CC0. Downloaded 1 October 2026.
 
 Exploration Theme — Cleyton Kauffman
 https://opengameart.org/content/exploration-theme
-The page lists the license as CC0. The author's readme says "Creative Commons Zero (CC0)". Downloaded 1 October 2026.
+The page lists the license as CC0. The author's readme says "Creative Commons Zero (CC0)". Downloaded 1 October 2026. This is the main theme: the start menu, and the first track of the in-game rotation.
 
 Outworld — vitalezzz
 https://opengameart.org/content/outworld

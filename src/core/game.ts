@@ -18,6 +18,7 @@ import {
   sharesResearch,
   tradeValue,
 } from './diplomacy';
+import { ensureContacts, seesFaction } from './contact';
 import { blankEvents, EVENT_KINDS, eventPromptFor, eventWarningText } from './events';
 import { frameBlame, missionCaught } from './spies';
 import { socialScale, tileYield, withTechFlats, type Yields } from './economy';
@@ -246,8 +247,10 @@ export class Game {
         if (design.transport == null) design.transport = 0;
       }
     }
+    ensureContacts(copy);
     recordSocialPresent(copy);
     const game = new Game(copy);
+    game.noteContact();
     game.noteSight();
     return game;
   }
@@ -305,6 +308,17 @@ export class Game {
       if (Math.max(Math.abs(city.x - x), Math.abs(city.y - y)) <= CONFIG.map.cityVision) return true;
     }
     return false;
+  }
+
+  /**
+   * Fog for one faction, matching the map mask: 2 in sight, 1 remembered, 0 unknown.
+   * Contact uses 2 only. Remembered ground does not count as a meeting.
+   */
+  fogState(faction: FactionId, x: number, y: number): 0 | 1 | 2 {
+    if (!this.inBounds(x, y)) return 0;
+    if (this.isVisible(faction, x, y)) return 2;
+    if (this.isExplored(faction, x, y)) return 1;
+    return 0;
   }
 
   calendar(): { year: number; week: number; label: string } {
@@ -742,6 +756,27 @@ export class Game {
     return found;
   }
 
+  /**
+   * Contact sticks once either side has a unit or city in current sight.
+   * The look goes through `seesFaction`, which asks for fog state 2 and ignores remembered ground.
+   */
+  noteContact(): void {
+    const places = [...this.state.units, ...this.state.cities];
+    const visible = (viewer: FactionId, x: number, y: number) => this.fogState(viewer, x, y) === 2;
+    for (const rel of this.state.relations) {
+      if (rel.contact) continue;
+      if (seesFaction(rel.a, rel.b, places, visible) || seesFaction(rel.b, rel.a, places, visible)) {
+        rel.contact = true;
+      }
+    }
+  }
+
+  inContact(a: FactionId, b: FactionId): boolean {
+    if (a === b) return false;
+    this.noteContact();
+    return this.relation(a, b).contact;
+  }
+
   mapPartners(viewer: FactionId): FactionId[] {
     const partners: FactionId[] = [];
     for (const rel of this.state.relations) {
@@ -830,6 +865,7 @@ export class Game {
     const actor = this.state.whoseTurn;
     if (this.state.winner) return fail('The game is over.');
     if (actor === target) return fail('A faction cannot treat with itself.');
+    if (!this.inContact(actor, target)) return fail('No contact with that faction yet.');
     if (kind !== 'war' && this.flareActive()) return fail('A solar flare is scrambling comms.');
     const rel = this.relation(actor, target);
     if (kind === 'war') {
@@ -877,6 +913,7 @@ export class Game {
     const actor = this.state.whoseTurn;
     if (this.state.winner || this.state.playerDefeated) return fail('The game is over.');
     if (actor === target) return fail('A faction cannot trade with itself.');
+    if (!this.inContact(actor, target)) return fail('No contact with that faction yet.');
     if (this.flareActive()) return fail('A solar flare is scrambling comms.');
     const rel = this.relation(actor, target);
     if (rel.stance === 'war') return fail('There is no trade in wartime.');
@@ -1646,6 +1683,7 @@ export class Game {
         );
       }
     }
+    this.noteContact();
   }
 
   disband(unitId: number): void {

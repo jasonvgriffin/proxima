@@ -9,15 +9,14 @@ import { CONFIG } from '../config';
 export type MusicScene = 'menu' | 'game' | 'intro';
 export type PlayMode = 'loop' | 'shuffle';
 
-export const EXPLORE_IDS = ['sector', 'airy', 'exploration'] as const;
+export const EXPLORE_IDS = ['exploration', 'sector', 'airy'] as const;
 export type ExploreId = (typeof EXPLORE_IDS)[number];
 
 /** Tracks the audio panel can pin. Urgent and Outworld are scene cues, not picks. */
 export const TRACKS = [
-  { id: 'title', name: 'Title' },
+  { id: 'exploration', name: 'Exploration Theme' },
   { id: 'sector', name: 'Sector' },
   { id: 'airy', name: 'Airy' },
-  { id: 'exploration', name: 'Exploration Theme' },
 ] as const;
 
 export type TrackId = (typeof TRACKS)[number]['id'];
@@ -29,7 +28,6 @@ export interface MusicFile {
 }
 
 export const MUSIC_FILES: Record<string, MusicFile> = {
-  title: { id: 'title', file: 'title.ogg', loop: true },
   sector: { id: 'sector', file: 'sector.ogg', loop: true },
   airy: { id: 'airy', file: 'airy.ogg', loop: true },
   exploration: { id: 'exploration', file: 'exploration.ogg', loop: true },
@@ -120,7 +118,7 @@ function clamp01(value: number): number {
 export class MusicDirector {
   scene: MusicScene = 'menu';
   mode: PlayMode = 'loop';
-  picked: TrackId = 'title';
+  picked: TrackId = 'exploration';
   current: string | null = null;
   /** Exploration track to restore after Urgent. */
   bed: string | null = null;
@@ -154,8 +152,8 @@ export class MusicDirector {
 
   /**
    * The file reached its end (or the overlap point of a loop).
-   * Menu and a pinned track loop in place. The game rotates Sector, Airy,
-   * and Exploration Theme. Loop order is that sequence; shuffle skips the one playing.
+   * Menu and a pinned track loop in place. The game rotates Exploration Theme,
+   * Sector, and Airy. Loop order is that sequence; shuffle skips the one playing.
    */
   loopPoint(random: () => number = Math.random): MusicCommand | null {
     if (this.fade || !this.current) return this.current ? null : { type: 'stop' };
@@ -206,7 +204,7 @@ export class MusicDirector {
       this.introDone = true;
       return { type: 'stop' };
     }
-    const alt = this.targetForScene() ?? this.firstAvailable('sector', 'airy', 'exploration', 'title');
+    const alt = this.targetForScene() ?? this.firstAvailable('exploration', 'sector', 'airy');
     if (!alt || alt === id) return null;
     return this.begin(alt, 0, CONFIG.audio.trackCrossfadeSec, 'switch');
   }
@@ -225,7 +223,7 @@ export class MusicDirector {
 
   private targetForScene(): string | null {
     if (this.scene === 'intro') return this.firstAvailable('outworld');
-    if (this.scene === 'menu') return this.firstAvailable('title', 'exploration', 'sector');
+    if (this.scene === 'menu') return this.firstAvailable('exploration', 'sector', 'airy');
     if (this.tension) return this.firstAvailable('urgent');
     return this.exploreStart();
   }

@@ -24,7 +24,7 @@ describe('save migration', () => {
   it('loads a 0.1.0 version 1 save as the current schema', () => {
     const migrated = migrateSave(v1Envelope());
     expect(migrated.version).toBe(SAVE_VERSION);
-    expect(migrated.version).toBe(4);
+    expect(migrated.version).toBe(5);
     expect(migrated.gameVersion).toBe(1);
     expect(migrated.state.autosaveEnabled).toBe(true);
     expect(migrated.state.version).toBe(1);
@@ -33,13 +33,13 @@ describe('save migration', () => {
     expect(restored.unitsOf('helm').length).toBeGreaterThan(0);
   });
 
-  it('gives a version 2 save empty tile history and drops the stripe on the way to version 4', () => {
+  it('gives a version 2 save empty tile history and drops the stripe on the way to the current schema', () => {
     const envelope = v1Envelope();
     envelope.version = 2;
     for (const tile of envelope.state.tiles) delete (tile as { history?: unknown }).history;
     delete (envelope.state as { sight?: unknown }).sight;
     const migrated = migrateSave(envelope);
-    expect(migrated.version).toBe(4);
+    expect(migrated.version).toBe(SAVE_VERSION);
     expect(migrated.state.tiles.every((tile) => Array.isArray(tile.history) && tile.history.length === 0)).toBe(true);
     expect(migrated.state.sight).toEqual({});
     const restored = Game.fromState(migrated.state);
@@ -54,7 +54,7 @@ describe('save migration', () => {
     sample.livable = false;
     sample.history = [{ round: 4, factionId: 'helm', unitName: 'Former', change: 'built a farm' }];
     const migrated = migrateSave(envelope);
-    expect(migrated.version).toBe(4);
+    expect(migrated.version).toBe(SAVE_VERSION);
     expect(sample.zone).toBe('day');
     const kept = migrated.state.tiles[0];
     expect(kept).not.toHaveProperty('zone');
@@ -65,9 +65,23 @@ describe('save migration', () => {
   it('walks the chain and leaves a current save on the current version', () => {
     const once = migrateSave(v1Envelope());
     const twice = migrateSave(once);
-    expect(twice.version).toBe(4);
+    expect(twice.version).toBe(SAVE_VERSION);
     expect(twice.label).toBe(once.label);
     expect(twice.state.seed).toBe(once.state.seed);
+  });
+
+  it('treats an old deal as contact and leaves a blank peace untouched', () => {
+    for (const start of [3, 4]) {
+      const envelope = v1Envelope();
+      envelope.version = start;
+      for (const rel of envelope.state.relations) delete (rel as { contact?: boolean }).contact;
+      const war = envelope.state.relations[0];
+      war.stance = 'war';
+      const migrated = migrateSave(envelope);
+      expect(migrated.version).toBe(5);
+      expect(migrated.state.relations[0].contact).toBe(true);
+      expect(migrated.state.relations.slice(1).every((rel) => rel.contact === false)).toBe(true);
+    }
   });
 
   it('rejects a save with no version, a newer version, or a broken file', () => {
@@ -85,7 +99,7 @@ describe('save migration', () => {
     sample.livable = true;
     delete sample.elevation;
     const migrated = migrateSave(envelope);
-    expect(migrated.version).toBe(4);
+    expect(migrated.version).toBe(SAVE_VERSION);
     const tile = migrated.state.tiles[0] as {
       x: number;
       y: number;

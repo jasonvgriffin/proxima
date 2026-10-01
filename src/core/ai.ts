@@ -557,7 +557,7 @@ function aiTransport(game: Game, unit: Unit, factionId: FactionId): void {
 function considerTrade(game: Game, factionId: FactionId, personality: Personality) {
   if (personality.diplomacy === 'alone' && game.roll() > 0.2) return;
   if (personality.diplomacy !== 'trader' && game.roll() > 0.4) return;
-  const partners = FACTION_IDS.filter((id) => id !== factionId && game.relation(factionId, id).stance !== 'war');
+  const partners = FACTION_IDS.filter((id) => id !== factionId && game.inContact(factionId, id) && game.relation(factionId, id).stance !== 'war');
   if (!partners.length) return;
   const partner = partners[game.state.round % partners.length];
   const me = game.state.factions[factionId];
@@ -646,13 +646,14 @@ function considerSpies(game: Game, factionId: FactionId, personality: Personalit
 
 function considerPolitics(game: Game, factionId: FactionId, personality: Personality) {
   const others = FACTION_IDS.filter((id) => id !== factionId);
+  const met = others.filter((id) => game.inContact(factionId, id));
   const difficulty = game.state.setup.difficulty;
   const fighting = wantsToFight(personality, difficulty, game.state.round);
   if (fighting) {
     const mine = game.citiesOf(factionId).length;
     const bestOther = others.reduce((best, id) => Math.max(best, game.citiesOf(id).length), 0);
     if (mine >= 3 && mine > bestOther) {
-      const holdouts = others
+      const holdouts = met
         .filter((id) => game.citiesOf(id).length > 0 && game.relation(factionId, id).stance !== 'war')
         .map((id) => ({ id, score: game.citiesOf(id).length }));
       const target = rotatePick(holdouts, game.state.round);
@@ -664,7 +665,7 @@ function considerPolitics(game: Game, factionId: FactionId, personality: Persona
   }
   if (fighting && (personality.aggression === 'very-aggressive' || personality.diplomacy === 'alone' || difficulty === 'hard' || difficulty === 'brutal')) {
     const target = rotatePick(
-      others.map((id) => {
+      met.map((id) => {
         const rel = game.relation(factionId, id);
         const cities = game.citiesOf(id).length;
         const already = rel.stance === 'war' ? -8 : rel.stance === 'alliance' ? 8 : 6;
@@ -678,18 +679,18 @@ function considerPolitics(game: Game, factionId: FactionId, personality: Persona
     }
   }
   if (personality.diplomacy === 'treaty' && personality.aggression !== 'very-aggressive') {
-    const war = others.find((id) => game.relation(factionId, id).stance === 'war');
+    const war = met.find((id) => game.relation(factionId, id).stance === 'war');
     if (war && !fighting) game.propose(war, 'peace');
     else if (!war) {
-      const peace = others.find((id) => game.relation(factionId, id).stance === 'peace');
+      const peace = met.find((id) => game.relation(factionId, id).stance === 'peace');
       if (peace) game.propose(peace, 'nap');
       else if (personality.aggression === 'easy') {
-        const nap = others.find((id) => game.relation(factionId, id).stance === 'nap');
+        const nap = met.find((id) => game.relation(factionId, id).stance === 'nap');
         if (nap) game.propose(nap, 'alliance');
       }
     }
   } else if (personality.diplomacy === 'trader') {
-    const partner = others.find((id) => {
+    const partner = met.find((id) => {
       const rel = game.relation(factionId, id);
       return rel.stance !== 'war' && !rel.research;
     });
