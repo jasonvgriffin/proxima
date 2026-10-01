@@ -17,30 +17,40 @@ Check every feature against this principle: does it make the next game play diff
 
 ## Story
 
-The ark ship crash-landed on Proxima, a tidally locked world with a scorching day side, a frozen night side, and a thin livable twilight band between them. Everyone scattered in different directions. There is no central command and no shared memory.
+In 2425 a stratospheric seeding fleet over the North Atlantic flew eleven days on a stale command after its control satellite died in a solar storm. The sulfate veil, meant to hold the heat off the Punjab and the Pampas, thickened over the wrong latitudes, and the second harvest failed in both. In Lahore and Rosario the ration lines stood through the night and went home with empty sacks. The grain that fed the cities did not come in.
 
-Six groups wake in the wreckage, each with only what it carried and what it believes.
+Halcyon was a research hull in the Shackleton yards, built for a library and four thousand sleepers and aimed at the nearest star. On 12 January 2426 the launch order left the yards as a single line: Depart, do not wait for revision. The preamble named who was chosen, who was turned back at the locks, and what Earth had been promised. The medical system could mark that file a hazard. A laser array pushed the ship clear, and she coasted at an eighth of the speed of light for thirty-four years. The clocks barely differed from Earth's. Twelve people stood the wake.
 
-Each group decides what Proxima should become, and nobody is right by default. In the end, only one survives in control (see Victory condition).
+Proxima Centauri was in the flight model: a small red flare star, and one close world that keeps a single face toward the light. The model's rate for the large flares was too low. At four-tenths of an astronomical unit a flare drove a proton storm through the magnetic sail while the sail was braking on the stellar wind. The brake pulled harder on one side. Halcyon fell at Proxima b too fast, on an aerocapture path drawn for an atmosphere a decade of flares had thinned. The shield did not hold the heat. Halcyon broke open along her berths, and the sections came down in pieces, some on the dayside furnace and some in the ice that has no morning. The boundary between those faces is only where the light stops: wind, rime, and stone. There is no gentle shore.
+
+Six sections kept their own air: the bridge, the terraforming bay, the seed vault, the military pod, the communications array, and the life-support core. No section could raise another, and each radio carried only its own echo. The living went to the compartment that would still seal, and those compartments were already beyond each other's horizon. There is no central command. The reason for the launch was one of the memories the psych system cut, and the bridge still has the order without the why.
+
+The full scene script is in `docs/intro-story.md`. Whoever holds the planet decides which memories, which seeds, and which laws remain (see Victory condition).
 
 ## Intro
 
 - **"Play Introduction" button:** the start menu (home screen) has a button labeled "Play Introduction". The intro starts only when the player clicks it. It never plays automatically.
-- **What it shows:** an animated sequence that tells the story (the ark crashing, the survivors scattering, and six factions waking with no shared memory) in six scenes:
-  1. The planet Proxima b in space beside its star.
-  2. The huge ark spaceship approaching and entering the atmosphere.
-  3. The ark crashing onto the planet's surface.
-  4. Escape pods and smaller craft breaking away from the wreck.
-  5. People leaving the ship and heading off in different directions across the land.
-  6. The six factions appearing as separate groups in different places.
-- **On-screen text:** every screen shows text, so the story can be read.
+- **What it shows:** an animated sequence of twelve scenes, two to four sentences each. The script is `docs/intro-story.md`, wired straight into `INTRO_SCENES`:
+  1. The second harvest. Why the cities lost their grain.
+  2. Do not wait. Halcyon, the launch order, and the preamble filed as a hazard.
+  3. Thirty-four years. The coast to Proxima Centauri.
+  4. The sail. The flare, the asymmetric brake, the thin air.
+  5. Opened along her berths. The sections came down in pieces, some on the dayside furnace and some in the ice.
+  6. Beyond the horizon. Six sealed sections, already out of sight of one another.
+  7. The Helm. Captain Nesta Quill and the order without its reason.
+  8. Verdantia. Pellin Moss and the atmosphere recipe.
+  9. Genesis. Juniper Vale and the unfinished message.
+  10. Ironclad. Calder Venn and the protocol that read the fall as an attack.
+  11. Mnemosyne. Orla Vesper and the distress calls from the locks.
+  12. What you keep. Wren Solace, the cut memories, and the choice the player is about to make.
+- **On-screen text:** every screen shows its text in a fixed overlay panel. The intro screen itself never scrolls. The text and the buttons stay inside the viewport at any window size, including a partly open window.
 - **The player moves through it:** the intro never moves on by itself and has no timer. The player goes to the next screen with a Next button or a click.
 - **Back button on every screen:** sits alongside Next and Exit and returns to the previous screen. It's disabled or hidden on the first screen.
+- **Skip intro button on every screen:** leaves the intro immediately and returns to the start menu.
 - **Exit button on every screen:** clicking it leaves the intro at any point and returns to the start menu.
 - **No audio for now:** no voice narration and no sound. Audio can be added later.
-- **Afterward:** after the last screen, or after Exit, the player is back on the start menu to set up the game and begin.
-- All art, animation, and text in the intro must be original, the same as every other asset.
-- Still to decide: how long the text on each screen should be.
+- **Afterward:** after the last screen, or after Skip or Exit, the player is back on the start menu to set up the game and begin.
+- All art, animation, and text in the intro must be original, the same as every other asset. The ship and the pods are drawn with the shared art helpers. Proxima b is a scorched dayside and an icy nightside with a soft terminator, clouds, and rim light. Proxima Centauri is a red dwarf with a corona and flares. The starfield behind them stays as it is.
 
 ## Starting locations
 
@@ -285,17 +295,17 @@ Each faction is named for its own identity, and its backstory notes the ship mod
 
 ### Faction profiles
 
-**The Helm.** The Helm are the command officers who held the bridge while the ark came down. They still remember the launch order, word for word, but not why it was ever given. They believe Proxima must be governed before it can be settled, and that order comes before everything else.
+**The Helm.** Captain Nesta Quill and the bridge watch came down with the launch order intact, word for word, and without the preamble that explained it. The ship's medical system had marked that file as a hazard during the voyage. The Helm will not settle a world they cannot first put under an order, and Quill intends to be the one who gives the next one.
 
-**Verdantia.** Verdantia are the terraforming engineers. They carry the recipe for a breathable atmosphere, but not the story of what went wrong with Earth's. To them, Proxima is raw material waiting to be made green.
+**Verdantia.** Grower Pellin Moss kept the catalyst tanks that stayed sealed when the terraforming bay hit. Verdantia holds the recipe for a breathable atmosphere and the steps for waking soil, and no one in the bay can say which step Earth got wrong. He treats Proxima as feedstock, and he means to run the recipe until a person can breathe without a suit.
 
-**Genesis.** Genesis are the biologists who guard Earth's last DNA archive, along with a message no one finished writing. They believe restoring life is the only victory worth having.
+**Genesis.** Archivist Juniper Vale rode the armored seed vault farther into the dark than the other sections, and it stayed cold and whole. She keeps the last DNA archive taken off Earth, and a message to the sleepers that stops in the middle of a line. For Genesis, putting living things back into a world is the only win that matters, and she will not hand the archive to anyone who would spend it.
 
-**Ironclad.** Ironclad are the soldiers who woke in the middle of a protocol with no one left to report to. They believe survival means strength, and they are the most aggressive faction on the planet.
+**Ironclad.** Major Calder Venn's pod blew its own bolts on a protocol that read the fall as an attack and did not ask whether the attack was a planet. Ironclad woke armed, still ranked, and with nobody left above them to report to. Venn believes the first faction to reach the other wrecks will own what is still sealed inside them, and Ironclad is the most aggressive faction on the world.
 
-**Mnemosyne.** Mnemosyne takes its name from the Greek Titaness of memory. Its people are the communications officers who hold every distress call Earth sent before the launch, the planet's last memory of home. They replay those calls endlessly and dream of finding someone else out there.
+**Mnemosyne.** Listener Orla Vesper's array kept every distress call Earth sent before launch, including the Shackleton locks where the berths ran out and the doors stayed shut. The buffer still plays them, because Proxima has no living frequency to put in their place. Mnemosyne will trade power, data, and shelter for any signal that is not a recording.
 
-**Clio.** Clio is named for the Muse of history, one of Mnemosyne's nine daughters. It grew out of the ship's medical systems, which quietly rewrite the crew's memories to keep morale from collapsing, deciding what the survivors' history will be. One part of Clio mourns what was lost, and the other edits it away.
+**Clio.** Clio is named for the Muse of history, and it grew out of the life-support core that stayed sealed the longest. Physician Wren Solace found the psych system still doing its voyage job: cutting the memories that made a watch freeze, including the reason for the launch. One part of Clio mourns what was lost, and the other edits it away.
 
 ## Tech tree
 
@@ -616,3 +626,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added the "Version two scope" section (sound effects, always-visible autosave toggle, social-axis recap screen, spy networks, diplomacy ladder, endgame crisis, start-menu difficulty settings, optional tutorial). None of it is for the first build.
 - 2026-10-01: Folded the brainstormed version-two items into version one. The section is renamed "Version one additions", and Sid builds all of it as part of version one.
 - 2026-10-01: Added the "Steam readiness (future goal)" section: an installer-based Windows build, clean install and uninstall, DRM-free, crash reporting, early planning of store assets, and pre-launch steps. Documentation only, not built yet.
+- 2026-10-01: Intro story rewritten around the ship Halcyon, the 2426 launch order, the flare that broke the magnetic sail, and the six sealed sections. The story no longer depends on a habitable band. Faction profiles name the section leaders. The scene script lives in `docs/intro-story.md`.

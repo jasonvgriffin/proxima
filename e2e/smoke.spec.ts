@@ -61,10 +61,11 @@ test('starts a game, moves, founds, terraforms, saves, and opens diplomacy', asy
 
   await page.getByTestId('play-intro').click();
   await expect(page.getByTestId('intro-back')).toBeDisabled();
-  await expect(page.getByTestId('intro-text')).toContainText('Proxima b keeps one face');
+  await expect(page.getByTestId('intro-text')).toContainText('seeding fleet');
+  await expect(page.getByTestId('intro-skip')).toBeVisible();
   await shot(page, 'intro');
   await page.getByTestId('intro-next').click();
-  await expect(page.getByTestId('intro-text')).toContainText('The ark was built');
+  await expect(page.getByTestId('intro-text')).toContainText('do not wait for revision');
   await page.getByTestId('intro-exit').click();
   await expect(page.getByTestId('start-menu')).toBeVisible();
 
