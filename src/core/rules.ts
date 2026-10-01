@@ -101,7 +101,7 @@ export function outsideBandOutcome(
   hp: number,
   livable: boolean,
   hasSealed: boolean,
-  damage = CONFIG.outsideBand.damagePerTurn,
+  damage: number = CONFIG.outsideBand.damagePerTurn,
 ): { hp: number; destroyed: boolean } {
   if (livable || hasSealed) return { hp, destroyed: false };
   const next = hp - damage;
