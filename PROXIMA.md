@@ -23,6 +23,18 @@ Six groups wake in the wreckage, each with only what it carried and what it beli
 
 Each group decides what Proxima should become, and nobody is right by default. In the end, only one survives in control (see Victory condition).
 
+## Intro
+
+- **Play Intro button:** the start menu (home screen) has a Play Intro button.
+- **What it plays:** an intro sequence, either an animation or still artwork, showing the ark ship crashing on Proxima.
+- **Narration:** a voice narrates the story over the visuals:
+  - The ark crashes on a tidally locked world.
+  - The survivors scatter in every direction.
+  - Six factions wake in the wreckage with no shared memory.
+- **Afterward:** when the intro ends, the player goes back to the start menu to set up the game and begin.
+- All art, animation, narration, and music in the intro must be original, the same as every other asset.
+- Still to decide: whether the intro plays automatically the first time the game launches, whether it can be skipped, how long it runs, and who records the narration (the builder, a text-to-speech voice, or a voice actor).
+
 ## Starting locations
 
 - Starting locations are randomized every game, so no two games start the same way.
@@ -441,3 +453,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Pause menu: the autosave always appears first in the Load game list.
 - 2026-10-01: Added the "Calendar" section (Earth years, starting in 2460, one week per turn, shown on the main screen).
 - 2026-10-01: Pause menu: slots are now 9 manual plus 1 autosave (10 total), with the autosave listed first in Load game.
+- 2026-10-01: Added the "Intro" section (a Play Intro button on the start menu; a narrated crash sequence).
