@@ -481,6 +481,33 @@ The first test build is a real game in miniature: explore, build, fight, and win
 - **Target timeline:** roughly one to two weeks for this first build.
 - Everything else in this doc comes in later builds, after Jason reviews the test build.
 
+## Version two scope (not for the first build)
+
+Everything below was brainstormed for **version two**. The builder (Sid) should focus only on version one for now and **not implement any of this** yet.
+
+- **Sound effects** for terraforming and for travel damage outside the twilight band.
+- **Pause menu:** the autosave toggle is always visible.
+- **Recap screen** after each run, showing how the faction's social axes drifted.
+- **Spy networks:**
+  - Spies cost money to recruit (per spy) and have no maintenance cost.
+  - Spies are placed inside other factions.
+  - Spy actions:
+    - *Infiltration:* see a faction's map, resources, and research in real time.
+    - *Tech theft:* steal a tech, with a risk of getting caught.
+    - *Sabotage:* damage buildings or infrastructure, with a risk roll.
+    - *Frame job:* plant evidence so two other factions blame each other.
+    - *Counterintelligence:* sweep for enemy spies and root them out.
+- **Diplomacy ladder:**
+  - Declare war
+  - Make peace
+  - Non-aggression pact (one tier below an alliance)
+  - Alliance
+  - Research treaty
+  - Exploration treaty (sharing maps)
+- **Endgame crisis** that ramps up after a set number of turns.
+- **Difficulty settings** on the start menu.
+- **Optional tutorial** that opens as a pop-up from the Escape / pause menu, alongside the audio controls and save options.
+
 ## Team / repo structure
 
 The work is split by folder so several chats or agents can work at the same time without merge conflicts:
@@ -575,3 +602,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Factions renamed: The Signal is now Mnemosyne (the Greek Titaness of memory), and The Pulse is now Clio (the Muse of history, one of Mnemosyne's daughters). All references and both backstories updated.
 - 2026-10-01: Added the "UI and player experience" section. The full UI and player-experience design is delegated to the builder (with Eve), and Jason reviews what is built and asks for changes.
 - 2026-10-01: Added the "First test build scope" section (core loop, six factions, social axes, basic combat; target of one to two weeks).
+- 2026-10-01: Added the "Version two scope" section (sound effects, always-visible autosave toggle, social-axis recap screen, spy networks, diplomacy ladder, endgame crisis, start-menu difficulty settings, optional tutorial). None of it is for the first build.
