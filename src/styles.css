@@ -43,7 +43,10 @@ p { margin: 0; }
 .menu-bg, .intro-canvas, #map-canvas {
   width: 100%;
   height: 100%;
+  min-width: 0;
+  min-height: 0;
   display: block;
+  overflow: hidden;
 }
 .menu-card, .sheet-card {
   background: var(--panel);
@@ -86,18 +89,43 @@ p { margin: 0; }
 
 .faction-card {
   display: grid;
-  grid-template-columns: 42px 1fr;
+  grid-template-columns: 72px 1fr;
   gap: 10px;
   align-items: center;
   text-align: left;
   background: transparent;
   border: 1px solid var(--line-dim);
   padding: 8px;
+  position: relative;
 }
 .faction-card.on { border-color: var(--gold); }
-.faction-card canvas { width: 42px; height: 42px; }
+.faction-card canvas[data-portrait] {
+  width: 72px;
+  height: 94px;
+  background: #0c1018;
+}
+.faction-card canvas[data-emblem] {
+  position: absolute;
+  width: 28px;
+  height: 28px;
+  left: 52px;
+  bottom: 10px;
+}
 
-.intro { grid-template-columns: 1fr; grid-template-rows: 1fr auto; }
+/* minmax(0, 1fr): a plain 1fr track will not shrink below a canvas's intrinsic
+   2:1 box, which pushes the intro text below short wide windows. */
+.menu {
+  grid-template-columns: minmax(320px, 460px) minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr);
+  min-height: 0;
+  overflow: hidden;
+}
+.intro {
+  grid-template-columns: minmax(0, 1fr);
+  grid-template-rows: minmax(0, 1fr) auto;
+  min-height: 0;
+  overflow: hidden;
+}
 .intro-bar {
   display: grid;
   grid-template-columns: 1fr auto;
@@ -114,7 +142,7 @@ p { margin: 0; }
   height: 100%;
   display: grid;
   grid-template-columns: 250px 1fr 320px;
-  grid-template-rows: 64px 1fr 148px;
+  grid-template-rows: 64px minmax(0, 1fr) 148px;
 }
 .topbar, .side, .log {
   background: var(--panel-solid);
@@ -182,7 +210,86 @@ p { margin: 0; }
 .audio-settings .audio-note { line-height: 1.4; }
 table.grid { width: 100%; border-collapse: collapse; font-size: 13px; }
 table.grid th, table.grid td { border-bottom: 1px solid var(--line-dim); padding: 6px 4px; text-align: left; }
-.profile-layout { display: grid; grid-template-columns: 120px 1fr; gap: 16px; }
+.profile-layout { display: grid; grid-template-columns: 220px 1fr; gap: 18px; align-items: start; }
+.profile-art { position: relative; width: 220px; }
+.profile-art canvas[data-portrait] { width: 220px; height: 286px; display: block; background: #0c1018; }
+.profile-art canvas.profile-crest {
+  position: absolute;
+  width: 64px;
+  height: 64px;
+  right: -6px;
+  bottom: 10px;
+}
+.leader-line { margin: 4px 0; }
+.leader-line strong { font-family: var(--display); font-weight: 600; }
+.leader-pick {
+  display: grid;
+  grid-template-columns: 140px 1fr;
+  gap: 12px;
+  align-items: center;
+}
+.leader-pick canvas { width: 140px; height: 182px; display: block; background: #0c1018; }
+.leader-pick h3 { font-size: 22px; }
+
+.diplomacy-modal { width: min(1080px, 100%); }
+.diplomacy-layout {
+  display: grid;
+  grid-template-columns: 200px minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+.diplomat { display: flex; flex-direction: column; gap: 6px; position: sticky; top: 0; }
+.diplomat-art { position: relative; width: 200px; }
+.diplomat-art canvas[data-portrait] { width: 200px; height: 260px; display: block; background: #070910; }
+.diplomat-art canvas.diplomat-crest {
+  position: absolute;
+  width: 48px;
+  height: 48px;
+  right: -6px;
+  bottom: 8px;
+}
+.diplomacy-rows { display: flex; flex-direction: column; gap: 10px; }
+.diplomacy-faction {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  border: 1px solid transparent;
+  padding-bottom: 4px;
+}
+.diplomacy-faction.on { border-color: transparent; }
+.diplomacy-head {
+  display: grid;
+  grid-template-columns: 56px 32px 1fr;
+  gap: 8px;
+  align-items: center;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 1px solid var(--line-dim);
+  padding: 6px;
+}
+.diplomacy-head.on { border-color: var(--gold); }
+.diplomacy-head canvas[data-portrait] { width: 56px; height: 72px; background: #070910; }
+.diplomacy-head canvas[data-emblem] { width: 32px; height: 32px; }
+.diplomacy-head h3 { font-size: 20px; }
+.offer-line { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.offer-line canvas { width: 32px; height: 32px; }
+
+.portrait-sheet {
+  height: 100%;
+  display: grid;
+  grid-template-columns: repeat(3, 240px);
+  gap: 16px 20px;
+  justify-content: center;
+  align-content: center;
+  background: #070910;
+  overflow: auto;
+}
+.portrait-sheet figure { margin: 0; }
+.portrait-sheet canvas { width: 240px; height: 312px; display: block; background: #0c1018; }
+.portrait-sheet figcaption { display: flex; flex-direction: column; gap: 2px; padding-top: 8px; }
+.portrait-sheet strong { font-family: var(--display); }
+.portrait-sheet span, .portrait-sheet em { color: var(--muted); font-style: normal; font-size: 13px; }
 .bars { display: flex; gap: 6px; }
 .bars i { display: block; width: 18px; height: 8px; }
 

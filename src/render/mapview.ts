@@ -148,8 +148,8 @@ export class MapView {
       for (let x = view.x0; x <= view.x1; x++) this.drawTile(ctx, game, x, y);
     }
     this.drawBandRails(ctx, game);
-    this.drawCities(ctx, game, view);
     this.drawUnits(ctx, game, view);
+    this.drawCities(ctx, game, view);
     ctx.restore();
     this.drawMinimap(ctx, game, rect.width, rect.height);
     this.drawLegend(ctx, rect.width);
@@ -230,33 +230,25 @@ export class MapView {
     for (const city of game.state.cities) {
       if (city.x < view.x0 || city.x > view.x1 || city.y < view.y0 || city.y > view.y1) continue;
       if (city.factionId !== game.state.playerFaction && !game.playerSees(city.x, city.y)) continue;
-      const color = FACTIONS[city.factionId].colors.main;
+      const radius = s * 0.28;
       const px = city.x * s + s / 2;
-      const py = city.y * s + s / 2;
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      for (let i = 0; i < 6; i++) {
-        const a = (Math.PI / 3) * i - Math.PI / 6;
-        const x = px + Math.cos(a) * (s * 0.34);
-        const y = py + Math.sin(a) * (s * 0.34);
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.closePath();
-      ctx.fill();
+      const py = city.y * s + radius + 1;
+      drawEmblem(ctx, city.factionId, px, py, radius);
       if (city.id === selected) {
         ctx.strokeStyle = '#fff';
         ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.arc(px, py, radius + 3, 0, Math.PI * 2);
         ctx.stroke();
       }
-      ctx.fillStyle = '#0c1018';
-      ctx.font = '11px Outfit, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText(String(city.population), px, py + 4);
       if (this.camera.zoom > 0.9) {
         ctx.fillStyle = '#f4f7fb';
         ctx.font = '10px Outfit, sans-serif';
-        ctx.fillText(city.name, px, py - s * 0.42);
+        ctx.textAlign = 'center';
+        ctx.textAlign = 'center';
+        ctx.fillText(city.name, px, py + radius + 12);
+        ctx.textAlign = 'left';
+        ctx.fillText(String(city.population), px + radius + 2, py + 3);
       }
     }
   }
@@ -357,6 +349,5 @@ export class MapView {
       ctx.fillText(label, x + 16, 22);
       x += 64;
     });
-    void drawEmblem;
   }
 }
