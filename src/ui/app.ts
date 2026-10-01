@@ -4,6 +4,7 @@ import { AudioBus, TRACKS } from '../audio/engine';
 import { difficultyLabel, difficultyProfile, normalizeDifficulty, outsideBandDamage } from '../core/difficulty';
 import { FACTIONS, SOCIAL_OPTIONS, defaultAxes, defaultPersonalities, DIFFICULTIES, PERSONALITY_LEVELS } from '../core/factions';
 import { Game, PROJECTS, projectLabel } from '../core/game';
+import { proposalLabel } from '../core/diplomacy';
 import { biomeClass, formatCalendar, terraformFee, terraformTurns } from '../core/rules';
 import { formerTechLevel, TECHS, techAvailable, techById } from '../core/tech';
 import { starterDesigns, CHASSIS, WEAPONS, ARMORS, SPECIALS, partKnown } from '../core/parts';
@@ -61,6 +62,7 @@ export class App {
         spawnRaider: () => this.spawnRaider(),
         showRecap: () => this.debugRecap(),
         state: () => this.game?.serialize() ?? null,
+        tilePoint: (x: number, y: number) => this.map?.clientPoint(x, y) ?? null,
       };
     }
     this.render();
@@ -265,8 +267,12 @@ export class App {
           if (node) node.textContent = label;
         },
       );
-      const home = game.unitsOf(game.state.playerFaction)[0];
-      if (home) this.map.centerOn(home.x, home.y);
+      const placeCamera = () => {
+        const home = this.game?.unitsOf(this.game.state.playerFaction)[0];
+        if (home && this.map) this.map.centerOn(home.x, home.y);
+      };
+      placeCamera();
+      requestAnimationFrame(placeCamera);
       this.gameMounted = true;
     }
     this.refreshGame();
@@ -485,14 +491,15 @@ export class App {
     else if (action === 'reject-offer') this.act(() => this.game!.rejectOffer(Number(node.dataset.id)), 'click');
     else if (action === 'recruit-spy') this.act(() => this.game!.recruitSpy(), 'click');
     else if (action === 'place-spy') {
-      const host = (this.overlay.querySelector('#spy-host') as HTMLSelectElement | null)?.value as FactionId;
-      this.act(() => this.game!.placeSpy(Number(node.dataset.id), host), 'click');
+      const host = (this.overlay.querySelector(`[data-spy-host="${node.dataset.id}"]`) as HTMLSelectElement | null)?.value as FactionId | undefined;
+      if (host) this.act(() => this.game!.placeSpy(Number(node.dataset.id), host), 'click');
     } else if (action === 'steal-tech') this.act(() => this.game!.stealTech(Number(node.dataset.id), node.dataset.tech ?? ''), 'click');
     else if (action === 'sabotage') this.act(() => this.game!.sabotage(Number(node.dataset.id)), 'click');
     else if (action === 'frame') {
-      const left = (this.overlay.querySelector('#frame-left') as HTMLSelectElement).value as FactionId;
-      const right = (this.overlay.querySelector('#frame-right') as HTMLSelectElement).value as FactionId;
-      this.act(() => this.game!.frameJob(Number(node.dataset.id), left, right), 'click');
+      const section = node.closest('section');
+      const left = (section?.querySelector('[data-frame="left"]') as HTMLSelectElement | null)?.value as FactionId | undefined;
+      const right = (section?.querySelector('[data-frame="right"]') as HTMLSelectElement | null)?.value as FactionId | undefined;
+      if (left && right) this.act(() => this.game!.frameJob(Number(node.dataset.id), left, right), 'click');
     } else if (action === 'sweep') this.act(() => this.game!.sweepSpies(), 'click');
     else if (action === 'switch-axis') this.act(() => this.game!.setSocial(node.dataset.axis as SocialAxis, node.dataset.option ?? ''), 'click');
     else if (action === 'research-pick') this.act(() => this.game!.chooseResearch(node.dataset.tech ?? ''), 'click');
@@ -667,14 +674,23 @@ export class App {
         <p class="eyebrow">Diplomacy</p>
         <h2>The ladder</h2>
         <p class="muted">War, then peace, then a non-aggression pact, then an alliance. Research and exploration treaties can sit beside peace or above. No unit has to make contact first.</p>
-        ${offers.map((offer) => `<p>${esc(FACTIONS[offer.from].name)} offers ${esc(offer.kind)}. <button class="btn small" data-action="accept-offer" data-id="${offer.id}">Accept</button> <button class="btn small" data-action="reject-offer" data-id="${offer.id}">Reject</button></p>`).join('')}
+        ${offers.map((offer) => `<p>${esc(FACTIONS[offer.from].name)} offers ${esc(proposalLabel(offer.kind))}. <button class="btn small" data-action="accept-offer" data-id="${offer.id}">Accept</button> <button class="btn small" data-action="reject-offer" data-id="${offer.id}">Reject</button></p>`).join('')}
         ${FACTION_IDS.filter((id) => id !== me).map((id) => {
           const rel = game.relation(me, id);
+          const standing = rel.stance === 'nap' ? 'non-aggression pact' : rel.stance;
+          const actions: [string, string][] = [
+            ['war', 'Declare war'],
+            ['peace', 'Offer peace'],
+            ['nap', 'Non-aggression'],
+            ['alliance', 'Alliance'],
+            ['research', 'Research treaty'],
+            ['exploration', 'Share maps'],
+          ];
           return `<section>
             <h3>${esc(FACTIONS[id].name)}</h3>
-            <p class="muted">Standing: ${esc(rel.stance)}. Grievance ${rel.memory}. Research treaty ${rel.research ? 'yes' : 'no'}. Exploration treaty ${rel.exploration ? 'yes' : 'no'}.</p>
+            <p class="muted">Standing: ${esc(standing)}. Grievance ${rel.memory}. Research treaty ${rel.research ? 'yes' : 'no'}. Exploration treaty ${rel.exploration ? 'yes' : 'no'}.</p>
             <div class="row">
-              ${['war', 'peace', 'nap', 'alliance', 'research', 'exploration'].map((kind) => `<button class="btn small" data-action="propose" data-target="${id}" data-kind="${kind}">${esc(kind)}</button>`).join('')}
+              ${actions.map(([kind, label]) => `<button class="btn small" data-action="propose" data-target="${id}" data-kind="${kind}">${esc(label)}</button>`).join('')}
             </div>
           </section>`;
         }).join('')}
@@ -699,14 +715,14 @@ export class App {
           const intel = spy.host ? game.intel(spy.host) : null;
           return `<section>
             <h3>Spy ${spy.id} ${spy.host ? `inside ${esc(FACTIONS[spy.host].name)}` : 'waiting'}</h3>
-            ${spy.host ? '' : `<div class="row"><select id="spy-host">${others.map((id) => `<option value="${id}">${esc(FACTIONS[id].name)}</option>`).join('')}</select><button class="btn small" data-action="place-spy" data-id="${spy.id}">Place</button></div>`}
+            ${spy.host ? '' : `<div class="row"><select data-spy-host="${spy.id}">${others.map((id) => `<option value="${id}">${esc(FACTIONS[id].name)}</option>`).join('')}</select><button class="btn small" data-action="place-spy" data-id="${spy.id}">Place</button></div>`}
             ${intel ? `<p>Credits ${intel.credits} · minerals ${intel.minerals} · nutrients ${intel.nutrients} · energy ${intel.energy} · research ${intel.researchPoints}${intel.researching ? ` toward ${esc(techById(intel.researching)?.name ?? intel.researching)}` : ''}</p><p class="muted">Known: ${esc(intel.techs.join(', '))}</p>` : ''}
             ${spy.host ? `<div class="stack">
               ${intel?.techs.filter((tech) => !game.state.factions[me].techs.includes(tech)).map((tech) => `<button class="btn small" data-action="steal-tech" data-id="${spy.id}" data-tech="${tech}">Steal ${esc(techById(tech)?.name ?? tech)}</button>`).join('') || '<p class="muted">No unknown tech to steal.</p>'}
               <button class="btn small" data-action="sabotage" data-id="${spy.id}">Sabotage</button>
               <div class="row">
-                <select id="frame-left">${others.filter((id) => id !== spy.host).map((id) => `<option value="${id}">${esc(FACTIONS[id].name)}</option>`).join('')}</select>
-                <select id="frame-right">${others.filter((id) => id !== spy.host).map((id) => `<option value="${id}">${esc(FACTIONS[id].name)}</option>`).join('')}</select>
+                <select data-frame="left">${others.filter((id) => id !== spy.host).map((id) => `<option value="${id}">${esc(FACTIONS[id].name)}</option>`).join('')}</select>
+                <select data-frame="right">${others.filter((id) => id !== spy.host).map((id) => `<option value="${id}">${esc(FACTIONS[id].name)}</option>`).join('')}</select>
                 <button class="btn small" data-action="frame" data-id="${spy.id}">Frame job</button>
               </div>
             </div>` : ''}
