@@ -42,6 +42,30 @@ Each faction gets its own win condition. All six are **TBD**.
 | 5 | **Comms Array** | Holds every Earth distress call from before launch and can't stop replaying them. | TBD |
 | 6 | **Life-Support Core** | Quietly rewrites crew memories to keep morale up. One part mourns, one part edits. | TBD |
 
+## Tech tree
+
+The tech tree grows out of the crash story.
+
+### Early era: scavenging
+- Pulling usable parts from the wreckage
+- Jury-rigging power
+- Learning what is edible on Proxima
+
+### Faction branches
+| Faction | Research focus |
+|---------|----------------|
+| Terraforming Bay | Atmosphere and soil science |
+| Seed Vault | Biology and genetics |
+| Military Pod | Weapons and fortification |
+| Comms Array | Sensors and long-range signaling |
+| Life-Support Core | Medicine and psychology |
+| Bridge Crew | Governance and logistics |
+
+### Cross-faction techs
+- Trading with or allying another faction unlocks research neither side could do alone.
+- These techs feed the diplomacy pillar, so working with other factions pays off in science, not just safety.
+- Still to decide: the specific cross-faction techs, how they unlock (a treaty, a tech trade, or shared bases), and whether every faction can research every branch or only its own.
+
 ## Gameplay pillars
 
 - Civilization building
@@ -107,3 +131,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added the "Social axes" section (religion, values, economy, politics).
 - 2026-10-01: Added the "Starting locations" section (randomized each game, no fixed spawns).
 - 2026-10-01: Added infinite replayability as the top guiding principle.
+- 2026-10-01: Added the "Tech tree" section (scavenging era, faction branches, cross-faction techs).
