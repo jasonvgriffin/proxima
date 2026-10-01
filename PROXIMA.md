@@ -17,7 +17,7 @@ Check every feature against this principle: does it make the next game play diff
 
 ## Story
 
-The ark ship crash-landed on Proxima. Everyone scattered in different directions. There is no central command and no shared memory.
+The ark ship crash-landed on Proxima, a tidally locked world with a scorching day side, a frozen night side, and a thin livable twilight band between them. Everyone scattered in different directions. There is no central command and no shared memory.
 
 Six groups wake in the wreckage, each with only what it carried and what it believes.
 
@@ -26,6 +26,7 @@ Victory is whatever each group decides Proxima should become. Nobody is right by
 ## Starting locations
 
 - Starting locations are randomized every game, so no two games start the same way.
+- Every faction starts somewhere in the livable twilight band (see Map generation).
 - There are no fixed spawn points and no set starting areas for any faction.
 - This fits the story: the ark broke apart and its modules scattered in different directions on landing.
 
@@ -59,7 +60,12 @@ The map is generated fresh every game, alongside the randomized starting locatio
   - Toxic soil
   - Frozen regions
 - **Natural barriers:** mountain ranges, toxic belts, ice fields, and similar terrain keep factions apart early on, which helps enforce the early-game peace window.
-- Idea for later: the real planet Proxima b is thought to be tidally locked, with one side always facing its star. That could inspire a hot day side, a frozen night side, and a livable twilight band in between.
+- **A tidally locked planet (this is canon):** like the real Proxima b probably is, the planet always keeps the same side facing its star. The whole map is built around that.
+  - **Day side:** too hot to settle early on.
+  - **Night side:** frozen and too cold to settle early on.
+  - **Twilight band:** a narrow livable ring between the two. Every civilization starts and expands here.
+  - **Terraforming** can gradually widen the livable zone toward both sides, opening new land in the middle and late game.
+  - Random starting spots fall inside the twilight band, spread out along it.
 - Still to decide: map sizes, the full list of biomes, how much each biome affects movement and yields, and how the generator keeps every game fair (no starts that are hopeless or hemmed in).
 
 ## Factions (6)
@@ -168,3 +174,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added the "Early-game peace window" section.
 - 2026-10-01: Added the "Difficulty and personality settings" section (opponent aggressiveness).
 - 2026-10-01: Added the "Map generation" section.
+- 2026-10-01: Made the tidally locked planet (day side, night side, twilight band) canon in the Story, Starting locations, and Map generation sections.
