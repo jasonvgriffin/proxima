@@ -312,7 +312,8 @@ Every faction starts the game with one free tech that fits its identity.
   - Turn sound effects on or off
   - Volume sliders (for example master, music, effects, and ambient)
   - Picking which music track plays
-- Still to decide: whether tracks play in order, shuffle, or loop, and what else goes in the pause menu (save, load, settings, quit).
+  - A **Shuffle / Loop** toggle: Shuffle plays the tracks in random order, and Loop repeats the current track
+- Still to decide: what else goes in the pause menu (save, load, settings, quit).
 
 ## Social axes
 
@@ -404,3 +405,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Audio: original music made by the builder (even cheesy or lo-fi) is welcome.
 - 2026-10-01: Audio: the builder writes several original tracks the player can pick from, plus an Escape pause menu with music and sound toggles and volume sliders.
 - 2026-10-01: Audio: set the number of original music tracks to five.
+- 2026-10-01: Audio: added a Shuffle / Loop toggle to the pause menu audio controls.
