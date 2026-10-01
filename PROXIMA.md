@@ -12,6 +12,12 @@ Six groups wake in the wreckage, each with only what it carried and what it beli
 
 Victory is whatever each group decides Proxima should become. Nobody is right by default.
 
+## Starting locations
+
+- Starting locations are randomized every game, so no two games start the same way.
+- There are no fixed spawn points and no set starting areas for any faction.
+- This fits the story: the ark broke apart and its modules scattered in different directions on landing.
+
 ## Factions (6)
 
 Each faction gets its own win condition. All six are **TBD**.
@@ -88,3 +94,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added the "Visuals and gameplay style" section (an Alpha Centauri-like feel with animated units, terrain, and faction visuals).
 - 2026-10-01: Added faction visual styles tied to the module each faction came from.
 - 2026-10-01: Added the "Social axes" section (religion, values, economy, politics).
+- 2026-10-01: Added the "Starting locations" section (randomized each game, no fixed spawns).
