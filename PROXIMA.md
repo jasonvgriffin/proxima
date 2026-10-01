@@ -4,6 +4,17 @@
 > This is a living design doc for record-keeping only. No game code yet.
 > The earlier "Planetfall" build was stopped before anything was built, so this doc is a fresh start.
 
+## Guiding principle: infinite replayability
+
+Replayability is the top design goal for the whole game, not just for starting locations. Every playthrough should feel fresh, and no two games should play out the same.
+
+- **Randomized starts:** starting locations change every game.
+- **Procedural elements:** the planet, terrain, resources, and events are generated fresh each game.
+- **Varied societies:** each game, factions combine the social axes (religion, values, economy, politics) differently.
+- **Emergent stories:** diplomacy, competing ideologies, and each faction's own win condition push every game in its own direction.
+
+Check every feature against this principle: does it make the next game play differently?
+
 ## Story
 
 The ark ship crash-landed on Proxima. Everyone scattered in different directions. There is no central command and no shared memory.
@@ -95,3 +106,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added faction visual styles tied to the module each faction came from.
 - 2026-10-01: Added the "Social axes" section (religion, values, economy, politics).
 - 2026-10-01: Added the "Starting locations" section (randomized each game, no fixed spawns).
+- 2026-10-01: Added infinite replayability as the top guiding principle.
