@@ -90,6 +90,16 @@ Combat works like Alpha Centauri's: a battle is decided by odds, not by a guaran
 - Show the odds to the player before they commit to an attack.
 - Still to decide: other modifiers (fortifying, base defenses, veteran experience, faction and social-axis bonuses), whether a battle runs in rounds that wear down health or is a single roll, and how the day side and night side affect combat.
 
+## Unit design
+
+Like Alpha Centauri, players design their own military units from the technology they have researched so far.
+
+- A unit is built from these parts: **chassis** (movement type and speed), **weapon** (attack), **armor** (defense), and optional **special components**.
+- Which parts a faction can use depends on the tech branches it has pursued. For example, the Military Pod's weapons and fortification branch unlocks stronger weapons and armor sooner, and the Comms Array's sensors branch could unlock sensor or stealth components.
+- Early units are built from parts salvaged from the wreck, to fit the scavenging era.
+- A unit's design sets its attack and defense strength, which feed into combat odds (see Combat).
+- Still to decide: the full list of parts, how a design's parts set its cost, whether existing units can be upgraded when new tech arrives, and whether factions can trade designs or capture them.
+
 ## Factions (6)
 
 | # | Faction | Core idea |
@@ -197,3 +207,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Made the tidally locked planet (day side, night side, twilight band) canon in the Story, Starting locations, and Map generation sections.
 - 2026-10-01: Replaced the per-faction win conditions with one victory condition, military supremacy (capture every rival base). Faction aggression is set by the difficulty settings and social axes.
 - 2026-10-01: Added the "Combat" section (odds-based results with terrain modifiers).
+- 2026-10-01: Added the "Unit design" section (player-designed units built from researched parts).
