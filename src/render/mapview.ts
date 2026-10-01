@@ -44,6 +44,16 @@ export class MapView {
     this.camera.y = rect.height / 2 - (ty + 0.5) * this.tile * this.camera.zoom;
   }
 
+  /** Viewport point at the center of a map tile. Used by the smoke test. */
+  clientPoint(tx: number, ty: number): { x: number; y: number } {
+    const rect = this.canvas.getBoundingClientRect();
+    const size = this.tile * this.camera.zoom;
+    return {
+      x: rect.left + this.camera.x + (tx + 0.5) * size,
+      y: rect.top + this.camera.y + (ty + 0.5) * size,
+    };
+  }
+
   private frame = () => {
     this.draw();
     this.raf = requestAnimationFrame(this.frame);
