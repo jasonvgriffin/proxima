@@ -1,0 +1,78 @@
+{
+  "name": "proxima",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Proxima — a single-player turn-based 4X on a tidally locked world.",
+  "author": "Jason Griffin",
+  "main": "electron/main.cjs",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:e2e": "playwright test",
+    "electron": "electron .",
+    "dist:win": "vite build && electron-builder --win --publish never"
+  },
+  "dependencies": {
+    "@fontsource/fraunces": "^5.2.5",
+    "@fontsource/outfit": "^5.2.5"
+  },
+  "devDependencies": {
+    "@playwright/test": "^1.55.0",
+    "@types/node": "^22.15.3",
+    "electron": "^35.7.5",
+    "electron-builder": "^26.0.12",
+    "typescript": "^5.8.3",
+    "vite": "^6.3.5",
+    "vitest": "^3.2.4"
+  },
+  "build": {
+    "appId": "com.jasonvgriffin.proxima",
+    "productName": "Proxima",
+    "copyright": "Copyright © 2026 Jason Griffin",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "shared/**/*",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        {
+          "target": "nsis",
+          "arch": [
+            "x64"
+          ]
+        },
+        {
+          "target": "portable",
+          "arch": [
+            "x64"
+          ]
+        }
+      ],
+      "icon": "build/icon.ico",
+      "artifactName": "${productName}-${version}-${arch}.${ext}",
+      "signAndEditExecutable": false,
+      "verifyUpdateCodeSignature": false
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "shortcutName": "Proxima",
+      "artifactName": "Proxima-Setup-${version}.exe"
+    },
+    "portable": {
+      "artifactName": "Proxima-Portable-${version}.exe"
+    }
+  }
+}
