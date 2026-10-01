@@ -11,6 +11,7 @@ import { FACTION_IDS, type Difficulty, type FactionId, type GameState, type Prop
 import { createSaveStore, type SaveStore } from '../platform/saves';
 import { IntroPlayer, INTRO_SCENES } from '../render/intro';
 import { MapView } from '../render/mapview';
+import { renderSocialRecap } from './recap';
 
 type Screen = 'menu' | 'intro' | 'setup' | 'options' | 'profile' | 'game' | 'recap';
 
@@ -221,26 +222,7 @@ export class App {
   }
 
   private renderRecap() {
-    const game = this.game;
-    const id = game?.state.playerFaction ?? this.setup.faction;
-    const faction = FACTIONS[id];
-    const history = game?.state.axisHistory ?? [];
-    const start = history[0];
-    const end = history[history.length - 1];
-    const winner = game?.state.winner;
-    const won = winner?.factions.includes(id);
-    this.stage.innerHTML = `
-      <div class="sheet" data-testid="recap-screen">
-        <div class="sheet-card" style="grid-column: 1 / -1; max-width: 820px">
-          <p class="eyebrow">After the run</p>
-          <h2>${esc(faction.name)}</h2>
-          <p>${won ? 'Your faction holds the cities that remain.' : 'Another faction holds the cities that remain.'}</p>
-          <p class="muted">${history.length < 2 ? 'The social axes never moved. The society you landed with is the one you kept.' : 'The axes drifted. What you believed at the crash is not what you believed at the end.'}</p>
-          ${start && end ? this.axisCompare(start.axes, end.axes) : ''}
-          <ol>${history.map((mark) => `<li>Week ${mark.round}: ${esc(Object.values(mark.axes).join(' · '))}</li>`).join('')}</ol>
-          <button class="btn primary" data-action="back-menu" data-testid="recap-menu">Return to the start menu</button>
-        </div>
-      </div>`;
+    renderSocialRecap(this.stage, this.game, this.setup.faction);
   }
 
   private mountGame() {
