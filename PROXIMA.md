@@ -47,6 +47,9 @@ On the start menu, players pick an overall difficulty level and can then fine-tu
 - **Opponent aggressiveness:** Very aggressive, Normal, or Easy.
   - Controls how soon and how hard the opposing factions attack.
   - Works together with the early-game peace window. For example, Easy could stretch the window and Very aggressive could shorten it.
+- **Victory conditions: Allied Victory** (on or off)
+  - *On:* allies can win together. If an alliance between them captures every rival base or city, every member of the alliance wins.
+  - *Off:* only one faction can win by military supremacy, which builds tension inside alliances.
 - Still to decide: the names of the overall difficulty levels, what each one changes (AI bonuses, resources, events), and any other settings to fine-tune, such as how open AI factions are to diplomacy, map size, or how hostile the planet is.
 
 ## Map generation
@@ -78,6 +81,7 @@ The map is generated fresh every game, alongside the randomized starting locatio
 - Two things set how aggressive a faction is:
   - The start-menu personality settings (Very aggressive, Normal, Easy)
   - Each faction's social-axis choices (religion, values, economy, politics). For example, Dominance values with Warlord politics leans violent, while Harmony with Consensus leans peaceful.
+- **Allied Victory setting:** a start-menu toggle decides whether allies can share a win or only one faction can win (see Difficulty and personality settings).
 
 ## Turn structure
 
@@ -278,7 +282,7 @@ Proxima should have more diplomacy than Alpha Centauri. It's one of the gameplay
   - Allies may fight side by side.
 - **Espionage and infiltration:** a way to steal tech from another faction or sabotage it. This could build on the Comms Array's specialty in sensors and long-range signaling.
 - **Social axes shape relations:** each faction's choices for religion, values, economy, and politics affect how well it gets along with others. Matching choices make diplomacy easier, and opposing choices make it harder (see Social axes).
-- Still to decide: how long treaties last and what breaking one costs, whether AI factions remember betrayals, how espionage is carried out (spy units, a building, or diplomacy-screen actions), how to defend against it, and how alliances fit with the military supremacy victory, since only one faction can win.
+- Still to decide: how long treaties last and what breaking one costs, whether AI factions remember betrayals, how espionage is carried out (spy units, a building, or diplomacy-screen actions), how to defend against it, and what happens to an alliance once its members are the last factions left with Allied Victory turned off (see the Allied Victory setting).
 
 ## Team / repo structure
 
@@ -329,3 +333,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Tech tree: Sealed Habitats / Geothermal Wells assigned to the Terraforming Bay branch.
 - 2026-10-01: Tech tree: each faction starts with one free tech that fits its identity.
 - 2026-10-01: Added the "Diplomacy" section (treaties, trade deals, alliances, espionage, diplomacy screen, social-axis influence).
+- 2026-10-01: Added the Allied Victory toggle to the start-menu settings (allies can share a win when it is on).
