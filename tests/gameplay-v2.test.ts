@@ -164,6 +164,7 @@ describe('trade', () => {
     expect(acceptsTrade({ diplomacy: 'treaty', memory: 0, stance: 'peace', offered: 8, asked: 0 })).toBe(true);
     expect(acceptsTrade({ diplomacy: 'alone', memory: 0, stance: 'peace', offered: 10, asked: 10 })).toBe(false);
     const game = newGame(19);
+    game.relation('helm', 'verdantia').contact = true;
     game.state.factions.helm.minerals = 30;
     const energyBefore = game.state.factions.helm.energy;
     game.state.factions.verdantia.energy = 30;

@@ -1,9 +1,10 @@
+import { ensureContacts } from '../core/contact';
 import { climateFromTerrain } from '../core/geography';
-import type { SaveEnvelope } from '../core/types';
+import type { FactionId, Relation, SaveEnvelope } from '../core/types';
 import { ensureTileRecords } from '../core/tilelog';
 
-/** Proxima save-file schema. 0.1.0 files are version 1. Version 3 adds tile history. Version 4 drops the climate stripe. */
-export const SAVE_VERSION = 4;
+/** Proxima save-file schema. 0.1.0 files are version 1. Version 3 adds tile history. Version 4 drops the climate stripe. Version 5 records contact. */
+export const SAVE_VERSION = 5;
 
 export class SaveValidationError extends Error {
   constructor(message: string) {
@@ -76,10 +77,29 @@ function migrateV3ToV4(raw: RawSave): RawSave {
   return { ...raw, version: 4, state };
 }
 
+/**
+ * Contact is new. A pair that already has a stance, a treaty, a grievance, or
+ * an offer has been dealt with, so they stay in contact. A blank peace does not.
+ * Anyone in current sight is filled in when the game loads.
+ */
+function migrateV4ToV5(raw: RawSave): RawSave {
+  const state = raw.state && typeof raw.state === 'object'
+    ? clone(raw.state as Record<string, unknown>)
+    : raw.state;
+  if (state && typeof state === 'object') {
+    ensureContacts(state as {
+      relations?: Relation[];
+      offers?: { from: FactionId; to: FactionId }[];
+    });
+  }
+  return { ...raw, version: 5, state };
+}
+
 const MIGRATIONS: Migration[] = [
   { from: 1, to: 2, run: migrateV1ToV2 },
   { from: 2, to: 3, run: migrateV2ToV3 },
   { from: 3, to: 4, run: migrateV3ToV4 },
+  { from: 4, to: 5, run: migrateV4ToV5 },
 ];
 
 function validateSave(raw: RawSave): SaveEnvelope {

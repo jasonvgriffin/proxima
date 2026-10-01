@@ -10,7 +10,7 @@ export function initialRelations(ids: readonly FactionId[]): Relation[] {
   for (let i = 0; i < ids.length; i++) {
     for (let j = i + 1; j < ids.length; j++) {
       const [a, b] = pairOf(ids[i], ids[j]);
-      out.push({ a, b, stance: 'peace', research: false, exploration: false, memory: 0 });
+      out.push({ a, b, stance: 'peace', research: false, exploration: false, memory: 0, contact: false });
     }
   }
   return out;

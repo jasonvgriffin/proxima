@@ -53,6 +53,7 @@ describe('diplomacy ladder', () => {
   it('refuses attacks under a pact and lets a declaration of war break treaties', () => {
     const game = Game.newGame({ seed: 19, player: 'helm' });
     const rel = game.relation('helm', 'verdantia');
+    rel.contact = true;
     rel.stance = 'peace';
     const pact = game.propose('verdantia', 'nap', true);
     expect(pact.ok).toBe(true);

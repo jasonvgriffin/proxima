@@ -301,6 +301,11 @@ export interface Relation {
   exploration: boolean;
   /** Grievance. Higher means a worse memory of the other side. */
   memory: number;
+  /**
+   * True once either side has seen the other's unit or city.
+   * Saves written before this field omit it; loading treats an existing deal as contact.
+   */
+  contact: boolean;
 }
 
 export interface Spy {
@@ -396,6 +401,7 @@ export interface SaveEnvelope {
   /**
    * Save-file schema. 1 is a Proxima 0.1.0 file. 2 is the first 0.2.0 file.
    * 3 adds per-tile terraform history. 4 drops the climate stripe.
+   * 5 records which faction pairs have made contact.
    * Loaders run the migration chain up to the current schema.
    */
   version: number;
