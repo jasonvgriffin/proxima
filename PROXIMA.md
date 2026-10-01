@@ -214,7 +214,7 @@ The tech tree grows out of the crash story.
   - It's a technology, not a victory goal.
   - It lets players found cities on the day side and night side, outside the twilight band. Sealed habitats and geothermal heat protect those cities from the extreme temperatures.
   - It sits late in the game and needs a big investment of energy and research.
-  - It belongs to the Terraforming Bay or Bridge Crew branch (to be decided).
+  - It belongs to the Terraforming Bay branch.
 
 ### Cross-faction techs
 - Trading with or allying another faction unlocks research neither side could do alone.
@@ -309,3 +309,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Turn structure: AI turn order is shuffled every round.
 - 2026-10-01: Turn structure: no turn limit; games run until a military supremacy victory.
 - 2026-10-01: Tech tree: added the late-era Sealed Habitats / Geothermal Wells tech (lets players found cities on the day and night sides).
+- 2026-10-01: Tech tree: Sealed Habitats / Geothermal Wells assigned to the Terraforming Bay branch.
