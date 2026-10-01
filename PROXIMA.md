@@ -510,6 +510,15 @@ There is no separate version two for now. Sid hasn't built version one yet, so e
 - **Difficulty settings** on the start menu.
 - **Optional tutorial** that opens as a pop-up from the Escape / pause menu, alongside the audio controls and save options.
 
+## Steam readiness (future goal)
+
+Proxima should eventually ship on Steam. This is not part of the current builds. It's recorded here so that decisions made during development don't block it later.
+
+- **A proper Windows build.** The release must be a real Windows executable that comes with an installer, not just a raw binary or loose folder. It needs a clean install and a clean uninstall, so no leftover files outside the game folder and the user's save folder. Saves stay in the user's app-data folder, so Steam Cloud can sync them later.
+- **Steam technical requirements.** Keep the game DRM-free and fully playable offline. Add proper crash reporting: catch crashes, write a local log file, and give the player a simple way to send the report. Keep startup and exit clean, and allow a Steamworks integration later (achievements, cloud saves, overlay) without restructuring the game.
+- **Plan the store page early.** Capture assets as development goes: capsule images in Steam's required sizes, a set of strong gameplay screenshots, and a trailer. Use a consistent art style and logo so the store page is easy to put together.
+- **Before launch.** Steamworks partner account and app fee, store page review, a build review, age-rating questionnaire, pricing, and a "Coming Soon" page to collect wishlists.
+
 ## Team / repo structure
 
 The work is split by folder so several chats or agents can work at the same time without merge conflicts:
@@ -606,3 +615,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added the "First test build scope" section (core loop, six factions, social axes, basic combat; target of one to two weeks).
 - 2026-10-01: Added the "Version two scope" section (sound effects, always-visible autosave toggle, social-axis recap screen, spy networks, diplomacy ladder, endgame crisis, start-menu difficulty settings, optional tutorial). None of it is for the first build.
 - 2026-10-01: Folded the brainstormed version-two items into version one. The section is renamed "Version one additions", and Sid builds all of it as part of version one.
+- 2026-10-01: Added the "Steam readiness (future goal)" section: an installer-based Windows build, clean install and uninstall, DRM-free, crash reporting, early planning of store assets, and pre-launch steps. Documentation only, not built yet.
