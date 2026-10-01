@@ -46,3 +46,103 @@ jobs:
             gh release create $tag --title "Proxima 0.1.0 test build" --notes "Unsigned Windows test build of Proxima. If SmartScreen warns, see the README."
           }
           gh release upload $tag (Get-ChildItem release\*.exe).FullName --clobber
+
+  verify-uninstall:
+    name: Install / uninstall leaves no trace
+    needs: windows
+    runs-on: windows-latest
+    steps:
+      - name: Download the executables
+        uses: actions/download-artifact@v4
+        with:
+          name: proxima-windows
+          path: release
+      - name: Silent install, then silent uninstall, then check for leftovers
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $setup = (Get-ChildItem release\Proxima-Setup-*.exe | Select-Object -First 1).FullName
+          Write-Host "Installer: $setup"
+
+          $installDir   = Join-Path $env:LOCALAPPDATA 'Programs\Proxima'
+          $appData      = Join-Path $env:APPDATA 'Proxima'
+          $desktopLnk   = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Proxima.lnk'
+          $startMenuLnk = Join-Path ([Environment]::GetFolderPath('Programs')) 'Proxima.lnk'
+          $uninstallRoot = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall'
+
+          function Get-UninstallEntries {
+            Get-ChildItem $uninstallRoot -ErrorAction SilentlyContinue |
+              Where-Object { (Get-ItemProperty $_.PSPath -ErrorAction SilentlyContinue).DisplayName -like 'Proxima*' }
+          }
+
+          # ---- install ----
+          $p = Start-Process -FilePath $setup -ArgumentList '/S' -Wait -PassThru
+          Write-Host "Installer exit code: $($p.ExitCode)"
+          if ($p.ExitCode -ne 0) { throw "Installer failed with exit code $($p.ExitCode)" }
+
+          $entry = Get-UninstallEntries | Select-Object -First 1
+          if (-not $entry) { throw 'No HKCU uninstall entry for Proxima after install' }
+          $guid = $entry.PSChildName
+          $props = Get-ItemProperty $entry.PSPath
+          Write-Host "Uninstall entry: $($entry.Name)"
+          Write-Host "InstallLocation: $($props.InstallLocation)"
+          if ($props.InstallLocation) { $installDir = $props.InstallLocation.TrimEnd('\') }
+          $softwareKeys = @("HKCU:\Software\$guid", 'HKCU:\Software\com.jasonvgriffin.proxima', 'HKCU:\Software\Proxima')
+
+          $missing = @()
+          foreach ($path in @($installDir, (Join-Path $installDir 'Proxima.exe'), (Join-Path $installDir 'Uninstall Proxima.exe'), $desktopLnk, $startMenuLnk)) {
+            if (-not (Test-Path -LiteralPath $path)) { $missing += $path }
+          }
+          if ($missing) { throw "Missing after install:`n  $($missing -join "`n  ")" }
+          Write-Host 'Install folder, shortcuts and uninstall entry all present.'
+
+          # ---- create user data ----
+          $app = Start-Process -FilePath (Join-Path $installDir 'Proxima.exe') -PassThru
+          Start-Sleep -Seconds 10
+          Get-Process -Name 'Proxima' -ErrorAction SilentlyContinue | Stop-Process -Force
+          Start-Sleep -Seconds 2
+          New-Item -ItemType Directory -Force -Path (Join-Path $appData 'saves') | Out-Null
+          Set-Content -Path (Join-Path $appData 'saves\slot-1.json') -Value '{"fake":true}'
+          New-Item -ItemType Directory -Force -Path (Join-Path $env:LOCALAPPDATA 'Proxima\Crashpad') | Out-Null
+          New-Item -ItemType Directory -Force -Path (Join-Path $env:LOCALAPPDATA 'proxima-updater\pending') | Out-Null
+          New-Item -Force -Path 'HKCU:\Software\com.jasonvgriffin.proxima' | Out-Null
+          New-Item -Force -Path 'HKCU:\Software\Proxima' | Out-Null
+          Write-Host 'User data before uninstall:'
+          Get-ChildItem -Recurse -Force $appData | ForEach-Object { Write-Host "  $($_.FullName)" }
+
+          # ---- uninstall ----
+          $uninstaller = Join-Path $installDir 'Uninstall Proxima.exe'
+          Start-Process -FilePath $uninstaller -ArgumentList '/S' -Wait | Out-Null
+          # The NSIS uninstaller re-launches itself from %TEMP%, so poll.
+          $deadline = (Get-Date).AddSeconds(180)
+          while ((Get-Date) -lt $deadline) {
+            if (-not (Test-Path -LiteralPath $installDir) -and -not (Get-UninstallEntries)) { break }
+            Start-Sleep -Seconds 2
+          }
+          # Let the temp copy of the uninstaller finish its last steps.
+          $deadline2 = (Get-Date).AddSeconds(60)
+          while ((Get-Date) -lt $deadline2 -and (Get-Process | Where-Object { $_.Name -like 'Un_*' -or $_.Name -like 'Au_*' })) { Start-Sleep -Seconds 1 }
+          Start-Sleep -Seconds 3
+
+          # ---- assert ----
+          $leftovers = @()
+          foreach ($path in @($installDir, $appData, $desktopLnk, $startMenuLnk, (Join-Path $env:APPDATA 'com.jasonvgriffin.proxima'))) {
+            if (Test-Path -LiteralPath $path) { $leftovers += $path }
+          }
+          Get-ChildItem -Force -Path $env:LOCALAPPDATA -Filter 'Proxima*' -ErrorAction SilentlyContinue | ForEach-Object { $leftovers += $_.FullName }
+          Get-ChildItem -Force -Path $env:LOCALAPPDATA -Filter 'com.jasonvgriffin.proxima*' -ErrorAction SilentlyContinue | ForEach-Object { $leftovers += $_.FullName }
+          Get-ChildItem -Force -Path ([Environment]::GetFolderPath('Programs')) -Filter 'Proxima*' -ErrorAction SilentlyContinue | ForEach-Object { $leftovers += $_.FullName }
+          Get-ChildItem -Force -Path ([Environment]::GetFolderPath('Desktop')) -Filter 'Proxima*' -ErrorAction SilentlyContinue | ForEach-Object { $leftovers += $_.FullName }
+          foreach ($e in @(Get-UninstallEntries)) { $leftovers += $e.Name }
+          if (Test-Path "$uninstallRoot\$guid") { $leftovers += "$uninstallRoot\$guid" }
+          foreach ($k in $softwareKeys) { if (Test-Path $k) { $leftovers += $k } }
+          $leftovers = $leftovers | Sort-Object -Unique
+
+          if ($leftovers) {
+            Write-Host '::error::Uninstall left traces behind:'
+            $leftovers | ForEach-Object { Write-Host "  $_" }
+            exit 1
+          }
+          Write-Host 'Uninstall left nothing behind. Confirmed removed:'
+          @($installDir, $appData, "$env:LOCALAPPDATA\Proxima*", "$env:LOCALAPPDATA\proxima-updater", $desktopLnk, $startMenuLnk, "$uninstallRoot\$guid") + $softwareKeys |
+            ForEach-Object { Write-Host "  $_" }
