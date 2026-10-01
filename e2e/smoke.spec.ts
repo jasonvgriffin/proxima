@@ -25,6 +25,11 @@ async function shot(page: Page, name: string) {
   await page.screenshot({ path: path.join(shotDir, `${name}.png`) });
 }
 
+async function dismissTechTree(page: Page) {
+  const tree = page.getByTestId('tech-tree');
+  if (await tree.count()) await page.getByTestId('tech-tree-close').click();
+}
+
 async function state(page: Page): Promise<StateSnap> {
   return page.evaluate(() => window.__proximaDebug!.state() as StateSnap);
 }
@@ -96,6 +101,7 @@ test('starts a game, moves, founds, terraforms, saves, and opens diplomacy', asy
 
   await page.getByTestId('end-turn').click();
   await expect(page.getByTestId('calendar')).toHaveText('Year 2460, Week 2');
+  await dismissTechTree(page);
 
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('pause-menu')).toBeVisible();
@@ -112,6 +118,7 @@ test('starts a game, moves, founds, terraforms, saves, and opens diplomacy', asy
 
   await page.getByTestId('end-turn').click();
   await expect(page.getByTestId('calendar')).toHaveText('Year 2460, Week 3');
+  await dismissTechTree(page);
   await page.keyboard.press('Escape');
   await page.getByTestId('pause-load').click();
   await page.getByTestId('load-slot-1').click();

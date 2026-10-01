@@ -1,5 +1,6 @@
 import { CONFIG } from '../config';
 import { improvementYield, statMultiplier, stabilityMultiplier } from './rules';
+import { yieldFlats } from './tech';
 import type { FactionState, SocialStat, Tile } from './types';
 
 export interface Yields {
@@ -39,13 +40,11 @@ export function socialScale(faction: FactionState, stat: SocialStat): number {
 }
 
 export function withTechFlats(yields: Yields, techs: readonly string[]): Yields {
+  const bonus = yieldFlats(techs);
   return {
-    minerals: yields.minerals,
-    nutrients:
-      yields.nutrients +
-      (techs.includes('biology') ? CONFIG.techBonuses.biologyNutrients : 0) +
-      (techs.includes('edible-flora') ? CONFIG.techBonuses.edibleNutrients : 0),
-    energy: yields.energy + (techs.includes('jury-rig-power') ? CONFIG.techBonuses.juryEnergy : 0),
-    research: yields.research,
+    minerals: yields.minerals + bonus.minerals,
+    nutrients: yields.nutrients + bonus.nutrients,
+    energy: yields.energy + bonus.energy,
+    research: yields.research + bonus.research,
   };
 }

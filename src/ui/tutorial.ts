@@ -69,7 +69,9 @@ export function tutorialPages(): TutorialPage[] {
       id: 'research',
       title: 'Research and the tech tree',
       paragraphs: [
-        `Open Research from a selected unit. Choose a technology and banked research points fill its cost. The scavenging era covers ${scavengingNames()}.`,
+        `Open the tech tree from the Tech Tree button in the top bar, from the Research chip, or by pressing T. You do not need a unit selected. Technologies sit in branches: scavenging, exploration, growth, industry, conquest, and discovery, with lines from each prerequisite to what it unlocks. The scavenging era covers ${scavengingNames()}.`,
+        'Click a technology you can study to start it. Click a locked one to set it as a goal. Proxima queues the prerequisite path and shows the order. The technology being researched stays highlighted, and so do the later technologies it leads to, including any prerequisites those still need. Hover or select a node to light up its whole chain.',
+        'When research finishes, the tree opens with a notice: Research complete, and what that technology unlocks. If nothing is being researched, the tree opens so the work does not sit idle. A technology stolen by a spy is marked Stolen. A technology copied across a research treaty is marked Treaty.',
         `Each faction begins with one free technology. ${freeTechSentences()} Every faction also starts with Salvage Formers, so terraforming gear is available immediately.`,
         `Deeper Ironclad work unlocks coil guns, plasma lances, and heavier armor. Advanced Formers and Master Formers, in the Verdantia branch, shorten every terraforming project. ${sealed}, late in that same branch, ends environmental damage outside the band and lets cities be founded there.`,
         `A research treaty adds ${share}% of each partner's research from their previous turn to your own.`,
