@@ -35,6 +35,9 @@ test('captures defeat, trade, event, transport, and a mid-game map', async ({ pa
   await page.evaluate(() => window.__proximaDebug!.showEvent());
   await expect(page.getByTestId('event-popup')).toBeVisible();
   await shot(page, 'event-popup');
+  await page.getByTestId('event-ride').click();
+  await expect(page.getByTestId('event-popup')).toHaveCount(0);
+  await expect(page.locator('#toast')).toContainText('The faction answers.');
 
   await page.evaluate(() => window.__proximaDebug!.showDefeat());
   await expect(page.getByTestId('defeat-screen')).toBeVisible();

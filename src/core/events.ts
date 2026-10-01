@@ -36,6 +36,21 @@ export function eventWarningText(kind: EventKind): string {
   }
 }
 
+export type EventPopupAction = 'open' | 'close' | 'leave';
+
+/**
+ * The event box stays only while a prompt is still waiting.
+ * Choosing an option such as "Brace and keep working" clears the prompt in the
+ * game. If the box is left on screen, the next click on either option finds
+ * nothing to decide. A choice the player cannot pay for keeps the prompt, and
+ * the box stays with it.
+ */
+export function eventPopupAction(prompt: EventPrompt | null, popupOpen: boolean): EventPopupAction {
+  if (prompt && !popupOpen) return 'open';
+  if (!prompt && popupOpen) return 'close';
+  return 'leave';
+}
+
 export function eventPromptFor(kind: EventKind, id: number): EventPrompt {
   switch (kind) {
     case 'solar-flare':
