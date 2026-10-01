@@ -3,8 +3,6 @@
  * Game rules read these values; they are not scattered through the code.
  */
 export const CONFIG = {
-  version: '0.1.0',
-
   calendar: {
     startYear: 2460,
     weeksPerYear: 52,
@@ -30,6 +28,13 @@ export const CONFIG = {
     creditsFlatPerCity: 2,
     rushCreditPerProductionPoint: 1,
     rushMinimumCredits: 10,
+    /** Stockpile spent per production point still needed, on top of the credit price. */
+    rushMineralsPerPoint: 1,
+    rushNutrientsPerPoint: 1,
+    rushEnergyPerPoint: 1,
+    /** Energy to run a city, and extra energy for each worked improvement. */
+    cityEnergyUpkeep: 1,
+    improvementEnergy: 1,
   },
 
   city: {
@@ -78,6 +83,15 @@ export const CONFIG = {
       2: 70,
       3: 50,
     } as Record<number, number>,
+    /** Energy spent from the stockpile when a project starts. */
+    energyCost: {
+      'plant-trees': 2,
+      farm: 2,
+      mine: 4,
+      solar: 3,
+      road: 1,
+      atmosphere: 6,
+    } as Record<string, number>,
   },
 
   social: {
@@ -136,13 +150,45 @@ export const CONFIG = {
     oddsThreshold: {
       cautious: 0.62,
       measured: 0.48,
-      bold: 0.34,
+      bold: 0.3,
     } as Record<string, number>,
-    /** Yield multiplier applied to AI cities, by overall difficulty. */
-    yieldMultiplier: {
-      easy: 0.85,
-      normal: 1,
-      'very-aggressive': 1.15,
+    /** Added to the personality odds threshold. Higher means a more cautious attack. */
+    oddsAdjust: {
+      easy: 0.04,
+      normal: 0,
+      hard: -0.06,
+      brutal: -0.12,
+    } as Record<string, number>,
+    /** Extra military units each rival wants, beyond one garrison per city. */
+    militaryExtra: {
+      easy: 3,
+      normal: 4,
+      hard: 6,
+      brutal: 8,
+    } as Record<string, number>,
+    /** How many cities the AI tries to found before it stops asking for colony pods. */
+    cityTarget: {
+      expansionist: 5,
+      balanced: 3,
+      builder: 2,
+    } as Record<string, number>,
+    cityTargetAdjust: {
+      easy: -1,
+      normal: 0,
+      hard: 1,
+      brutal: 2,
+    } as Record<string, number>,
+    /** Colony pods kept in the field, also capped by how many legal sites are left. */
+    podCap: {
+      expansionist: 2,
+      balanced: 1,
+      builder: 1,
+    } as Record<string, number>,
+    /** Added to every rival's attack chance once the peace window is over. Easy waits. */
+    aggressionOdds: {
+      'very-aggressive': -0.05,
+      normal: 0,
+      easy: 0.08,
     } as Record<string, number>,
   },
 
@@ -178,10 +224,22 @@ export const CONFIG = {
 
   starting: {
     credits: 80,
-    minerals: 0,
-    nutrients: 0,
-    energy: 0,
+    minerals: 12,
+    nutrients: 8,
+    energy: 16,
     research: 0,
+  },
+
+  /** Per-turn upkeep, paid from stockpiles. Colony pods cost the most so yards cannot spam them. */
+  upkeep: {
+    settler: 2,
+    terraformer: 1,
+    scout: 0,
+    military: 1,
+    naval: 1,
+    /** Minerals and nutrients taken from the faction stockpile, per unit, when any are stored. */
+    minerals: 1,
+    nutrients: 1,
   },
 
   autosaveEveryTurns: 10,
@@ -218,6 +276,40 @@ export const CONFIG = {
     aggressionPenalty: 0.15,
     axisMatchBonus: 0.08,
     memoryPenaltyPerPoint: 0.005,
+    /** Grievance fades by this much at the end of every round. */
+    memoryDecay: 1,
+    trade: {
+      techValue: 70,
+      traderMargin: 0.8,
+      treatyMargin: 1,
+      aloneMargin: 1.35,
+      /** At or above this grievance, only traders still consider an uneven deal. */
+      memoryRefuse: 45,
+    },
+  },
+
+  events: {
+    /** No event is rolled before this round. */
+    minRound: 6,
+    /** Chance an event is scheduled when a roll comes due. */
+    chance: 0.22,
+    warningChance: 0.55,
+    warningLeadMin: 1,
+    warningLeadMax: 3,
+    gapMin: 5,
+    gapMax: 11,
+    flareTurns: 4,
+    flareShortTurns: 1,
+    flareShieldEnergy: 8,
+    dustTurns: 3,
+    dustYieldPenalty: 0.2,
+    dustPushDamage: 2,
+    seismicDamage: 4,
+    seismicLightDamage: 1,
+    seismicMinerals: 8,
+    wreckageCredits: 28,
+    wreckageMinerals: 12,
+    wreckageResearch: 24,
   },
 
   /** The Waking Reactor: the buried ark core stirs and the terminator frays. */
@@ -235,6 +327,14 @@ export const CONFIG = {
     defaultMusic: 0.45,
     defaultSfx: 0.7,
     defaultAmbient: 0.25,
+    /** Headroom so a full music file sits with the ambient bed. The slider is still master × music. */
+    musicTrim: 0.8,
+    /** Overlap at the end of a looping file so the join does not click. */
+    loopCrossfadeSec: 0.45,
+    /** Overlap when the playlist, the menu, or a tension sting changes tracks. */
+    trackCrossfadeSec: 1.8,
+    /** How long Urgent stays up after a combat or war line, then the exploration bed returns. */
+    tensionHoldSec: 16,
   },
 
   /** Raw tile yields before improvements, social bonuses, and stability. */

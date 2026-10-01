@@ -1,10 +1,13 @@
 import { cuesForLines, freshLogLines, isReactorHarm, terraformProgressDelays, type LogLine, type TerraformSnap } from './cues';
+import { isCombatOrWar } from './music';
 import type { GameSfx } from './sfx';
 
 /** The slice of AudioBus these cues need. Mute and volume stay inside the bus. */
 export interface CueSink {
   play(kind: 'band'): void;
   playCue(kind: GameSfx, delay?: number): void;
+  /** Optional so older cue mocks keep working. Combat and war raise the tension track. */
+  stirTension?(): void;
 }
 
 export interface WorkingUnit {
@@ -38,6 +41,7 @@ export function playLoggedCues(audio: CueSink, before: readonly LogLine[], after
   for (const line of fresh) {
     if (isReactorHarm(line.text)) audio.play('band');
   }
+  if (fresh.some((line) => isCombatOrWar(line.text))) audio.stirTension?.();
 }
 
 /** A short chug for each of the player's terraformers that advanced a week. */

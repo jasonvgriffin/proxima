@@ -53,6 +53,43 @@ export function rushBuyCost(remainingPoints: number): number {
   );
 }
 
+export interface RushPayment {
+  credits: number;
+  minerals: number;
+  nutrients: number;
+  energy: number;
+}
+
+/** Credits plus the stockpile a rush spends. Zero when the build is already done. */
+export function rushPayments(remainingPoints: number): RushPayment {
+  if (remainingPoints <= 0) return { credits: 0, minerals: 0, nutrients: 0, energy: 0 };
+  return {
+    credits: rushBuyCost(remainingPoints),
+    minerals: remainingPoints * CONFIG.economy.rushMineralsPerPoint,
+    nutrients: remainingPoints * CONFIG.economy.rushNutrientsPerPoint,
+    energy: remainingPoints * CONFIG.economy.rushEnergyPerPoint,
+  };
+}
+
+export function terraformEnergy(project: string): number {
+  return CONFIG.terraform.energyCost[project] ?? 0;
+}
+
+/** Only atmosphere work pulls a tile into the livable zone. Roads, farms, and mines do not. */
+export function projectMakesLivable(project: ImprovementId): boolean {
+  return project === 'atmosphere';
+}
+
+export function unitUpkeep(role: string): number {
+  return CONFIG.upkeep[role as keyof typeof CONFIG.upkeep] ?? 0;
+}
+
+/** A faction is out when it has no city and nothing that can found one. */
+export function factionEliminated(cityCount: number, units: readonly { canFound: boolean }[]): boolean {
+  if (cityCount > 0) return false;
+  return !units.some((unit) => unit.canFound);
+}
+
 export function terraformFee(biome: BiomeClass): number {
   const mult = CONFIG.terraform.biomeFee[biome] ?? 1;
   return Math.round(CONFIG.terraform.baseFee * mult);

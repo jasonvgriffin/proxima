@@ -1,19 +1,21 @@
 # Proxima
 
-Proxima is a single-player, turn-based game about six factions stranded on a tidally locked world. You play one faction. The others are played by the computer. This is the first test build: a Windows desktop app, with a browser view used for development and tests.
+Proxima is a single-player, turn-based game about six factions stranded on a tidally locked world. You play one faction. The others are played by the computer. This is version 0.2.0: a Windows desktop app, with a browser view used for development and tests.
 
 ## Download the Windows app
 
-The executable is built by GitHub Actions on `windows-latest`. It is not signed.
+The executable is built by GitHub Actions on `windows-latest`. It is not signed. Version 0.2.0 is the number in `package.json`. The game reads that number. It is not copied into `src/config.ts`.
 
-**Before this branch is merged**, download it from the pull request:
+Pushes and pull requests build the app, run the tests, run the install/uninstall check, and upload the `.exe` files as workflow artifacts. They do not publish a release.
 
-1. Open the [test-build pull request](https://github.com/jasonvgriffin/proxima/pull/1).
-2. Open the **Checks** tab and the **Windows build** workflow.
+1. Open the pull request or the Actions run.
+2. Open the **Windows build** workflow.
 3. Download the **proxima-windows** artifact.
-4. Unzip it. You get `Proxima-Setup-0.1.0.exe` (installer) and `Proxima-Portable-0.1.0.exe` (no install).
+4. Unzip it. You get `Proxima-Setup-0.2.0.exe` (installer) and `Proxima-Portable-0.2.0.exe` (no install).
 
-**After the branch is merged to `main`**, the same workflow publishes those two files on the GitHub release tagged `v0.1.0-test`:
+A GitHub Release is created only when a tag named `vX.Y.Z` is pushed, and only when that tag matches `package.json`. For this version the tag is `v0.2.0`. The workflow writes a new release and its notes, then attaches the executables from the build that passed the install/uninstall check. If that release already exists, the job fails and leaves it alone. Nothing is uploaded with `--clobber`.
+
+The older test release is still here and is not replaced by this process:
 
 https://github.com/jasonvgriffin/proxima/releases/tag/v0.1.0-test
 
@@ -24,7 +26,13 @@ The app is unsigned, so SmartScreen may say it prevented an unrecognized app fro
 1. Click **More info**.
 2. Click **Run anyway**.
 
-That warning is expected for this test build. The app does not need a network connection. Saves are files under `%APPDATA%\Proxima\saves` (one autosave and nine manual slots). Audio on/off and volume are stored in the app's local settings, separate from those save files.
+That warning is expected. The app does not need a network connection. Saves are files under `%APPDATA%\Proxima\saves` (one autosave and nine manual slots). Overwriting a slot first copies the old file to the same name with `.bak`. A save from 0.1.0 (schema version 1) loads in 0.2.0. If a file is missing or unreadable, the game says so and stays open. Save and Exit does not leave the game when the write fails. Audio on/off and volume stay in the app's local settings, separate from those save files. The update choice is `%APPDATA%\Proxima\settings.json`. Problems are appended under `%APPDATA%\Proxima\logs`, and old logs are rotated.
+
+## Updates
+
+Checking for a newer version is off until you turn it on. The first time the desktop app starts, it asks once. After that, the switch is on the start menu and in the pause menu. When it is on, Proxima asks GitHub each time the game starts. It does not wait a day between checks. Offline failures and other errors are not shown. If GitHub says the rate limit is used up, Proxima waits until the reset time and then tries again on a later launch.
+
+A newer stable version shows a banner on the start menu and during a game. It includes the release notes as text, a link to the release page, a download button, Skip this version, and a dismiss button for the rest of that session. The link only opens addresses under `https://github.com/jasonvgriffin/proxima/releases/`. Download asks you to confirm the file name, size, and folder first. The installer is saved to Downloads, or the portable `.exe` when Proxima itself is the portable build. Progress is shown, and the size is checked. The sha256 digest is checked when the release provides one. Proxima can show the file in its folder. It does not run or install it.
 
 ## Run it from source
 
@@ -86,7 +94,7 @@ It starts a game, moves a unit, founds a city, starts a terraform project, ends 
 8. **Diplomacy** does not require a unit to make contact. The ladder is war, peace, non-aggression pact, then alliance. Research and exploration treaties can be signed when you are not at war. Rivals answer from their personalities. Game Options on the start menu edits those personalities.
 9. **Spies** cost credits to recruit and nothing to keep. Place one in another faction to watch that faction's map, stocks, and research. They can steal a technology, sabotage a work, or frame two other factions so those two blame each other. A sweep looks for spies in your own faction.
 10. Holding every rival city wins. A faction that still has a colony pod has not lost yet. Allied Victory, if you turn it on, lets an alliance share a win.
-11. Escape opens the pause menu: audio, the autosave switch, save, load, a tutorial slot, new game, and exit. New game and exit ask whether to save first.
+11. Escape opens the pause menu: audio, the autosave switch, the update check, save, load, a tutorial slot, new game, and exit. New game and exit ask whether to save first.
 
 The buried ark core, the Waking Reactor, starts to press on the twilight band after a set number of weeks. Yields thin, a credit tithe comes due, and units standing on unanchored twilight tiles take rising damage. Terraformed tiles stay anchored.
 

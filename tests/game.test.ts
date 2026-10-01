@@ -54,7 +54,7 @@ describe('a new game', () => {
     expect(allowed.ok).toBe(true);
   });
 
-  it('charges a biome fee, keeps one terraformer on the tile, and joins the livable zone', () => {
+  it('charges a biome fee and keeps one terraformer on the tile without making a farm livable', () => {
     const game = newGame(5);
     const former = game.unitsOf('helm').find((unit) => unit.canTerraform)!;
     const tile = game.tile(former.x, former.y);
@@ -77,8 +77,24 @@ describe('a new game', () => {
     former.terraform!.turnsLeft = 1;
     game.endTurn();
     const updated = game.tile(former.x, former.y);
-    expect(updated.livable).toBe(true);
+    expect(updated.livable).toBe(false);
     expect(updated.improvement).toBe('farm');
+  });
+
+  it('only atmosphere work pulls a tile into the livable zone', () => {
+    const game = newGame(6);
+    const former = game.unitsOf('helm').find((unit) => unit.canTerraform)!;
+    const tile = game.tile(former.x, former.y);
+    tile.terrain = 'scorched';
+    tile.zone = 'day';
+    tile.livable = false;
+    game.state.factions.helm.techs.push('atmosphere');
+    const started = game.startTerraform(former.id, 'atmosphere');
+    expect(started.ok).toBe(true);
+    former.terraform!.turnsLeft = 1;
+    game.endTurn();
+    expect(game.tile(former.x, former.y).livable).toBe(true);
+    expect(game.tile(former.x, former.y).improvement).toBe('atmosphere');
   });
 
   it('damages units left outside the band and stops after Sealed Habitats', () => {

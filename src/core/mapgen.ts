@@ -92,9 +92,11 @@ export function generateMap(rng: Rng, factions: readonly FactionId[], seed: numb
         livable: zone === 'twilight',
         road: false,
         scarred: false,
+        history: [],
       });
     }
   }
+  bridgeTwilight(tiles, width);
   for (const tile of tiles) {
     if (isSea(tile.terrain)) continue;
     if (tile.terrain === 'mountain' || tile.terrain === 'ridge' || tile.terrain === 'lava') continue;
@@ -106,6 +108,25 @@ export function generateMap(rng: Rng, factions: readonly FactionId[], seed: numb
   const starts = placeStarts(tiles, width, height, factions, rng);
   for (const start of starts) prepareStart(tiles, width, height, start.x, start.y);
   return { width, height, tiles, starts };
+}
+
+/** Keep the twilight band one walkable continent, so a sea inlet cannot wall a city off forever. */
+function bridgeTwilight(tiles: Tile[], width: number) {
+  const spine = Math.floor((CONFIG.map.bandStart + CONFIG.map.bandEnd) / 2);
+  const height = tiles.length / width;
+  for (let y = 0; y < height; y++) {
+    const center = tiles[y * width + spine];
+    if (isSea(center.terrain)) center.terrain = 'grass';
+    for (let x = CONFIG.map.bandStart; x <= CONFIG.map.bandEnd; x++) {
+      if (isSea(tiles[y * width + x].terrain)) continue;
+      const from = Math.min(x, spine);
+      const to = Math.max(x, spine);
+      for (let cx = from; cx <= to; cx++) {
+        const mid = tiles[y * width + cx];
+        if (isSea(mid.terrain)) mid.terrain = 'grass';
+      }
+    }
+  }
 }
 
 function rollResource(rng: Rng, terrain: TerrainId, zone: Zone): ResourceId | null {

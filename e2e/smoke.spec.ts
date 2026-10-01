@@ -34,6 +34,27 @@ test('starts a game, moves, founds, terraforms, saves, and opens diplomacy', asy
   await expect(page.getByTestId('start-menu')).toBeVisible();
   await shot(page, 'start-menu');
 
+  await page.getByTestId('menu-audio').click();
+  const audioPanel = page.getByTestId('audio-panel');
+  await expect(audioPanel).toBeVisible();
+  await expect(audioPanel.getByTestId('audio-settings')).toBeVisible();
+  await expect(audioPanel.getByTestId('audio-music')).toBeChecked();
+  await expect(audioPanel.getByTestId('audio-sfx')).toBeChecked();
+  await expect(audioPanel.getByTestId('audio-mute')).not.toBeChecked();
+  await expect(audioPanel.getByTestId('audio-volume-master')).toBeVisible();
+  await expect(audioPanel.getByTestId('audio-volume-music')).toBeVisible();
+  await expect(audioPanel.getByTestId('audio-volume-sfx')).toBeVisible();
+  await expect(audioPanel.getByTestId('audio-volume-ambient')).toBeVisible();
+  await expect(audioPanel.getByTestId('audio-track')).toHaveValue('title');
+  await expect(audioPanel.getByTestId('music-credits')).toContainText('Music: SRG774, Cleyton Kauffman, vitalezzz (CC0, OpenGameArt)');
+  await expect(audioPanel.getByTestId('audio-mode')).toHaveValue('loop');
+  await audioPanel.getByTestId('audio-mute').check();
+  await expect(audioPanel.getByTestId('audio-music')).toBeChecked();
+  await expect(audioPanel.getByTestId('audio-volume-master')).toHaveValue('0.8');
+  await expect(audioPanel.getByTestId('audio-volume-ambient')).toHaveValue('0.25');
+  await page.getByTestId('audio-close').click();
+  await expect(page.getByTestId('audio-panel')).toHaveCount(0);
+
   await page.getByTestId('play-intro').click();
   await expect(page.getByTestId('intro-back')).toBeDisabled();
   await expect(page.getByTestId('intro-text')).toContainText('Proxima b keeps one face');
@@ -79,6 +100,11 @@ test('starts a game, moves, founds, terraforms, saves, and opens diplomacy', asy
 
   await page.keyboard.press('Escape');
   await expect(page.getByTestId('pause-menu')).toBeVisible();
+  await expect(page.getByTestId('audio-settings')).toBeVisible();
+  await expect(page.getByTestId('music-credits')).toContainText('Music: SRG774, Cleyton Kauffman, vitalezzz (CC0, OpenGameArt)');
+  await expect(page.getByTestId('audio-mute')).toBeChecked();
+  await expect(page.getByTestId('audio-music')).toBeChecked();
+  await page.getByTestId('audio-mute').uncheck();
   await expect(page.getByTestId('autosave-toggle')).toBeVisible();
   await shot(page, 'pause-menu');
   await page.getByTestId('pause-save').click();
