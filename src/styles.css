@@ -173,7 +173,9 @@ p { margin: 0; }
   gap: 12px;
 }
 .modal.narrow { width: min(520px, 100%); }
+.modal.tutorial-modal { width: min(640px, 100%); }
 .modal h2 { margin-bottom: 4px; }
+.tutorial-copy { display: flex; flex-direction: column; gap: 10px; line-height: 1.5; }
 
 .slider { display: grid; grid-template-columns: 90px 1fr 36px; gap: 8px; align-items: center; color: var(--muted); }
 table.grid { width: 100%; border-collapse: collapse; font-size: 13px; }
