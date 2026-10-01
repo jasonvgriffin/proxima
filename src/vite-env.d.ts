@@ -25,6 +25,7 @@ interface ProximaDebug {
   spawnRaider(): { x: number; y: number; name: string } | null;
   showRecap(): void;
   state(): unknown;
+  tilePoint(x: number, y: number): { x: number; y: number } | null;
 }
 
 interface Window {
