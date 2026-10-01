@@ -229,14 +229,14 @@ Proxima's core resources support three of its gameplay pillars: civilization bui
 - **Credits:**
   - *Rush production:* spend credits to finish a unit instantly.
     - *Rush-buy price:* 1 credit for each production point still needed, with a minimum of 10 credits per rush. This is a starting value and can be tuned later.
-  - *Terraforming fee:* terraforming a grid square may cost a set fee in credits, charged per square.
+  - *Terraforming fee:* terraforming a grid square may cost a set fee in credits, charged per square. The fee is higher for harsher biomes (see Terraforming).
   - *City income (set):* every city earns a baseline amount of credits each turn, and the amount grows with the city's size or population. This is a main source of credits.
     - Starting formula: **credits per turn = population + 2**. That is 1 credit per population point plus a flat 2 credits per city, so a size-5 city earns 7 credits a turn. The numbers may be tweaked later during balancing.
   - *Other sources of credits:*
     - Trading with other factions
     - Salvaging wreckage, such as ark debris and destroyed units
     - One-time finds from scavenger patrols
-- Still to decide: the exact yields for each biome, the fee per terraformed square (flat, or higher for harsher biomes), and whether rare strategic resources exist.
+- Still to decide: the exact yields for each biome, the base terraforming fee per tile (it scales by biome; see Terraforming), and whether rare strategic resources exist.
 
 ## Scavenger patrols
 
@@ -333,7 +333,10 @@ Terraforming works like Alpha Centauri: it's an action a unit performs on the ma
 - **Better yields:** terraforming a tile improves what it produces, such as more nutrients, minerals, or energy, depending on the change made.
 - **Send a terraformer anywhere:** like Alpha Centauri, a terraformer can be sent to any tile and start work there. It doesn't need a strip of already-converted tiles next to it, and there is no threshold to reach first.
 - **Widening the twilight band:** terraforming a tile improves its yields and, over time, can make that tile part of the expanding livable zone. The band grows tile by tile wherever players terraform, with no threshold effect blocking where terraformers can work.
-- Terraforming may cost the per-square credit fee described in Resources.
+- **Credit fees scale by biome.** Terraforming costs a per-tile credit fee (see Resources), and harsher biomes cost more.
+  - A standard tile pays the base fee.
+  - Harsher biomes, such as toxic soil and frozen regions, cost roughly 1.5 to 2 times the base fee.
+  - The base fee and the multipliers are starting values and can be tuned later.
 - Still to decide: the list of terraforming actions (for example farms, mines, solar collectors, and atmosphere work), the exact number of turns each one takes, whether several terraformers can work one tile together to finish faster.
 
 ## Gameplay pillars
@@ -521,3 +524,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Outside-band damage: Sealed Habitats / Geothermal Wells lets units travel outside the band without damage; the damage per turn is a tuning value for the builder.
 - 2026-10-01: Social axes: each matching choice gives a 10 percent bonus to the related resource or stat; switching an axis mid-game costs 100 credits (tunable) and causes a temporary stability hit lasting several turns.
 - 2026-10-01: Resources: set the rush-buy price at 1 credit per remaining production point, minimum 10 credits per rush (tunable).
+- 2026-10-01: Terraforming: credit fees scale by biome. Standard tiles pay the base fee, and harsher biomes like toxic soil and frozen regions cost about 1.5 to 2 times that (tunable).
