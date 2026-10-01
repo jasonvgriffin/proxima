@@ -469,6 +469,18 @@ Proxima should have more diplomacy than Alpha Centauri. It's one of the gameplay
 - **Social axes shape relations:** each faction's choices for religion, values, economy, and politics affect how well it gets along with others. Matching choices make diplomacy easier, and opposing choices make it harder (see Social axes).
 - Still to decide: how long treaties last and what breaking one costs, whether AI factions remember betrayals, how espionage is carried out (spy units, a building, or diplomacy-screen actions), how to defend against it, and what happens to an alliance once its members are the last factions left with Allied Victory turned off (see the Allied Victory setting).
 
+## First test build scope
+
+The first test build is a real game in miniature: explore, build, fight, and win or lose. It includes:
+
+1. **The core loop:** moving units, founding a city, and terraforming a tile.
+2. **All six factions** (The Helm, Verdantia, Genesis, Ironclad, Mnemosyne, and Clio), so the player can pick one.
+3. **The social axes** (religion, values, economy, and politics), so each run feels different.
+4. **Basic combat:** Alpha Centauri-style odds-based results with terrain modifiers (see Combat), so the player can fight something early.
+
+- **Target timeline:** roughly one to two weeks for this first build.
+- Everything else in this doc comes in later builds, after Jason reviews the test build.
+
 ## Team / repo structure
 
 The work is split by folder so several chats or agents can work at the same time without merge conflicts:
@@ -562,3 +574,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Factions renamed throughout the doc: The Helm (bridge crew), Verdantia (terraforming bay), Genesis (seed vault), Ironclad (military pod), The Signal (comms array), The Pulse (life-support core). Added a backstory paragraph for each faction for the in-game profile screen.
 - 2026-10-01: Factions renamed: The Signal is now Mnemosyne (the Greek Titaness of memory), and The Pulse is now Clio (the Muse of history, one of Mnemosyne's daughters). All references and both backstories updated.
 - 2026-10-01: Added the "UI and player experience" section. The full UI and player-experience design is delegated to the builder (with Eve), and Jason reviews what is built and asks for changes.
+- 2026-10-01: Added the "First test build scope" section (core loop, six factions, social axes, basic combat; target of one to two weeks).
