@@ -126,6 +126,25 @@ As in Sid Meier's Alpha Centauri, players found new cities (bases) to grow their
 - Capturing cities drives the military supremacy victory. The game ends when one faction has captured every rival base or city (see Victory condition).
 - Still to decide: what makes a tile suitable (terrain, minimum distance from other cities, water access), how city borders grow, city size and population limits, what happens to a city's population, buildings, and loyalty when it is captured, and whether cities can be razed or moved.
 
+## Resources
+
+Proxima's core resources support three of its gameplay pillars: civilization building, terraforming, and resources.
+
+| Resource | Used for |
+|---|---|
+| Minerals | Building structures and units |
+| Energy / nutrients | City growth and terraforming |
+| Research points | Discovering technologies |
+
+- **Where they come from:** cities and the terrain squares they work.
+- **Biomes change yields.** Proxima's own biomes produce more or less of each resource, for example:
+  - Thin-air zones
+  - Toxic soil
+  - Frozen regions on the night side
+- **Terraforming** raises a square's yield over time, and it helps unlock the harsh day and night sides.
+- Scavenger patrols can also turn up one-time bonuses of credits, minerals, or techs (see Scavenger patrols).
+- Still to decide: whether energy and nutrients stay one resource or split into two, how credits fit in (as a separate currency or as part of energy), the exact yields for each biome, and whether rare strategic resources exist.
+
 ## Scavenger patrols
 
 Proxima has no supply pods sitting visibly on the map, the way Alpha Centauri does. Instead, any ground or naval unit can be set to search automatically, not only military units.
@@ -256,3 +275,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added the "Naval rules" section (water movement, hazardous seas, coastlines, transport, naval combat).
 - 2026-10-01: Naval rules: added transport capacity (set by ship design) and shore bombardment.
 - 2026-10-01: Naval rules: bombardment can only weaken a city; capturing it still takes a land unit.
+- 2026-10-01: Added the "Resources" section (minerals, energy/nutrients, research points; biome yields; terraforming).
