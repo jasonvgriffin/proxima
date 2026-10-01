@@ -1,4 +1,5 @@
 import { CONFIG } from '../config';
+import { DIFFICULTY_TABLE } from '../core/difficulty';
 import { FACTIONS, SOCIAL_OPTIONS } from '../core/factions';
 import { formatCalendar } from '../core/rules';
 import { TECHS, techById } from '../core/tech';
@@ -27,7 +28,11 @@ export function tutorialPages(): TutorialPage[] {
   const fee = CONFIG.terraform.baseFee;
   const frozen = CONFIG.terraform.biomeFee.frozen;
   const turns = CONFIG.terraform.baseTurns;
-  const crisisWhen = formatCalendar(CONFIG.crisis.startRound);
+  const easy = DIFFICULTY_TABLE.easy;
+  const normal = DIFFICULTY_TABLE.normal;
+  const hard = DIFFICULTY_TABLE.hard;
+  const brutal = DIFFICULTY_TABLE.brutal;
+  const crisisWhen = formatCalendar(normal.crisisStartRound);
 
   return [
     {
@@ -37,7 +42,7 @@ export function tutorialPages(): TutorialPage[] {
         'Proxima keeps one face toward its star. The day side burns, the night side freezes, and the twilight band between them is where a city can begin. Gold lines on the map mark the edges of that band.',
         `Six groups woke from the wreck with no shared command: ${names}. Each game places them somewhere new inside the band.`,
         `You move first. Then each rival takes a turn, in an order that changes every week. The top bar shows the year and week, starting at ${formatCalendar(1)}. A turn is one week. There is no turn limit.`,
-        `Any unit can travel the day side and the night side. Outside livable ground it takes ${CONFIG.outsideBand.damagePerTurn} damage each turn until it returns, is destroyed, or you research ${sealed}.`,
+        `Any unit can travel the day side and the night side. Outside livable ground it takes damage each turn until it returns, is destroyed, or you research ${sealed}. On Normal that is ${normal.outsideBandDamage} damage. Easy deals ${easy.outsideBandDamage}, Hard deals ${hard.outsideBandDamage}, and Brutal deals ${brutal.outsideBandDamage}.`,
         'This guide is optional. Close it, or press Escape, and play continues on the same week. The tutorial does not change your game.',
       ],
     },
@@ -55,7 +60,7 @@ export function tutorialPages(): TutorialPage[] {
       title: 'Economy and resources',
       paragraphs: [
         'The top bar tracks minerals, nutrients, energy, research, and credits. Cities draw minerals, nutrients, energy, and research from the land they work. Grass and forest feed people. Rock and canyons yield minerals. Coasts, toxic ground, and dunes yield energy. A mapped deposit adds more of its own resource, and ark debris also adds research.',
-        `Every city earns ${CONFIG.economy.creditsPerPopulation} credit per population point plus ${CONFIG.economy.creditsFlatPerCity} each turn. Spend credits to rush-buy a unit still in production: ${CONFIG.economy.rushCreditPerProductionPoint} credit for each production point remaining, and never fewer than ${CONFIG.economy.rushMinimumCredits}. The same purse pays terraforming. You start with ${CONFIG.starting.credits} credits.`,
+        `Every city earns ${CONFIG.economy.creditsPerPopulation} credit per population point plus ${CONFIG.economy.creditsFlatPerCity} each turn. Spend credits to rush-buy a unit still in production: ${CONFIG.economy.rushCreditPerProductionPoint} credit for each production point remaining, and never fewer than ${CONFIG.economy.rushMinimumCredits}. The same purse pays terraforming. On Normal you start with ${CONFIG.starting.credits} credits. Easy starts you richer, and Hard and Brutal start you with less. Rival yards also run hotter or cooler with the difficulty you picked.`,
         'Search, on any land or sea unit, sends that unit looking through the wreck on its own. Finds can be credits, minerals, nutrients, research, or a free unit. Cities starve and shrink if nutrients stay short, and they grow once a stored surplus is large enough.',
       ],
     },
@@ -100,7 +105,7 @@ export function tutorialPages(): TutorialPage[] {
       id: 'diplomacy',
       title: 'Diplomacy',
       paragraphs: [
-        'Diplomacy opens from the top bar. You do not need a unit in contact. The ladder runs in order: declare war, make peace, a non-aggression pact, then an alliance. Peace is offered from war. A pact is offered from peace and sits one step below an alliance. An alliance requires the pact first.',
+        'Diplomacy opens from the top bar. You do not need a unit in contact. The buttons run Declare war, Offer peace, Non-aggression, Alliance, Research treaty, and Share maps. Peace is offered from war. A non-aggression pact is offered from peace and sits one step below an alliance. An alliance requires the pact first.',
         'A pact or an alliance stops attacks between you. An alliance also shares maps. Research treaties and exploration treaties can be signed whenever you are not at war. Exploration shares maps. A research treaty shares research.',
         'Rivals answer from their personalities. Treaty-seekers such as The Helm, Genesis, and Clio are easier to deal with. Verdantia and Mnemosyne lean toward trade. Ironclad goes it alone and is harder to sway. Matching social axes make a yes more likely. Rejecting an offer leaves a grievance they remember.',
       ],
@@ -118,7 +123,7 @@ export function tutorialPages(): TutorialPage[] {
       id: 'crisis',
       title: 'The Waking Reactor',
       paragraphs: [
-        `At ${crisisWhen} the buried ark core wakes under the terminator. The log names it the Waking Reactor. That week is the warning. Afterward the pulse strengthens over ${CONFIG.crisis.rampRounds} weeks.`,
+        `On Normal the buried ark core wakes at ${crisisWhen}. The log names it the Waking Reactor. That week is the warning. Easy waits until ${formatCalendar(easy.crisisStartRound)}. Hard begins at ${formatCalendar(hard.crisisStartRound)}, and Brutal at ${formatCalendar(brutal.crisisStartRound)}. After the warning, the pulse strengthens over ${CONFIG.crisis.rampRounds} weeks, and harder difficulties hit harder.`,
         `Units standing in the twilight band on bare ground take rising damage. Yields thin, and a credit tithe is taken from every faction. Terraforming an improvement anchors a tile, and ${sealed} protects your units from the pulse. The edges of the band can scar if they are left bare.`,
         'The reactor does not end the game. Military supremacy still decides who holds Proxima.',
       ],
