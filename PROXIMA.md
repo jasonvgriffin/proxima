@@ -114,6 +114,16 @@ The map is generated fresh every game, alongside the randomized starting locatio
   - Random starting spots fall inside the twilight band, spread out along it.
 - Still to decide: map sizes, the full list of biomes, how much each biome affects movement and yields, and how the generator keeps every game fair (no starts that are hopeless or hemmed in).
 
+## Map interface
+
+The main game screen includes a map of the known planet.
+
+- **Fog of war:** unexplored areas start hidden. They're revealed when units explore them or by other means, such as sensors, scouting, or maps traded through diplomacy.
+- **Twilight band shown clearly:** the habitable twilight band is clearly marked on the map, so players can see where cities can be founded.
+- **Known information:** the map shows known terrain, resources, and units.
+- **Pan and zoom:** players can pan the map and zoom in and out.
+- Still to decide: whether explored areas fall back to a "last seen" view when no unit is nearby (as in Alpha Centauri), and whether there's a separate minimap.
+
 ## Victory condition
 
 **Military supremacy:** the game ends when one faction has captured every rival base or city. Cities are taken by beating their defenders in combat (see City construction).
@@ -496,3 +506,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Terraforming: build time also depends on the terraformer's tech level (advanced terraformers from later techs work faster). Each terraforming type has its own base time, which improves with tech.
 - 2026-10-01: Terraforming: removed the edge-strip threshold for widening the twilight band. Like Alpha Centauri, terraformers can work any tile, and each terraformed tile can join the livable zone over time.
 - 2026-10-01: City construction: any unit, terraformers included, can travel anywhere on the map, with a penalty outside the twilight band as the only restriction. Cities can only be founded inside the band unless the player has the Sealed Habitats / Geothermal Wells tech.
+- 2026-10-01: Added the "Map interface" section (map of the known planet on the main screen; fog of war, clearly marked twilight band, known terrain, resources, and units; pan and zoom).
