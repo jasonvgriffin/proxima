@@ -3,6 +3,7 @@ import { drawEmblem, drawPlanet, drawStar, drawStarfield } from '../art/draw';
 import { AudioBus, TRACKS } from '../audio/engine';
 import { FACTIONS, SOCIAL_OPTIONS, defaultAxes, defaultPersonalities, DIFFICULTIES, PERSONALITY_LEVELS } from '../core/factions';
 import { Game, PROJECTS, projectLabel } from '../core/game';
+import { proposalLabel } from '../core/diplomacy';
 import { biomeClass, formatCalendar, terraformFee, terraformTurns } from '../core/rules';
 import { formerTechLevel, TECHS, techAvailable, techById } from '../core/tech';
 import { starterDesigns, CHASSIS, WEAPONS, ARMORS, SPECIALS, partKnown } from '../core/parts';
@@ -670,14 +671,23 @@ export class App {
         <p class="eyebrow">Diplomacy</p>
         <h2>The ladder</h2>
         <p class="muted">War, then peace, then a non-aggression pact, then an alliance. Research and exploration treaties can sit beside peace or above. No unit has to make contact first.</p>
-        ${offers.map((offer) => `<p>${esc(FACTIONS[offer.from].name)} offers ${esc(offer.kind)}. <button class="btn small" data-action="accept-offer" data-id="${offer.id}">Accept</button> <button class="btn small" data-action="reject-offer" data-id="${offer.id}">Reject</button></p>`).join('')}
+        ${offers.map((offer) => `<p>${esc(FACTIONS[offer.from].name)} offers ${esc(proposalLabel(offer.kind))}. <button class="btn small" data-action="accept-offer" data-id="${offer.id}">Accept</button> <button class="btn small" data-action="reject-offer" data-id="${offer.id}">Reject</button></p>`).join('')}
         ${FACTION_IDS.filter((id) => id !== me).map((id) => {
           const rel = game.relation(me, id);
+          const standing = rel.stance === 'nap' ? 'non-aggression pact' : rel.stance;
+          const actions: [string, string][] = [
+            ['war', 'Declare war'],
+            ['peace', 'Offer peace'],
+            ['nap', 'Non-aggression'],
+            ['alliance', 'Alliance'],
+            ['research', 'Research treaty'],
+            ['exploration', 'Share maps'],
+          ];
           return `<section>
             <h3>${esc(FACTIONS[id].name)}</h3>
-            <p class="muted">Standing: ${esc(rel.stance)}. Grievance ${rel.memory}. Research treaty ${rel.research ? 'yes' : 'no'}. Exploration treaty ${rel.exploration ? 'yes' : 'no'}.</p>
+            <p class="muted">Standing: ${esc(standing)}. Grievance ${rel.memory}. Research treaty ${rel.research ? 'yes' : 'no'}. Exploration treaty ${rel.exploration ? 'yes' : 'no'}.</p>
             <div class="row">
-              ${['war', 'peace', 'nap', 'alliance', 'research', 'exploration'].map((kind) => `<button class="btn small" data-action="propose" data-target="${id}" data-kind="${kind}">${esc(kind)}</button>`).join('')}
+              ${actions.map(([kind, label]) => `<button class="btn small" data-action="propose" data-target="${id}" data-kind="${kind}">${esc(label)}</button>`).join('')}
             </div>
           </section>`;
         }).join('')}
