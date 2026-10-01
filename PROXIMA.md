@@ -319,7 +319,7 @@ Pressing **Escape** during play opens the pause menu. It contains:
    - Volume sliders (for example master, music, effects, and ambient)
    - Choosing a music track (from the five original tracks)
    - A Shuffle / Loop toggle: Shuffle plays tracks in random order, and Loop repeats the current track
-2. **Save game:** save to one of several save slots.
+2. **Save game:** save to one of **10** save slots.
 3. **Load game:** load a game from a save slot.
 4. **New game:** start a fresh game. A popup first offers to save the current game, with three choices:
    - Save and Start New Game
@@ -330,7 +330,8 @@ Pressing **Escape** during play opens the pause menu. It contains:
    - Exit Without Saving
    - Cancel
 
-- Still to decide: how many save slots there are and whether there's autosave.
+- **Autosave:** the game saves automatically every 10 turns.
+- Still to decide: whether autosave gets its own slot or uses one of the 10, and whether it keeps only the latest autosave or several.
 
 ## Social axes
 
@@ -426,3 +427,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Added the "Pause menu" section (audio controls, save, load, new game, exit to desktop); the audio controls moved there from Audio.
 - 2026-10-01: Pause menu: New game shows a popup offering to save first (Save and Start New Game, Start New Game Without Saving, Cancel).
 - 2026-10-01: Pause menu: Exit to desktop shows the save-first popup (Save and Exit, Exit Without Saving, Cancel).
+- 2026-10-01: Pause menu: 10 save slots, plus an autosave every 10 turns.
