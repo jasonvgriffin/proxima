@@ -265,6 +265,21 @@ Proxima's social system goes deeper than Alpha Centauri's. Each faction sets fou
 - Each combination shifts what a faction is good at.
 - Still to decide: the exact bonuses and penalties for each option and combination, any synergies or conflicts between options, and how changing an axis plays out (cost, unrest, transition time).
 
+## Diplomacy
+
+Proxima should have more diplomacy than Alpha Centauri. It's one of the gameplay pillars.
+
+- **Diplomacy screen:** every diplomatic action can be taken from a dedicated diplomacy screen, without needing a unit to make contact first.
+- **Treaties:** non-aggression pacts that stop fighting between two factions for a set number of turns.
+- **Trade deals:** factions swap resources (minerals, nutrients, energy, research points, credits) or techs.
+- **Alliances:** a deeper commitment than a treaty.
+  - Allies share vision of the map.
+  - Allies can share research progress on cross-faction techs (see Tech tree).
+  - Allies may fight side by side.
+- **Espionage and infiltration:** a way to steal tech from another faction or sabotage it. This could build on the Comms Array's specialty in sensors and long-range signaling.
+- **Social axes shape relations:** each faction's choices for religion, values, economy, and politics affect how well it gets along with others. Matching choices make diplomacy easier, and opposing choices make it harder (see Social axes).
+- Still to decide: how long treaties last and what breaking one costs, whether AI factions remember betrayals, how espionage is carried out (spy units, a building, or diplomacy-screen actions), how to defend against it, and how alliances fit with the military supremacy victory, since only one faction can win.
+
 ## Team / repo structure
 
 The work is split by folder so several chats or agents can work at the same time without merge conflicts:
@@ -313,3 +328,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Tech tree: added the late-era Sealed Habitats / Geothermal Wells tech (lets players found cities on the day and night sides).
 - 2026-10-01: Tech tree: Sealed Habitats / Geothermal Wells assigned to the Terraforming Bay branch.
 - 2026-10-01: Tech tree: each faction starts with one free tech that fits its identity.
+- 2026-10-01: Added the "Diplomacy" section (treaties, trade deals, alliances, espionage, diplomacy screen, social-axis influence).
