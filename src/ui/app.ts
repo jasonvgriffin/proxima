@@ -1035,8 +1035,10 @@ export class App {
   private debugRecap() {
     const game = this.game;
     if (!game) return;
-    const current = game.state.factions[game.state.playerFaction].axes;
-    game.state.axisHistory.push({ round: Math.max(2, game.state.round), axes: { ...current, values: 'curiosity' } });
+    if (game.state.axisHistory.length < 2) {
+      const current = game.state.factions[game.state.playerFaction].axes;
+      game.state.axisHistory.push({ round: Math.max(2, game.state.round), axes: { ...current, values: 'curiosity' } });
+    }
     game.state.winner = { kind: 'solo', factions: [game.state.playerFaction] };
     this.overlay.innerHTML = '';
     this.screen = 'recap';

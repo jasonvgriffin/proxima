@@ -257,10 +257,18 @@ export function paintDriftChart(canvas: HTMLCanvasElement, drift: AxisDrift): vo
   ctx.textAlign = 'center';
   ctx.textBaseline = 'top';
   const labelEvery = span > 18 ? Math.ceil(span / 8) : 1;
-  const labeled = new Set<number>();
-  for (let round = first; round <= last; round += labelEvery) labeled.add(round);
-  labeled.add(last);
-  for (const round of labeled) ctx.fillText(weekTick(round), xAt(round), cssHeight - bottom + 10);
+  const ticks: number[] = [];
+  for (let round = first; round <= last; round += labelEvery) ticks.push(round);
+  if (ticks[ticks.length - 1] !== last) ticks.push(last);
+  let lastLabelX = -100;
+  for (const round of ticks) {
+    const label = weekTick(round);
+    const width = ctx.measureText(label).width;
+    const x = Math.min(left + plotW - width / 2, Math.max(left + width / 2, xAt(round)));
+    if (round !== last && x - lastLabelX < width + 8) continue;
+    ctx.fillText(label, x, cssHeight - bottom + 10);
+    lastLabelX = x;
+  }
 }
 
 function weekTick(round: number): string {
