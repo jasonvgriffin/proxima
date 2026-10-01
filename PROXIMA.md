@@ -81,10 +81,11 @@ The map is generated fresh every game, alongside the randomized starting locatio
 
 ## Turn structure
 
-- Turns strictly alternate. The player takes a full turn first, then each AI faction takes its full turn in order, and the cycle repeats.
+- Turns strictly alternate. The player takes a full turn first, then each AI faction takes its full turn, and the cycle repeats.
+- **Shuffled AI order:** the order the AI factions move in is randomized each round instead of staying fixed. The player always goes first.
 - No turns are taken at the same time.
 - One round means every faction has had one turn. Per-turn effects, such as city credit income and resource yields, happen on each faction's own turn.
-- Still to decide: whether the AI factions always go in the same order or the order is shuffled, and whether there's a turn limit or a game clock.
+- Still to decide: whether there's a turn limit or a game clock.
 
 ## Combat
 
@@ -298,3 +299,4 @@ The work is split by folder so several chats or agents can work at the same time
 - 2026-10-01: Resources: city credit income is now set (a baseline each turn that grows with city size).
 - 2026-10-01: Resources: set the starting city credit formula (1 per population point + 2 per city each turn).
 - 2026-10-01: Added the "Turn structure" section (strictly alternating turns, none taken at the same time).
+- 2026-10-01: Turn structure: AI turn order is shuffled every round.
