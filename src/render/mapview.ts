@@ -82,11 +82,12 @@ export class MapView {
   };
 
   private up = (event: PointerEvent) => {
-    if (!this.dragMoved) {
+    if (event.type === 'pointerup' && !this.dragMoved) {
       const tile = this.tileAt(event.clientX, event.clientY);
       if (tile) this.onTile(tile.x, tile.y, { shift: event.shiftKey, alt: event.altKey });
     }
     this.dragging = false;
+    this.dragMoved = false;
   };
 
   private wheel = (event: WheelEvent) => {

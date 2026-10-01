@@ -1528,6 +1528,8 @@ export class App {
       }
     }
     this.selectedUnit = scout.id;
+    this.selectedCity = null;
+    this.preferTile = false;
     this.refreshGame();
     return { x, y, name: unit.name };
   }
