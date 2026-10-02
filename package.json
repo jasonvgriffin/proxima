@@ -1,6 +1,6 @@
 {
   "name": "proxima",
-  "version": "0.4.0",
+  "version": "0.4.1",
   "private": true,
   "description": "Proxima — a single-player turn-based 4X on a tidally locked world.",
   "author": "Jason Griffin",
