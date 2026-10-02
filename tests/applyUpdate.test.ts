@@ -1,4 +1,4 @@
-import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { createRequire } from 'node:module';
@@ -24,7 +24,7 @@ const {
   fileMatches: (file: string, size: number, sha256: string) => boolean;
   readPendingUpdate: (dir: string) => { confirmed: boolean; version: string; applyOnQuit: boolean } | null;
   sanitizePending: (value: unknown) => { confirmed: boolean } | null;
-  spawnHelper: (script: string, spawnImpl: (file: string, args: string[], opts: { detached?: boolean; stdio?: string }) => { unref?: () => void; pid?: number }) => void;
+  spawnHelper: (script: string, spawnImpl: (file: string, args: string[], opts: { timeout?: number; encoding?: string }) => { status?: number | null; stdout?: string; stderr?: string }) => { status?: number | null };
   updateLogPath: (script: string) => string;
   writeHelper: (plan: Record<string, unknown>) => string;
   writePendingUpdate: (dir: string, record: Record<string, unknown>) => { version: string };
@@ -100,7 +100,7 @@ describe('apply-update helper', () => {
     expect(() => buildApplyHelper({ ...plan('installed'), installerPath: 'Proxima-Setup-0.4.1.exe' })).toThrow(/absolute/);
   });
 
-  it('writes a UTF-8 helper and starts it under a headless console', () => {
+  it('writes a UTF-8 helper and starts it outside this process', () => {
     const next = plan('installed');
     const file = writeHelper(next);
     const bytes = readFileSync(file);
@@ -108,23 +108,29 @@ describe('apply-update helper', () => {
     expect(bytes[1]).toBe(0xbb);
     expect(bytes[2]).toBe(0xbf);
     expect(readFileSync(file, 'utf8')).toContain('Wait-PidExit');
-    const calls: { file: string; args: string[]; opts: { detached?: boolean; stdio?: string } }[] = [];
+    const calls: { file: string; args: string[]; opts: { timeout?: number; encoding?: string } }[] = [];
+    let launchText = '';
     spawnHelper(file, (command, args, opts) => {
       calls.push({ file: command, args, opts });
-      return { pid: 77, unref() {} };
+      launchText = readFileSync(args.at(-1) as string, 'utf8');
+      return { status: 0, stdout: '', stderr: '' };
     });
-    expect(calls[0].file.replace(/\\/g, '/')).toMatch(/conhost\.exe$/);
-    expect(calls[0].args[0]).toBe('--headless');
-    expect(calls[0].args.some((arg) => arg.replace(/\\/g, '/').endsWith('powershell.exe'))).toBe(true);
-    expect(calls[0].args).toContain('-NonInteractive');
-    expect(calls[0].args).toContain('Bypass');
+    expect(calls[0].file.replace(/\\/g, '/')).toMatch(/powershell\.exe$/);
+    expect(calls[0].args).toContain('-WindowStyle');
+    expect(calls[0].args).toContain('Hidden');
     expect(calls[0].args).toContain('-File');
-    expect(calls[0].args.at(-1)).toBe(file);
-    expect(calls[0].opts.detached).toBe(true);
-    expect(calls[0].opts.stdio).toBe('ignore');
+    expect(calls[0].args).not.toContain('-WindowStyle Hidden');
+    expect(calls[0].opts.timeout).toBe(30000);
+    expect(calls[0].opts.encoding).toBe('utf8');
+    expect(launchText).toContain('Win32_Process');
+    expect(launchText).toContain('Invoke-CimMethod');
+    expect(launchText).toContain('-WindowStyle Hidden');
+    expect(launchText).toContain(file);
+    expect(launchText).not.toContain('delete-app-data');
+    expect(existsSync(calls[0].args.at(-1) as string)).toBe(false);
     const log = readFileSync(updateLogPath(file), 'utf8');
-    expect(log).toContain('node spawning helper');
-    expect(log).toContain('node spawned pid 77');
+    expect(log).toContain('node launching helper');
+    expect(log).toContain('launcher status 0');
   });
 });
 

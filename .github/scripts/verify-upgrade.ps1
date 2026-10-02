@@ -300,7 +300,10 @@ Write-Host "Spawning apply-update helper for $($newSetup.Name)"
   --error-file $errorFile `
   --pending-file $pendingFile `
   --helper $helper
-if ($LASTEXITCODE -ne 0) { throw 'Could not spawn the apply-update helper' }
+if ($LASTEXITCODE -ne 0) {
+  Write-UpdateDiagnostics $updates
+  throw 'Could not spawn the apply-update helper'
+}
 if (-not (Test-Path -LiteralPath $helper)) { throw 'The apply-update helper script was not written' }
 
 Start-Sleep -Seconds 3

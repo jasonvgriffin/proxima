@@ -1,7 +1,7 @@
 const crypto = require('crypto');
 const fs = require('fs');
 const path = require('path');
-const { spawn } = require('child_process');
+const { spawnSync } = require('child_process');
 
 const VERSION_RE = /^\d+\.\d+\.\d+(?:[-+][0-9A-Za-z.-]+)?$/;
 const SHA256_RE = /^[a-f0-9]{64}$/i;
@@ -166,6 +166,7 @@ function buildApplyHelper(plan) {
     '    Remove-PlanFile $plan.installerPath',
     '    Remove-PlanFile $plan.pendingFile',
     "    Remove-PlanFile (Join-Path (Split-Path -Parent $PSCommandPath) 'apply-update.log')",
+    "    Remove-PlanFile (Join-Path (Split-Path -Parent $PSCommandPath) 'apply-update-launch.ps1')",
     '  }',
     '  $folder = Split-Path -Parent $PSCommandPath',
     '  Remove-PlanFile $PSCommandPath',
@@ -375,14 +376,12 @@ function writeHelper(plan) {
   return plan.helperPath;
 }
 
-function systemExe(name) {
-  const root = process.env.SystemRoot || process.env.SYSTEMROOT;
-  if (!root) return name;
-  return path.join(root, 'System32', name);
-}
-
 function updateLogPath(helperPath) {
   return path.join(path.dirname(helperPath), 'apply-update.log');
+}
+
+function launchScriptPath(helperPath) {
+  return path.join(path.dirname(helperPath), 'apply-update-launch.ps1');
 }
 
 function powershellPath() {
@@ -398,33 +397,81 @@ function appendUpdateLog(logPath, message) {
 
 function helperCommand(scriptPath) {
   return {
-    file: systemExe('conhost.exe'),
-    args: ['--headless', powershellPath(), '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', scriptPath],
+    file: powershellPath(),
+    args: ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', scriptPath],
   };
 }
 
-function spawnHelper(scriptPath, spawnImpl = spawn) {
-  if (typeof scriptPath !== 'string' || scriptPath.includes('"')) {
+function buildLaunchScript(scriptPath, logPath) {
+  return [
+    "$ErrorActionPreference = 'Stop'",
+    '$helper = @\'',
+    scriptPath,
+    '\'@',
+    '$log = @\'',
+    logPath,
+    '\'@',
+    'function Write-LaunchLog([string]$Message) {',
+    "  $line = (Get-Date).ToString('o') + ' ' + $Message + [Environment]::NewLine",
+    '  [System.IO.File]::AppendAllText($log, $line)',
+    '}',
+    "Write-LaunchLog 'launcher-start'",
+    '$tokens = $null',
+    '$parseErrors = $null',
+    '[void][System.Management.Automation.Language.Parser]::ParseFile($helper, [ref]$tokens, [ref]$parseErrors)',
+    'if ($parseErrors -and $parseErrors.Count -gt 0) {',
+    "  Write-LaunchLog ('parse-error ' + (($parseErrors | ForEach-Object { $_.ToString() }) -join ' | '))",
+    '  exit 1',
+    '}',
+    "$powershellExe = Join-Path $env:SystemRoot 'System32\\WindowsPowerShell\\v1.0\\powershell.exe'",
+    "$command = '\"' + $powershellExe + '\" -NoProfile -NonInteractive -ExecutionPolicy Bypass -WindowStyle Hidden -File \"' + $helper + '\"'",
+    "Write-LaunchLog ('wmi-command ' + $command)",
+    '$created = Invoke-CimMethod -ClassName Win32_Process -MethodName Create -Arguments @{ CommandLine = $command }',
+    "if (-not $created) { Write-LaunchLog 'wmi-create-no-result'; exit 1 }",
+    "Write-LaunchLog ('wmi-create-return ' + $created.ReturnValue + ' pid ' + $created.ProcessId)",
+    'exit ([int]$created.ReturnValue)',
+    '',
+  ].join('\r\n');
+}
+
+function spawnHelper(scriptPath, spawnImpl = spawnSync) {
+  if (typeof scriptPath !== 'string' || /["']/.test(scriptPath)) {
     throw new Error('Helper path cannot contain a quote.');
   }
   const logPath = updateLogPath(scriptPath);
+  const launchPath = launchScriptPath(scriptPath);
   fs.mkdirSync(path.dirname(scriptPath), { recursive: true });
-  appendUpdateLog(logPath, `node spawning helper for ${scriptPath}`);
-  const command = helperCommand(scriptPath);
-  let child;
+  fs.writeFileSync(launchPath, `\uFEFF${buildLaunchScript(scriptPath, logPath)}`, 'utf8');
+  appendUpdateLog(logPath, `node launching helper for ${scriptPath}`);
+  let result;
   try {
-    child = spawnImpl(command.file, command.args, {
-      detached: true,
-      stdio: 'ignore',
-      windowsHide: true,
-    });
+    result = spawnImpl(powershellPath(), [
+      '-NoProfile',
+      '-NonInteractive',
+      '-ExecutionPolicy',
+      'Bypass',
+      '-WindowStyle',
+      'Hidden',
+      '-File',
+      launchPath,
+    ], { timeout: 30000, encoding: 'utf8' });
   } catch (error) {
-    appendUpdateLog(logPath, `node spawn failed: ${error instanceof Error ? error.message : String(error)}`);
+    appendUpdateLog(logPath, `node launch failed: ${error instanceof Error ? error.message : String(error)}`);
     throw error;
   }
-  if (child && typeof child.unref === 'function') child.unref();
-  appendUpdateLog(logPath, `node spawned pid ${child && child.pid ? child.pid : 'unknown'}`);
-  return child;
+  const status = result && typeof result.status === 'number' ? result.status : 1;
+  const stdout = result && result.stdout ? String(result.stdout).trim() : '';
+  const stderr = result && result.stderr ? String(result.stderr).trim() : '';
+  const errorText = result && result.error ? String(result.error.message || result.error) : '';
+  if (stdout) appendUpdateLog(logPath, `launcher stdout ${stdout}`);
+  if (stderr) appendUpdateLog(logPath, `launcher stderr ${stderr}`);
+  if (errorText) appendUpdateLog(logPath, `launcher error ${errorText}`);
+  appendUpdateLog(logPath, `launcher status ${status}`);
+  if (status === 0) fs.rmSync(launchPath, { force: true });
+  if (status !== 0) {
+    throw new Error(`Could not start the update helper (exit ${status}). ${stderr || errorText || stdout}`.trim());
+  }
+  return result;
 }
 
 function canApplyUpdate(pending) {
@@ -447,6 +494,8 @@ module.exports = {
   buildApplyHelper,
   writeHelper,
   updateLogPath,
+  launchScriptPath,
+  buildLaunchScript,
   helperCommand,
   spawnHelper,
   canApplyUpdate,
