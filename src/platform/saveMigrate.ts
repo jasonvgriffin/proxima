@@ -106,7 +106,8 @@ function validateSave(raw: RawSave): SaveEnvelope {
   if (raw.version !== SAVE_VERSION) {
     throw new SaveValidationError(`This save is version ${String(raw.version)}, and this Proxima reads version ${SAVE_VERSION}.`);
   }
-  if (typeof raw.slot !== 'number' || !Number.isInteger(raw.slot) || raw.slot < 0 || raw.slot > 9) {
+  // 0, 10, and 11 are the rotating autosaves. 1–9 are manual. Older files only use 0–9.
+  if (typeof raw.slot !== 'number' || !Number.isInteger(raw.slot) || raw.slot < 0 || raw.slot > 11) {
     throw new SaveValidationError('This save names a slot Proxima does not have.');
   }
   if (typeof raw.label !== 'string' || typeof raw.factionId !== 'string') {

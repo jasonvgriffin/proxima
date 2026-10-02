@@ -26,7 +26,7 @@ The app is unsigned, so SmartScreen may say it prevented an unrecognized app fro
 1. Click **More info**.
 2. Click **Run anyway**.
 
-That warning is expected. The app does not need a network connection. Saves are files under `%APPDATA%\Proxima\saves` (one autosave and nine manual slots). Overwriting a slot first copies the old file to the same name with `.bak`. A save from 0.1.0 (schema version 1) loads in 0.2.0. If a file is missing or unreadable, the game says so and stays open. Save and Exit does not leave the game when the write fails. Audio on/off and volume stay in the app's local settings, separate from those save files. The update choice is `%APPDATA%\Proxima\settings.json`. Problems are appended under `%APPDATA%\Proxima\logs`, and old logs are rotated.
+That warning is expected. The app does not need a network connection. Saves are files under `%APPDATA%\Proxima\saves` (three rotating autosaves and nine manual slots). Overwriting a slot first copies the old file to the same name with `.bak`. A save from 0.1.0 (schema version 1) loads in 0.2.0. If a file is missing or unreadable, the game says so and stays open. Save and Exit does not leave the game when the write fails. Audio on/off and volume stay in the app's local settings, separate from those save files. The update choice is `%APPDATA%\Proxima\settings.json`. Problems are appended under `%APPDATA%\Proxima\logs`, and old logs are rotated.
 
 ## Updates
 
