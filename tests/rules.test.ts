@@ -11,6 +11,7 @@ import {
   evaluateVictory,
   planRoundOrder,
   rushBuyCost,
+  autosaveIntervalTurns,
   shouldAutosave,
   statMultiplier,
   terraformFee,
@@ -117,11 +118,25 @@ describe('social axes', () => {
 });
 
 describe('autosave cadence', () => {
-  it('saves every 10 completed player turns when the toggle is on', () => {
+  it('saves every 3 completed player turns by default, or every 2 when configured', () => {
+    expect(CONFIG.autosaveEveryTurns).toBe(3);
+    expect(autosaveIntervalTurns()).toBe(3);
     expect(shouldAutosave(0, true)).toBe(false);
-    expect(shouldAutosave(9, true)).toBe(false);
-    expect(shouldAutosave(10, true)).toBe(true);
-    expect(shouldAutosave(20, false)).toBe(false);
+    expect(shouldAutosave(2, true)).toBe(false);
+    expect(shouldAutosave(3, true)).toBe(true);
+    expect(shouldAutosave(6, true)).toBe(true);
+    expect(shouldAutosave(3, false)).toBe(false);
+    const box = CONFIG as { autosaveEveryTurns: number };
+    const previous = box.autosaveEveryTurns;
+    box.autosaveEveryTurns = 2;
+    expect(autosaveIntervalTurns()).toBe(2);
+    expect(shouldAutosave(2, true)).toBe(true);
+    expect(shouldAutosave(3, true)).toBe(false);
+    box.autosaveEveryTurns = 10;
+    expect(autosaveIntervalTurns()).toBe(3);
+    expect(shouldAutosave(3, true)).toBe(true);
+    expect(shouldAutosave(10, true)).toBe(false);
+    box.autosaveEveryTurns = previous;
   });
 });
 

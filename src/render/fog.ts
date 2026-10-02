@@ -5,6 +5,14 @@ export type FogValue = 0 | 1 | 2;
 
 export const FOG_SCALE = 4;
 
+/** Shroud and remembered-ground canvases, in pixels. They grow with the map. */
+export function fogCanvasSize(mapWidth: number, mapHeight: number): { width: number; height: number } {
+  return {
+    width: Math.max(1, mapWidth * FOG_SCALE),
+    height: Math.max(1, mapHeight * FOG_SCALE),
+  };
+}
+
 /**
  * Soft masks for the two covered states.
  * Shroud pixels are dark with alpha for unexplored ground.
@@ -17,8 +25,9 @@ export function paintFogMasks(
   width: number,
   height: number,
 ) {
-  const w = Math.max(1, width * FOG_SCALE);
-  const h = Math.max(1, height * FOG_SCALE);
+  const sized = fogCanvasSize(width, height);
+  const w = sized.width;
+  const h = sized.height;
   shroud.width = w;
   shroud.height = h;
   remembered.width = w;

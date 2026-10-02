@@ -5,7 +5,7 @@ import type { Game } from '../core/game';
 import { isSea } from '../core/rules';
 import type { FactionId, Recall, Tile } from '../core/types';
 import { paintFogMasks } from './fog';
-import { CHUNK, TILE_PX, chunkCount, chunkHash, drawTileWorks, minimapColor, paintChunk } from './terrain';
+import { CHUNK, TILE_PX, chunkCount, chunkHash, drawTileWorks, minimapColor, minimapPixels, paintChunk } from './terrain';
 
 const TILE = TILE_PX;
 
@@ -36,6 +36,7 @@ export class MapView {
   private shroud: HTMLCanvasElement | null = null;
   private remembered: HTMLCanvasElement | null = null;
   private layerRevision = -1;
+  private builtFor = { width: 0, height: 0 };
 
   constructor(
     private canvas: HTMLCanvasElement,
@@ -203,13 +204,21 @@ export class MapView {
   }
 
   private syncLayers(game: Game) {
-    if (this.layerRevision === game.revision && this.world && this.shroud && this.shade) return;
+    const width = game.state.width;
+    const height = game.state.height;
+    const sizeChanged = this.builtFor.width !== width || this.builtFor.height !== height;
+    if (!sizeChanged && this.layerRevision === game.revision && this.world && this.shroud && this.shade) return;
     this.layerRevision = game.revision;
-    const { cols, rows } = chunkCount(game.state.width, game.state.height);
+    if (sizeChanged) {
+      this.chunks = [];
+      this.builtFor = { width, height };
+    }
+    const { cols, rows } = chunkCount(width, height);
     const needed = cols * rows;
     while (this.chunks.length < needed) {
       this.chunks.push({ canvas: document.createElement('canvas'), hash: '' });
     }
+    this.chunks.length = needed;
     let changed = false;
     for (let cy = 0; cy < rows; cy++) {
       for (let cx = 0; cx < cols; cx++) {
@@ -565,8 +574,9 @@ export class MapView {
   }
 
   private drawMinimap(ctx: CanvasRenderingContext2D, game: Game, width: number, height: number) {
-    const mw = 168;
-    const mh = 112;
+    const panel = minimapPixels(game.state.width, game.state.height);
+    const mw = panel.width;
+    const mh = panel.height;
     const x0 = 12;
     const y0 = height - mh - 12;
     ctx.fillStyle = 'rgba(8,12,20,0.86)';

@@ -189,7 +189,7 @@ export const CONFIG = {
     nutrients: 1,
   },
 
-  autosaveEveryTurns: 10,
+  autosaveEveryTurns: 3,
   logLimit: 80,
   moveDiagonalCost: 1,
   roughMoveCost: 2,
@@ -317,3 +317,22 @@ export const CONFIG = {
 
 export type BiomeClass = keyof typeof CONFIG.terraform.biomeFee;
 export type TerraformProjectId = keyof typeof CONFIG.terraform.baseTurns;
+
+/**
+ * New-game map sizes. Medium is the original 60×40 continent and is the default.
+ * Continent count and start spacing grow with the map. Other rules stay in CONFIG.
+ */
+export const MAP_SIZES = {
+  small: { id: 'small' as const, label: 'Small', width: 42, height: 28, continents: 2, minStartDistance: 6 },
+  medium: { id: 'medium' as const, label: 'Medium', width: 60, height: 40, continents: 3, minStartDistance: 8 },
+  large: { id: 'large' as const, label: 'Large', width: 90, height: 60, continents: 4, minStartDistance: 12 },
+};
+
+export const MAP_SIZE_IDS = ['small', 'medium', 'large'] as const;
+
+export type MapSizeId = (typeof MAP_SIZE_IDS)[number];
+
+export function mapSpec(id: string | undefined) {
+  if (id === 'small' || id === 'medium' || id === 'large') return MAP_SIZES[id];
+  return MAP_SIZES.medium;
+}
