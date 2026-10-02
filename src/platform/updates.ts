@@ -20,8 +20,18 @@ export type UpdateCheckResult =
 export interface DownloadOffer {
   fileName: string;
   size: number;
-  destination: string;
+  version: string;
   sha256: boolean;
+}
+
+export interface UpdateState {
+  error: string | null;
+  pending: { version: string } | null;
+}
+
+export interface ApplyUpdateResult {
+  ok: boolean;
+  message?: string;
 }
 
 export interface DownloadProgress {
@@ -32,7 +42,7 @@ export interface DownloadProgress {
 
 export interface DownloadResult {
   ok: boolean;
-  file?: string;
+  version?: string;
   verifiedSha256?: boolean;
   message?: string;
 }
@@ -49,9 +59,15 @@ export interface PlatformClient {
   prepareDownload(): Promise<DownloadOffer | null>;
   cancelDownload(): Promise<void>;
   downloadUpdate(): Promise<DownloadResult>;
-  showInFolder(file: string): Promise<void>;
+  readUpdateState(): Promise<UpdateState>;
+  clearUpdateError(): Promise<void>;
+  clearPendingUpdate(): Promise<void>;
+  flushSettings(): Promise<void>;
+  applyUpdate(): Promise<ApplyUpdateResult>;
+  releaseQuit(): Promise<void>;
   skipVersion(version: string): Promise<void>;
   onDownloadProgress(callback: (progress: DownloadProgress) => void): () => void;
+  onQuitAndApply(callback: () => void): () => void;
   onFriendlyError(callback: (message: string) => void): () => void;
 }
 
@@ -97,11 +113,29 @@ class BrowserPlatform implements PlatformClient {
     return { ok: false, message: 'Downloads run in the desktop app.' };
   }
 
-  async showInFolder() {}
+  async readUpdateState(): Promise<UpdateState> {
+    return { error: null, pending: null };
+  }
+
+  async clearUpdateError() {}
+
+  async clearPendingUpdate() {}
+
+  async flushSettings() {}
+
+  async applyUpdate(): Promise<ApplyUpdateResult> {
+    return { ok: false, message: 'Updates restart from the desktop app.' };
+  }
+
+  async releaseQuit() {}
 
   async skipVersion() {}
 
   onDownloadProgress() {
+    return () => {};
+  }
+
+  onQuitAndApply() {
     return () => {};
   }
 
@@ -159,8 +193,28 @@ class DesktopPlatform implements PlatformClient {
     return this.bridge.downloadUpdate();
   }
 
-  async showInFolder(file: string) {
-    await this.bridge.showInFolder(file);
+  readUpdateState() {
+    return this.bridge.readUpdateState();
+  }
+
+  async clearUpdateError() {
+    await this.bridge.clearUpdateError();
+  }
+
+  async clearPendingUpdate() {
+    await this.bridge.clearPendingUpdate();
+  }
+
+  async flushSettings() {
+    await this.bridge.flushSettings();
+  }
+
+  applyUpdate() {
+    return this.bridge.applyUpdate();
+  }
+
+  async releaseQuit() {
+    await this.bridge.releaseQuit();
   }
 
   async skipVersion(version: string) {
@@ -169,6 +223,10 @@ class DesktopPlatform implements PlatformClient {
 
   onDownloadProgress(callback: (progress: DownloadProgress) => void) {
     return this.bridge.onDownloadProgress(callback);
+  }
+
+  onQuitAndApply(callback: () => void) {
+    return this.bridge.onQuitAndApply(callback);
   }
 
   onFriendlyError(callback: (message: string) => void) {

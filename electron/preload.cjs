@@ -18,12 +18,22 @@ contextBridge.exposeInMainWorld('proxima', {
   prepareDownload: () => ipcRenderer.invoke('updates:prepare'),
   cancelDownload: () => ipcRenderer.invoke('updates:cancel'),
   downloadUpdate: () => ipcRenderer.invoke('updates:download'),
-  showInFolder: (file) => ipcRenderer.invoke('updates:show', String(file ?? '')),
+  readUpdateState: () => ipcRenderer.invoke('updates:state'),
+  clearUpdateError: () => ipcRenderer.invoke('updates:clear-error'),
+  clearPendingUpdate: () => ipcRenderer.invoke('updates:clear-pending'),
+  flushSettings: () => ipcRenderer.invoke('settings:flush'),
+  applyUpdate: () => ipcRenderer.invoke('updates:apply'),
+  releaseQuit: () => ipcRenderer.invoke('updates:release-quit'),
   skipVersion: (version) => ipcRenderer.invoke('updates:skip', String(version ?? '')),
   onDownloadProgress: (callback) => {
     const listener = (_event, progress) => callback(progress);
     ipcRenderer.on('updates:progress', listener);
     return () => ipcRenderer.removeListener('updates:progress', listener);
+  },
+  onQuitAndApply: (callback) => {
+    const listener = () => callback();
+    ipcRenderer.on('updates:quit-and-apply', listener);
+    return () => ipcRenderer.removeListener('updates:quit-and-apply', listener);
   },
   onFriendlyError: (callback) => {
     const listener = (_event, message) => callback(String(message ?? ''));

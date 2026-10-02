@@ -10,11 +10,12 @@
 # the default per-user folder.
 #
 # Update PreviousRelease when a newer installer has actually been published.
-# Until then this job upgrades from v0.3.0, which is the uninstaller players have.
+# This job installs that build, starts it, and runs the apply-update helper
+# from this source tree against the CI installer (a higher version).
 $ErrorActionPreference = 'Stop'
 
-$PreviousRelease = 'v0.3.0'
-$PreviousAsset = 'Proxima-Setup-0.3.0.exe'
+$PreviousRelease = 'v0.4.0'
+$PreviousAsset = 'Proxima-Setup-0.4.0.exe'
 
 function Get-UninstallRoots {
   @(
@@ -219,16 +220,82 @@ Set-Content -LiteralPath (Join-Path $saveDir 'slot-1.json.bak') -Value '{"marker
 New-Item -Force -Path 'HKCU:\Software\Proxima' | Out-Null
 New-ItemProperty -Path 'HKCU:\Software\Proxima' -Name UpgradeMarker -Value 'keep' -PropertyType String -Force | Out-Null
 
-Write-Host "Upgrading in place with $($newSetup.Name)"
-$upgrade = Start-Process -FilePath $newSetup.FullName -ArgumentList '/S' -Wait -PassThru
-Write-Host "Upgrade installer exit code: $($upgrade.ExitCode)"
-if ($upgrade.ExitCode -ne 0) { throw "Upgrade installer failed with exit code $($upgrade.ExitCode)" }
+$updates = Join-Path $env:TEMP 'Proxima\updates'
+if (Test-Path -LiteralPath (Join-Path $env:TEMP 'Proxima')) {
+  Remove-Item -LiteralPath (Join-Path $env:TEMP 'Proxima') -Recurse -Force
+}
+New-Item -ItemType Directory -Force -Path $updates | Out-Null
+$staged = Join-Path $updates $newSetup.Name
+Copy-Item -LiteralPath $newSetup.FullName -Destination $staged
+$helper = Join-Path $updates 'apply-update.ps1'
+$errorFile = Join-Path $appData 'update-error.json'
+$pendingFile = Join-Path $appData 'pending-update.json'
+if (Test-Path -LiteralPath $errorFile) { Remove-Item -LiteralPath $errorFile -Force }
+@{
+  confirmed = $true
+  applyOnQuit = $true
+  version = $expectedVersion
+  file = $staged
+  mode = 'installed'
+} | ConvertTo-Json | Set-Content -LiteralPath $pendingFile -Encoding utf8
 
-Wait-InstallerSettled {
+Write-Host "Starting installed $PreviousRelease so the helper must wait for that process to exit"
+$running = Start-Process -FilePath $exePath -PassThru
+$seen = $false
+$startDeadline = (Get-Date).AddSeconds(40)
+while ((Get-Date) -lt $startDeadline) {
+  if (Get-Process -Id $running.Id -ErrorAction SilentlyContinue) { $seen = $true; break }
+  Start-Sleep -Seconds 1
+}
+if (-not $seen) { throw "Published $PreviousRelease did not stay running (pid $($running.Id))" }
+Write-Host "Published build is running as pid $($running.Id)"
+
+$applyScript = Join-Path $PSScriptRoot '..\..\scripts\apply-update.cjs'
+Write-Host "Spawning apply-update helper for $($newSetup.Name)"
+& node $applyScript `
+  --spawn `
+  --pid "$($running.Id)" `
+  --mode installed `
+  --version $expectedVersion `
+  --installer $staged `
+  --target-exe $exePath `
+  --error-file $errorFile `
+  --pending-file $pendingFile `
+  --helper $helper
+if ($LASTEXITCODE -ne 0) { throw 'Could not spawn the apply-update helper' }
+if (-not (Test-Path -LiteralPath $helper)) { throw 'The apply-update helper script was not written' }
+
+Start-Sleep -Seconds 3
+Write-Host "Closing pid $($running.Id) so the helper can install"
+$oldIds = @(Get-Process -Name 'Proxima' -ErrorAction SilentlyContinue | Select-Object -ExpandProperty Id)
+foreach ($id in $oldIds) {
+  Stop-Process -Id $id -Force -ErrorAction SilentlyContinue
+}
+
+$deadline = (Get-Date).AddSeconds(240)
+$restarted = $false
+do {
   $entries = @(Get-UninstallEntries)
-  if ($entries.Count -ne 1) { return $false }
-  $props = Get-ItemProperty -LiteralPath $entries[0].PSPath
-  return $props.DisplayVersion -eq $expectedVersion
+  $versionOk = $false
+  if ($entries.Count -eq 1) {
+    $props = Get-ItemProperty -LiteralPath $entries[0].PSPath
+    $versionOk = $props.DisplayVersion -eq $expectedVersion
+  }
+  $proc = @(Get-Process -Name 'Proxima' -ErrorAction SilentlyContinue)
+  $helperGone = -not (Test-Path -LiteralPath $helper)
+  $installerGone = -not (Test-Path -LiteralPath $staged)
+  if ($versionOk -and $proc.Count -ge 1 -and $helperGone -and $installerGone) {
+    $restarted = $true
+    break
+  }
+  Start-Sleep -Seconds 2
+} while ((Get-Date) -lt $deadline)
+if (-not $restarted) {
+  Write-Host "helper exists: $(Test-Path -LiteralPath $helper)"
+  Write-Host "installer exists: $(Test-Path -LiteralPath $staged)"
+  if (Test-Path -LiteralPath $errorFile) { Write-Host "update error: $(Get-Content -LiteralPath $errorFile -Raw)" }
+  Write-UninstallDiagnostics (Get-UninstallEntries)
+  throw 'Timed out waiting for the apply-update helper to restart into the new version'
 }
 
 $afterEntries = @(Get-UninstallEntries)
@@ -273,6 +340,18 @@ $marker = (Get-ItemProperty -Path 'HKCU:\Software\Proxima' -ErrorAction Silently
 if ($marker -ne 'keep') { $failures += "HKCU\Software\Proxima marker is '$marker'" }
 $desktop = Join-Path ([Environment]::GetFolderPath('Desktop')) 'Proxima.lnk'
 if (-not (Test-Path -LiteralPath $desktop)) { $failures += 'Desktop shortcut is missing after upgrade' }
+$runningNow = @(Get-Process -Name 'Proxima' -ErrorAction SilentlyContinue)
+if ($runningNow.Count -lt 1) { $failures += 'The new Proxima process is not running' }
+if (Test-Path -LiteralPath $helper) { $failures += "Helper script was left behind: $helper" }
+if (Test-Path -LiteralPath $staged) { $failures += "Temp installer was left behind: $staged" }
+if (Test-Path -LiteralPath $pendingFile) { $failures += 'pending-update.json was left behind' }
+if (Test-Path -LiteralPath $errorFile) {
+  $failures += "Update error file was written: $(Get-Content -LiteralPath $errorFile -Raw)"
+}
+$tempLeft = @(Get-ChildItem -LiteralPath (Join-Path $env:TEMP 'Proxima') -Recurse -Force -ErrorAction SilentlyContinue)
+if ($tempLeft.Count -gt 0) {
+  $failures += "Temp update files remain: $($tempLeft.FullName -join ', ')"
+}
 
 if ($failures) {
   Write-Host '::error::In-place upgrade did not keep the existing install'
@@ -280,4 +359,4 @@ if ($failures) {
   exit 1
 }
 
-Write-Host "In-place upgrade replaced $($before.DisplayVersion) with $expectedVersion in $installDir and kept the save, settings, and registry marker."
+Write-Host "Apply-update helper replaced $($before.DisplayVersion) with $expectedVersion in $installDir, restarted Proxima, and kept the save, settings, and registry marker."

@@ -16,8 +16,18 @@ interface UpdateCheckResult {
 interface DownloadOffer {
   fileName: string;
   size: number;
-  destination: string;
+  version: string;
   sha256: boolean;
+}
+
+interface UpdateState {
+  error: string | null;
+  pending: { version: string } | null;
+}
+
+interface ApplyUpdateResult {
+  ok: boolean;
+  message?: string;
 }
 
 interface DownloadProgress {
@@ -28,7 +38,7 @@ interface DownloadProgress {
 
 interface DownloadResult {
   ok: boolean;
-  file?: string;
+  version?: string;
   verifiedSha256?: boolean;
   message?: string;
 }
@@ -63,9 +73,15 @@ interface ProximaBridge {
   prepareDownload(): Promise<DownloadOffer | null>;
   cancelDownload(): Promise<void>;
   downloadUpdate(): Promise<DownloadResult>;
-  showInFolder(file: string): Promise<boolean>;
+  readUpdateState(): Promise<UpdateState>;
+  clearUpdateError(): Promise<void>;
+  clearPendingUpdate(): Promise<void>;
+  flushSettings(): Promise<void>;
+  applyUpdate(): Promise<ApplyUpdateResult>;
+  releaseQuit(): Promise<void>;
   skipVersion(version: string): Promise<void>;
   onDownloadProgress(callback: (progress: DownloadProgress) => void): () => void;
+  onQuitAndApply(callback: () => void): () => void;
   onFriendlyError(callback: (message: string) => void): () => void;
 }
 
@@ -86,6 +102,7 @@ interface ProximaDebug {
   tilePoint(x: number, y: number): { x: number; y: number } | null;
   showUpdateBanner(): void;
   showDownloadConsent(): void;
+  showUpdateReady(): void;
   showSaveError(): void;
 }
 

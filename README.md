@@ -1,19 +1,19 @@
 # Proxima
 
-Proxima is a single-player, turn-based game about six factions stranded on a tidally locked world. You play one faction. The others are played by the computer. This is version 0.3.0: a Windows desktop app, with a browser view used for development and tests.
+Proxima is a single-player, turn-based game about six factions stranded on a tidally locked world. You play one faction. The others are played by the computer. This is version 0.4.0: a Windows desktop app, with a browser view used for development and tests.
 
 ## Download the Windows app
 
-The executable is built by GitHub Actions on `windows-latest`. It is not signed. Version 0.3.0 is the number in `package.json`. The game reads that number. It is not copied into `src/config.ts`.
+The executable is built by GitHub Actions on `windows-latest`. It is not signed. Version 0.4.0 is the number in `package.json`. The game reads that number. It is not copied into `src/config.ts`.
 
 Pushes and pull requests build the app, run the tests, run the install/uninstall check, and upload the `.exe` files as workflow artifacts. They do not publish a release.
 
 1. Open the pull request or the Actions run.
 2. Open the **Windows build** workflow.
 3. Download the **proxima-windows** artifact.
-4. Unzip it. You get `Proxima-Setup-0.3.0.exe` (installer) and `Proxima-Portable-0.3.0.exe` (no install).
+4. Unzip it. You get `Proxima-Setup-0.4.0.exe` (installer) and `Proxima-Portable-0.4.0.exe` (no install).
 
-A GitHub Release is created only when a tag named `vX.Y.Z` is pushed, and only when that tag matches `package.json`. For this version the tag is `v0.3.0`. The workflow writes a new release and its notes, then attaches the executables from the build that passed the install/uninstall check. If that release already exists, the job fails and leaves it alone. Nothing is uploaded with `--clobber`. A newer setup upgrades an existing install in place and keeps saves.
+A GitHub Release is created only when a tag named `vX.Y.Z` is pushed, and only when that tag matches `package.json`. For this version the tag is `v0.4.0`. The workflow writes a new release and its notes, then attaches the executables from the build that passed the install/uninstall check. If that release already exists, the job fails and leaves it alone. Nothing is uploaded with `--clobber`. A newer setup upgrades an existing install in place and keeps saves.
 
 The older test release is still here and is not replaced by this process:
 
@@ -30,9 +30,19 @@ That warning is expected. The app does not need a network connection. Saves are 
 
 ## Updates
 
-Checking for a newer version is off until you turn it on. The first time the desktop app starts, it asks once. After that, the switch is on the start menu and in the pause menu. When it is on, Proxima asks GitHub each time the game starts. It does not wait a day between checks. Offline failures and other errors are not shown. If GitHub says the rate limit is used up, Proxima waits until the reset time and then tries again on a later launch.
+Checking for a newer version is off until you turn it on. The first time the desktop app starts, it asks once. After that, the switch is on the start menu and in the pause menu. When it is on, Proxima asks GitHub once each time the game starts. It does not check again during that session, and it does not download anything in the background. Offline failures and other errors are not shown. If GitHub says the rate limit is used up, Proxima waits until the reset time and then tries again on a later launch.
 
-A newer stable version shows a banner on the start menu and during a game. It includes the release notes as text, a link to the release page, a download button, Skip this version, and a dismiss button for the rest of that session. The link only opens addresses under `https://github.com/jasonvgriffin/proxima/releases/`. Download asks you to confirm the file name, size, and folder first. The installer is saved to Downloads, or the portable `.exe` when Proxima itself is the portable build. Progress is shown, and the size is checked. The sha256 digest is checked when the release provides one. Proxima can show the file in its folder. It does not run or install it.
+A newer stable version shows a banner on the start menu and during a game. The banner is only a notice. It includes the release notes as text, a link to the release page, a download button, Skip this version, and a dismiss button for the rest of that session. The link only opens addresses under `https://github.com/jasonvgriffin/proxima/releases/`. Nothing is downloaded until you press the button and confirm.
+
+That confirm step names the version. It says Proxima will download it, save your game, then close and restart to finish the update. The file is the setup program when Proxima was installed, or the portable `.exe` when Proxima itself is the portable build. It is saved in a temporary updates folder, not in Downloads. Progress is shown. The size is checked, and the sha256 digest is checked when the release provides one.
+
+When the file checks out, Proxima says it is ready: **Ready to update — Proxima will save, close and restart into vX.Y.Z.** Restart now saves the current game, writes settings, and closes. Later leaves the game open. The update stays offered, and it runs the next time you quit. It does not run if you never confirmed the download.
+
+A small helper, started before Proxima closes, waits until this process has exited, then retries if Windows still has the program file open. For an installed copy it runs the setup silently in place (`/S`, same per-user folder). That is the same upgrade the installer already uses, so saves, settings, and the registry marker stay. The silent setup does not start the app by itself (`--force-run` would, and would also pass `--updated` into the new process). The helper starts `Proxima.exe` after the setup exits with code 0, then deletes the temporary setup and itself. If the setup exits with an error, the helper starts the previous `Proxima.exe` again, and the next launch explains that the update did not finish.
+
+For a portable copy, the helper replaces the `.exe` you launched, keeps a `.old` copy until the new file is running, then deletes the backup. A failed replace puts the old file back.
+
+A real uninstall still removes the install folder, saves, settings, shortcuts, registry keys, and `%TEMP%\Proxima`. The helper does not add a registry key.
 
 ## Run it from source
 
