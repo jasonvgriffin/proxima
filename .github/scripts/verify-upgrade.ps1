@@ -156,6 +156,44 @@ function Test-VersionNewer {
   return [string]::Compare($next.Pre, $prev.Pre, [StringComparison]::Ordinal) -gt 0
 }
 
+function Read-SharedText {
+  param([string]$Path)
+  if (-not (Test-Path -LiteralPath $Path)) { return $null }
+  try {
+    $stream = [System.IO.File]::Open($Path, 'Open', 'Read', 'ReadWrite')
+    $reader = New-Object System.IO.StreamReader($stream)
+    try { return $reader.ReadToEnd() } finally { $reader.Dispose(); $stream.Dispose() }
+  } catch {
+    return $null
+  }
+}
+
+function Write-UpdateDiagnostics {
+  param([string]$UpdatesDir)
+  foreach ($name in @('apply-update.log', 'apply-update.out')) {
+    $file = Join-Path $UpdatesDir $name
+    Write-Host "----- $name -----"
+    $text = Read-SharedText $file
+    if ($null -eq $text) {
+      if (Test-Path -LiteralPath $file) { Write-Host "$name exists but could not be read" }
+      else { Write-Host "$name was not written" }
+    } else {
+      Write-Host $text
+    }
+    Write-Host "----- end $name -----"
+  }
+  Write-Host 'updates directory:'
+  if (Test-Path -LiteralPath $UpdatesDir) {
+    Get-ChildItem -LiteralPath $UpdatesDir -Force | ForEach-Object { Write-Host ("  {0} {1}" -f $_.Length, $_.Name) }
+  } else {
+    Write-Host '  (missing)'
+  }
+  Write-Host 'processes:'
+  Get-Process -ErrorAction SilentlyContinue |
+    Where-Object { $_.ProcessName -match 'Proxima|powershell|pwsh|cmd|conhost|wscript' } |
+    ForEach-Object { Write-Host ("  pid {0} {1}" -f $_.Id, $_.ProcessName) }
+}
+
 function Wait-InstallerSettled {
   param([scriptblock]$Ready)
   $deadline = (Get-Date).AddSeconds(180)
@@ -272,9 +310,18 @@ foreach ($id in $oldIds) {
   Stop-Process -Id $id -Force -ErrorAction SilentlyContinue
 }
 
+$updateLog = Join-Path $updates 'apply-update.log'
+$updateOut = Join-Path $updates 'apply-update.out'
+$launcher = Join-Path $updates 'apply-update.cmd'
+$loggedChars = 0
 $deadline = (Get-Date).AddSeconds(240)
 $restarted = $false
 do {
+  $chunk = Read-SharedText $updateLog
+  if ($chunk -and $chunk.Length -gt $loggedChars) {
+    Write-Host $chunk.Substring($loggedChars)
+    $loggedChars = $chunk.Length
+  }
   $entries = @(Get-UninstallEntries)
   $versionOk = $false
   if ($entries.Count -eq 1) {
@@ -284,7 +331,10 @@ do {
   $proc = @(Get-Process -Name 'Proxima' -ErrorAction SilentlyContinue)
   $helperGone = -not (Test-Path -LiteralPath $helper)
   $installerGone = -not (Test-Path -LiteralPath $staged)
-  if ($versionOk -and $proc.Count -ge 1 -and $helperGone -and $installerGone) {
+  $logGone = -not (Test-Path -LiteralPath $updateLog)
+  $outGone = -not (Test-Path -LiteralPath $updateOut)
+  $launcherGone = -not (Test-Path -LiteralPath $launcher)
+  if ($versionOk -and $proc.Count -ge 1 -and $helperGone -and $installerGone -and $logGone -and $outGone -and $launcherGone) {
     $restarted = $true
     break
   }
@@ -293,7 +343,9 @@ do {
 if (-not $restarted) {
   Write-Host "helper exists: $(Test-Path -LiteralPath $helper)"
   Write-Host "installer exists: $(Test-Path -LiteralPath $staged)"
+  Write-Host "launcher exists: $(Test-Path -LiteralPath $launcher)"
   if (Test-Path -LiteralPath $errorFile) { Write-Host "update error: $(Get-Content -LiteralPath $errorFile -Raw)" }
+  Write-UpdateDiagnostics $updates
   Write-UninstallDiagnostics (Get-UninstallEntries)
   throw 'Timed out waiting for the apply-update helper to restart into the new version'
 }
@@ -356,6 +408,7 @@ if ($tempLeft.Count -gt 0) {
 if ($failures) {
   Write-Host '::error::In-place upgrade did not keep the existing install'
   $failures | ForEach-Object { Write-Host "  $_" }
+  Write-UpdateDiagnostics $updates
   exit 1
 }
 

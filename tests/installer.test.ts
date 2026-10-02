@@ -35,6 +35,8 @@ describe('in-place upgrade', () => {
     expect(script).toContain('Proxima-Setup-0.4.0.exe');
     expect(script).toContain('scripts\\apply-update.cjs');
     expect(script).toContain('--spawn');
+    expect(script).toContain('apply-update.log');
+    expect(script).toContain('was not written');
     expect(script).toContain('slot-1.json');
     expect(script).toContain('UpgradeMarker');
     expect(script).toContain('HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall');

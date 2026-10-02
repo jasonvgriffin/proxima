@@ -140,9 +140,12 @@ function buildApplyHelper(plan) {
     '# previous uninstaller on its own, which keeps the isUpdated guards',
     '# around saves, settings, and HKCU\\Software\\Proxima.',
     "$ErrorActionPreference = 'Stop'",
-    "$plan = @'",
-    json,
-    "'@ | ConvertFrom-Json",
+    'function Write-UpdateLog([string]$Message) {',
+    '  $dir = Split-Path -Parent $PSCommandPath',
+    "  $log = Join-Path $dir 'apply-update.log'",
+    "  $line = (Get-Date).ToString('o') + ' ' + $Message + [Environment]::NewLine",
+    '  [System.IO.File]::AppendAllText($log, $line)',
+    '}',
     '',
     'function Write-UpdateError([string]$Message) {',
     '  $dir = Split-Path -Parent $plan.errorFile',
@@ -162,6 +165,7 @@ function buildApplyHelper(plan) {
     '  if ($Committed) {',
     '    Remove-PlanFile $plan.installerPath',
     '    Remove-PlanFile $plan.pendingFile',
+    "    Remove-PlanFile (Join-Path (Split-Path -Parent $PSCommandPath) 'apply-update.log')",
     '  }',
     '  $folder = Split-Path -Parent $PSCommandPath',
     '  Remove-PlanFile $PSCommandPath',
@@ -178,11 +182,23 @@ function buildApplyHelper(plan) {
     '  }',
     '}',
     '',
+    'function Test-PidAlive([int]$ProcessId) {',
+    '  try {',
+    '    return $null -ne (Get-Process -Id $ProcessId -ErrorAction Stop)',
+    '  } catch {',
+    '    return $false',
+    '  }',
+    '}',
+    '',
     'function Wait-PidExit([int]$ProcessId, [int]$TimeoutSec) {',
     '  $deadline = (Get-Date).AddSeconds($TimeoutSec)',
+    '  $nextLog = Get-Date',
     '  while ((Get-Date) -lt $deadline) {',
-    '    $alive = Get-Process -Id $ProcessId -ErrorAction SilentlyContinue',
-    '    if (-not $alive) { return $true }',
+    '    if (-not (Test-PidAlive $ProcessId)) { return $true }',
+    '    if ((Get-Date) -ge $nextLog) {',
+    '      Write-UpdateLog "waiting for pid $ProcessId"',
+    '      $nextLog = (Get-Date).AddSeconds(10)',
+    '    }',
     '    Start-Sleep -Milliseconds 400',
     '  }',
     '  return $false',
@@ -210,7 +226,11 @@ function buildApplyHelper(plan) {
     '',
     'function Test-ExeRunning([string]$Exe) {',
     '  $name = [System.IO.Path]::GetFileNameWithoutExtension($Exe)',
-    '  $procs = @(Get-Process -Name $name -ErrorAction SilentlyContinue)',
+    '  try {',
+    '    $procs = @(Get-Process -Name $name -ErrorAction Stop)',
+    '  } catch {',
+    '    return $false',
+    '  }',
     '  if ($procs.Count -eq 0) { return $false }',
     '  foreach ($proc in $procs) {',
     '    try {',
@@ -247,7 +267,21 @@ function buildApplyHelper(plan) {
     '  }',
     '}',
     '',
+    'trap {',
+    '  Write-UpdateLog ("terminated: " + $_.Exception.Message)',
+    '  try { Write-UpdateError ([string]$_.Exception.Message) } catch {',
+    '    Write-UpdateLog ("could not write update error: " + $_.Exception.Message)',
+    '  }',
+    '  exit 1',
+    '}',
+    "Write-UpdateLog 'helper-start'",
+    "$plan = @'",
+    json,
+    "'@ | ConvertFrom-Json",
+    'Write-UpdateLog "loaded plan pid=$($plan.pid) mode=$($plan.mode) version=$($plan.version)"',
+    '',
     'if (-not (Wait-PidExit ([int]$plan.pid) 180)) {',
+    '  Write-UpdateLog "pid $($plan.pid) did not exit"',
     '  Write-UpdateError "Proxima did not close, so the update to $($plan.version) did not start."',
     '  try { Start-Target $plan.targetExe } catch {}',
     '  Clear-Helper $false',
@@ -255,15 +289,19 @@ function buildApplyHelper(plan) {
     '}',
     '',
     '# The single-instance lock and the exe handle drop after the process is gone.',
+    'Write-UpdateLog "pid $($plan.pid) has exited"',
     'Start-Sleep -Seconds 1',
     'if (-not (Wait-FileUnlocked $plan.targetExe 60)) {',
+    '  Write-UpdateLog "target stayed locked: $($plan.targetExe)"',
     '  Write-UpdateError "The app file stayed in use, so the update to $($plan.version) did not start."',
     '  try { Start-Target $plan.targetExe } catch {}',
     '  Clear-Helper $false',
     '  exit 1',
     '}',
     '',
+    'Write-UpdateLog "target unlocked"',
     'if ($plan.mode -eq \'portable\') {',
+    '  Write-UpdateLog "portable-start"',
     '  $backup = "$($plan.targetExe).old"',
     '  $staged = "$($plan.targetExe).new"',
     '  try {',
@@ -298,8 +336,10 @@ function buildApplyHelper(plan) {
     '$exitCode = 1',
     'for ($attempt = 1; $attempt -le 3; $attempt++) {',
     '  if (-not (Wait-FileUnlocked $plan.targetExe 20)) { Start-Sleep -Seconds 1 }',
+    '  Write-UpdateLog "installer-start attempt=$attempt $($plan.installerPath)"',
     "  $proc = Start-Process -FilePath $plan.installerPath -ArgumentList '/S','/currentuser' -Wait -PassThru",
     '  $exitCode = $proc.ExitCode',
+    '  Write-UpdateLog "installer-exit attempt=$attempt code=$exitCode"',
     '  if ($exitCode -eq 0) { break }',
     '  Start-Sleep -Seconds 2',
     '}',
@@ -335,21 +375,55 @@ function writeHelper(plan) {
   return plan.helperPath;
 }
 
+function systemExe(name) {
+  const root = process.env.SystemRoot || process.env.SYSTEMROOT;
+  if (!root) return name;
+  return path.join(root, 'System32', name);
+}
+
+function updateLogPath(helperPath) {
+  return path.join(path.dirname(helperPath), 'apply-update.log');
+}
+
+function powershellPath() {
+  const root = process.env.SystemRoot || process.env.SYSTEMROOT;
+  if (!root) return 'powershell.exe';
+  return path.join(root, 'System32', 'WindowsPowerShell', 'v1.0', 'powershell.exe');
+}
+
+function appendUpdateLog(logPath, message) {
+  fs.mkdirSync(path.dirname(logPath), { recursive: true });
+  fs.appendFileSync(logPath, `${new Date().toISOString()} ${message}\r\n`);
+}
+
 function helperCommand(scriptPath) {
   return {
-    file: 'powershell.exe',
-    args: ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-WindowStyle', 'Hidden', '-File', scriptPath],
+    file: systemExe('conhost.exe'),
+    args: ['--headless', powershellPath(), '-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', scriptPath],
   };
 }
 
 function spawnHelper(scriptPath, spawnImpl = spawn) {
+  if (typeof scriptPath !== 'string' || scriptPath.includes('"')) {
+    throw new Error('Helper path cannot contain a quote.');
+  }
+  const logPath = updateLogPath(scriptPath);
+  fs.mkdirSync(path.dirname(scriptPath), { recursive: true });
+  appendUpdateLog(logPath, `node spawning helper for ${scriptPath}`);
   const command = helperCommand(scriptPath);
-  const child = spawnImpl(command.file, command.args, {
-    detached: true,
-    stdio: 'ignore',
-    windowsHide: true,
-  });
+  let child;
+  try {
+    child = spawnImpl(command.file, command.args, {
+      detached: true,
+      stdio: 'ignore',
+      windowsHide: true,
+    });
+  } catch (error) {
+    appendUpdateLog(logPath, `node spawn failed: ${error instanceof Error ? error.message : String(error)}`);
+    throw error;
+  }
   if (child && typeof child.unref === 'function') child.unref();
+  appendUpdateLog(logPath, `node spawned pid ${child && child.pid ? child.pid : 'unknown'}`);
   return child;
 }
 
@@ -372,6 +446,7 @@ module.exports = {
   normalizePlan,
   buildApplyHelper,
   writeHelper,
+  updateLogPath,
   helperCommand,
   spawnHelper,
   canApplyUpdate,

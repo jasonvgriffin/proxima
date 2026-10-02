@@ -14,6 +14,7 @@ const {
   readPendingUpdate,
   sanitizePending,
   spawnHelper,
+  updateLogPath,
   writeHelper,
   writePendingUpdate,
 } = require('../shared/applyUpdate.cjs') as {
@@ -23,7 +24,8 @@ const {
   fileMatches: (file: string, size: number, sha256: string) => boolean;
   readPendingUpdate: (dir: string) => { confirmed: boolean; version: string; applyOnQuit: boolean } | null;
   sanitizePending: (value: unknown) => { confirmed: boolean } | null;
-  spawnHelper: (script: string, spawnImpl: (file: string, args: string[], opts: { detached?: boolean; stdio?: string }) => { unref?: () => void }) => void;
+  spawnHelper: (script: string, spawnImpl: (file: string, args: string[], opts: { detached?: boolean; stdio?: string }) => { unref?: () => void; pid?: number }) => void;
+  updateLogPath: (script: string) => string;
   writeHelper: (plan: Record<string, unknown>) => string;
   writePendingUpdate: (dir: string, record: Record<string, unknown>) => { version: string };
 };
@@ -50,6 +52,11 @@ describe('apply-update helper', () => {
   it('waits for the process, installs silently in place, and relaunches', () => {
     const script = buildApplyHelper(plan('installed'));
     expect(script).toContain('Wait-PidExit');
+    expect(script).toContain('Test-PidAlive');
+    expect(script).toContain('helper-start');
+    expect(script).toContain('installer-start');
+    expect(script).toContain('apply-update.log');
+    expect(script).toContain('terminated:');
     expect(script).toContain('Wait-FileUnlocked');
     expect(script).toContain('Move-WithRetry');
     expect(script).toContain('single-instance lock');
@@ -93,7 +100,7 @@ describe('apply-update helper', () => {
     expect(() => buildApplyHelper({ ...plan('installed'), installerPath: 'Proxima-Setup-0.4.1.exe' })).toThrow(/absolute/);
   });
 
-  it('writes a UTF-8 helper and spawns PowerShell detached', () => {
+  it('writes a UTF-8 helper and starts it under a headless console', () => {
     const next = plan('installed');
     const file = writeHelper(next);
     const bytes = readFileSync(file);
@@ -104,14 +111,20 @@ describe('apply-update helper', () => {
     const calls: { file: string; args: string[]; opts: { detached?: boolean; stdio?: string } }[] = [];
     spawnHelper(file, (command, args, opts) => {
       calls.push({ file: command, args, opts });
-      return { unref() {} };
+      return { pid: 77, unref() {} };
     });
-    expect(calls[0].file).toBe('powershell.exe');
+    expect(calls[0].file.replace(/\\/g, '/')).toMatch(/conhost\.exe$/);
+    expect(calls[0].args[0]).toBe('--headless');
+    expect(calls[0].args.some((arg) => arg.replace(/\\/g, '/').endsWith('powershell.exe'))).toBe(true);
+    expect(calls[0].args).toContain('-NonInteractive');
     expect(calls[0].args).toContain('Bypass');
     expect(calls[0].args).toContain('-File');
     expect(calls[0].args.at(-1)).toBe(file);
     expect(calls[0].opts.detached).toBe(true);
     expect(calls[0].opts.stdio).toBe('ignore');
+    const log = readFileSync(updateLogPath(file), 'utf8');
+    expect(log).toContain('node spawning helper');
+    expect(log).toContain('node spawned pid 77');
   });
 });
 
