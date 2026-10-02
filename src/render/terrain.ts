@@ -11,6 +11,13 @@ export function chunkCount(width: number, height: number): { cols: number; rows:
   return { cols: Math.ceil(width / CHUNK), rows: Math.ceil(height / CHUNK) };
 }
 
+/** Minimap panel in pixels. The long edge stays put; the short edge follows the map. */
+export function minimapPixels(mapWidth: number, mapHeight: number, maxWidth = 168): { width: number; height: number } {
+  const width = maxWidth;
+  const height = Math.max(1, Math.round((maxWidth * mapHeight) / Math.max(1, mapWidth)));
+  return { width, height };
+}
+
 export function chunkHash(tiles: Tile[], width: number, height: number, cx: number, cy: number): string {
   const x0 = cx * CHUNK;
   const y0 = cy * CHUNK;

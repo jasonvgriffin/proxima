@@ -24,7 +24,8 @@ describe('save migration', () => {
   it('loads a 0.1.0 version 1 save as the current schema', () => {
     const migrated = migrateSave(v1Envelope());
     expect(migrated.version).toBe(SAVE_VERSION);
-    expect(migrated.version).toBe(5);
+    expect(migrated.version).toBe(6);
+    expect(migrated.state.mapSize).toBe('medium');
     expect(migrated.gameVersion).toBe(1);
     expect(migrated.state.autosaveEnabled).toBe(true);
     expect(migrated.state.version).toBe(1);
@@ -78,7 +79,8 @@ describe('save migration', () => {
       const war = envelope.state.relations[0];
       war.stance = 'war';
       const migrated = migrateSave(envelope);
-      expect(migrated.version).toBe(5);
+      expect(migrated.version).toBe(6);
+      expect(migrated.state.mapSize).toBe('medium');
       expect(migrated.state.relations[0].contact).toBe(true);
       expect(migrated.state.relations.slice(1).every((rel) => rel.contact === false)).toBe(true);
     }
@@ -116,5 +118,24 @@ describe('save migration', () => {
     expect(tile.special).toBeNull();
     const restored = Game.fromState(migrated.state);
     expect(restored.tile(tile.x, tile.y).elevation).toBe(tile.elevation);
+  });
+
+  it('loads a save from before map sizes as medium and keeps a chosen size', () => {
+    const old = v1Envelope();
+    old.version = 5;
+    delete (old.state as { mapSize?: string }).mapSize;
+    const migrated = migrateSave(old);
+    expect(migrated.version).toBe(6);
+    expect(migrated.state.mapSize).toBe('medium');
+    expect(migrated.state.width).toBe(60);
+    expect(migrated.state.height).toBe(40);
+    const restored = Game.fromState(migrated.state);
+    expect(restored.state.mapSize).toBe('medium');
+
+    const small = Game.newGame({ seed: 4, player: 'helm', mapSize: 'small' });
+    const again = Game.fromState(small.serialize());
+    expect(again.state.mapSize).toBe('small');
+    expect(again.state.width).toBe(small.state.width);
+    expect(again.state.height).toBe(small.state.height);
   });
 });
