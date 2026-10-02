@@ -1,3 +1,7 @@
+import type { MapSizeId } from '../config';
+
+export type { MapSizeId };
+
 export const FACTION_IDS = [
   'helm',
   'verdantia',
@@ -357,6 +361,11 @@ export interface GameState {
   lastAiOrder: FactionId[];
   setup: GameSetup;
   autosaveEnabled: boolean;
+  /**
+   * Size chosen on the new-game screen. Saves written before map sizes omit this;
+   * loading treats them as medium, which is the original 60×40 map.
+   */
+  mapSize: MapSizeId;
   width: number;
   height: number;
   tiles: Tile[];
@@ -402,6 +411,7 @@ export interface SaveEnvelope {
    * Save-file schema. 1 is a Proxima 0.1.0 file. 2 is the first 0.2.0 file.
    * 3 adds per-tile terraform history. 4 drops the climate stripe.
    * 5 records which faction pairs have made contact.
+   * 6 records the map size. Older files load as medium.
    * Loaders run the migration chain up to the current schema.
    */
   version: number;

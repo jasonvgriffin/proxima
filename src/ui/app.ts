@@ -1,10 +1,11 @@
 import { preloadLeaderPortraits, watchLeaderPortraits } from '../art/portraits';
+import { requestRoundOrders } from '../ai/client';
 import { AudioBus } from '../audio/engine';
 import { playLoggedCues, playTerraformProgress, snapshotLog, snapshotTerraform } from '../audio/listen';
 import { normalizeDifficulty } from '../core/difficulty';
 import { defaultAxes, defaultPersonalities } from '../core/factions';
 import { Game } from '../core/game';
-import { type Difficulty, type FactionId, type Proposal, type SaveEnvelope, type SocialAxis, type Unit } from '../core/types';
+import { type Difficulty, type FactionId, type MapSizeId, type Proposal, type SaveEnvelope, type SocialAxis, type Unit } from '../core/types';
 import { createSaveStore, type SaveStore } from '../platform/saves';
 import { createPlatform, type PlatformClient, type UpdateNotice } from '../platform/updates';
 import { IntroPlayer, INTRO_SCENES } from '../render/intro';
@@ -15,7 +16,7 @@ import { handleAudioSettings } from './audioSettings';
 import { renderMenu as renderMenuScreen, renderIntro as renderIntroScreen, exitIntro as exitIntroScreen } from './screens/start';
 import { renderSetup as renderSetupScreen, renderProfile as renderProfileScreen, startGame as startGameScreen, customizePanel as customizePanelScreen, factionButton as factionButtonScreen } from './screens/newGame';
 import { renderOptions as renderOptionsScreen, openPause as openPauseScreen, openAudioPanel as openAudioPanelScreen, askSaveFirst as askSaveFirstScreen } from './screens/options';
-import { mountGame as mountGameScreen, refreshGame as refreshGameScreen, unitIcon as unitIconScreen, inspector as inspectorScreen, tilePanel as tilePanelScreen, openTile as openTileScreen, onTile as onTileScreen, openCombat as openCombatScreen, openTerraform as openTerraformScreen, adjacentFoe as adjacentFoeScreen, openVictory as openVictoryScreen, openDefeat as openDefeatScreen, openEvent as openEventScreen } from './screens/hud';
+import { mountGame as mountGameScreen, refreshGame as refreshGameScreen, showThinking as showThinkingScreen, unitIcon as unitIconScreen, inspector as inspectorScreen, tilePanel as tilePanelScreen, openTile as openTileScreen, onTile as onTileScreen, openCombat as openCombatScreen, openTerraform as openTerraformScreen, adjacentFoe as adjacentFoeScreen, openVictory as openVictoryScreen, openDefeat as openDefeatScreen, openEvent as openEventScreen } from './screens/hud';
 import { openDiplomacy as openDiplomacyScreen, openSpies as openSpiesScreen, openSocial as openSocialScreen, openTrade as openTradeScreen, sendTrade as sendTradeScreen } from './screens/diplomacy';
 import { pickTech as pickTechScreen, openTechTree as openTechTreeScreen, applyTreeCam as applyTreeCamScreen, fitTree as fitTreeScreen, onTreeHover as onTreeHoverScreen, onTreePointerDown as onTreePointerDownScreen, onTreePointerMove as onTreePointerMoveScreen, onTreePointerUp as onTreePointerUpScreen, onTreeWheel as onTreeWheelScreen, maybePromptResearch as maybePromptResearchScreen, openDesign as openDesignScreen, paintDesignPreview as paintDesignPreviewScreen, saveDesign as saveDesignScreen } from './screens/tech';
 import { openSave as openSaveScreen, openLoad as openLoadScreen, writeSlot as writeSlotScreen, readSlot as readSlotScreen, finishPending as finishPendingScreen, exitDesktop as exitDesktopScreen, envelope as envelopeScreen, runSave as runSaveScreen, showSaveError as showSaveErrorScreen, writeAutosave as writeAutosaveScreen, continueAutosave as continueAutosaveScreen } from './screens/load';
@@ -51,6 +52,7 @@ export class App {
   customizeOpen = false;
   diplomacyFocus: FactionId | null = null;
   pending: { mode: 'new' | 'exit' } | null = null;
+  thinking = false;
   treeCam = { x: 16, y: 12, zoom: 0.38 };
   treeSelected: string | null = null;
   treeNotice = '';
@@ -64,6 +66,7 @@ export class App {
     personalities: defaultPersonalities(),
     axes: defaultAxes('helm'),
     seed: 1 + Math.floor(Math.random() * 999983),
+    mapSize: 'medium' as MapSizeId,
   };
 
   constructor(root: HTMLElement) {
@@ -141,6 +144,7 @@ export class App {
   }
 
   async onClick(event: MouseEvent) {
+    if (this.thinking) return;
     const node = (event.target as HTMLElement).closest('[data-action]') as HTMLElement | null;
     if (!node) return;
     const action = node.dataset.action;
@@ -176,6 +180,10 @@ export class App {
     } else if (action === 'menu-audio') this.openAudioPanel();
     else if (action === 'quit') void this.exitDesktop();
     else if (action === 'difficulty') this.setup.difficulty = normalizeDifficulty(node.dataset.difficulty);
+    else if (action === 'map-size') {
+      const id = node.dataset.mapSize;
+      if (id === 'small' || id === 'medium' || id === 'large') this.setup.mapSize = id;
+    }
     else if (action === 'pick-faction') {
       this.setup.faction = node.dataset.faction as FactionId;
       this.setup.axes = defaultAxes(this.setup.faction);
@@ -329,7 +337,7 @@ export class App {
       this.screen = 'recap';
       this.render();
     }
-    if (action === 'difficulty') this.render();
+    if (action === 'difficulty' || action === 'map-size') this.render();
     this.afterActionRefresh(action);
   }
 
@@ -374,25 +382,34 @@ export class App {
 
   async endTurn() {
     const game = this.game;
-    if (!game) return;
+    if (!game || this.thinking) return;
     const player = game.state.factions[game.state.playerFaction];
     const researchBefore = { techs: [...player.techs], researching: player.researching };
     const logBefore = snapshotLog(game.state.log);
     const workBefore = snapshotTerraform(game.state.units, game.state.playerFaction);
-    const ended = game.endTurn();
-    this.audio.play('turn');
-    playTerraformProgress(this.audio, workBefore, snapshotTerraform(game.state.units, game.state.playerFaction));
-    playLoggedCues(this.audio, logBefore, game.state.log, game.state.playerFaction);
-    this.toast(ended.message);
-    this.refreshGame();
-    if (ended.autosave) {
-      // Let the new week paint before the save is serialized, so end turn does not hitch first.
-      await new Promise<void>((resolve) => {
-        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
-      });
-      await this.runSave(() => this.writeAutosave(), 'Autosave failed. Your game is still running.');
+    this.thinking = true;
+    this.showThinking(true);
+    try {
+      const ended = await game.endTurnWith((state, order) => requestRoundOrders(state, order));
+      this.showThinking(false);
+      this.audio.play('turn');
+      playTerraformProgress(this.audio, workBefore, snapshotTerraform(game.state.units, game.state.playerFaction));
+      playLoggedCues(this.audio, logBefore, game.state.log, game.state.playerFaction);
+      this.toast(ended.message);
+      this.refreshGame();
+      if (ended.autosave) {
+        // Let the new week paint before the save is serialized, so end turn does not hitch first.
+        // The worker result is already on the board, so the rotating autosave stores that week.
+        await new Promise<void>((resolve) => {
+          requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+        });
+        await this.runSave(() => this.writeAutosave(), 'Autosave failed. Your game is still running.');
+      }
+      this.maybePromptResearch(researchBefore);
+    } finally {
+      this.thinking = false;
+      this.showThinking(false);
     }
-    this.maybePromptResearch(researchBefore);
   }
 
   act(fn: () => { ok: boolean; message: string }, sound: 'click' | 'found' | 'terraform' | 'attack') {
@@ -406,6 +423,7 @@ export class App {
   }
 
   onKey(event: KeyboardEvent) {
+    if (this.thinking) return;
     if (event.key === 'Escape') {
       if (this.screen === 'game') {
         if (this.game?.state.winner || this.game?.state.playerDefeated) return;
@@ -514,6 +532,9 @@ export class App {
 
   mountGame() {
     return mountGameScreen.call(this);
+  }
+  showThinking(on: boolean) {
+    return showThinkingScreen.call(this, on);
   }
   refreshGame() {
     return refreshGameScreen.call(this);

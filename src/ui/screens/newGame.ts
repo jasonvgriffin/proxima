@@ -1,5 +1,5 @@
 import type { App } from '../app';
-import { CONFIG } from '../../config';
+import { CONFIG, MAP_SIZE_IDS, MAP_SIZES } from '../../config';
 import { LEADERS } from '../../art/leaders';
 import { difficultyLabel } from '../../core/difficulty';
 import { FACTIONS, defaultAxes, PERSONALITY_LEVELS } from '../../core/factions';
@@ -16,6 +16,15 @@ export function renderSetup(this: App) {
         <p class="eyebrow">New expedition</p>
         <h2>Choose a faction</h2>
         <p class="muted">Difficulty: ${esc(difficultyLabel(this.setup.difficulty))}. Seed ${this.setup.seed}.</p>
+        <div>
+          <p class="muted">Map size</p>
+          <div class="row" data-testid="map-size">
+            ${MAP_SIZE_IDS.map((id) => {
+              const spec = MAP_SIZES[id];
+              return `<button class="btn small ${this.setup.mapSize === id ? 'on' : ''}" data-action="map-size" data-map-size="${id}" data-testid="map-size-${id}">${esc(spec.label)} · ${spec.width}×${spec.height}</button>`;
+            }).join('')}
+          </div>
+        </div>
         <div class="stack" data-testid="faction-list">
           ${FACTION_IDS.map((id) => this.factionButton(id)).join('')}
         </div>
@@ -92,6 +101,7 @@ export function startGame(this: App) {
     personalities: this.setup.personalities,
     axes: this.setup.axes,
     autosaveEnabled: true,
+    mapSize: this.setup.mapSize,
   });
   this.selectedUnit = this.game.unitsOf(this.setup.faction).find((unit) => unit.canFound)?.id ?? null;
   this.selectedCity = null;

@@ -1,10 +1,11 @@
+import { mapSpec } from '../config';
 import { ensureContacts } from '../core/contact';
 import { climateFromTerrain } from '../core/geography';
 import type { FactionId, Relation, SaveEnvelope } from '../core/types';
 import { ensureTileRecords } from '../core/tilelog';
 
-/** Proxima save-file schema. 0.1.0 files are version 1. Version 3 adds tile history. Version 4 drops the climate stripe. Version 5 records contact. */
-export const SAVE_VERSION = 5;
+/** Proxima save-file schema. 0.1.0 files are version 1. Version 3 adds tile history. Version 4 drops the climate stripe. Version 5 records contact. Version 6 records map size. */
+export const SAVE_VERSION = 6;
 
 export class SaveValidationError extends Error {
   constructor(message: string) {
@@ -95,11 +96,24 @@ function migrateV4ToV5(raw: RawSave): RawSave {
   return { ...raw, version: 5, state };
 }
 
+/** Map size is new. Every older file was the 60×40 map, which is medium. */
+function migrateV5ToV6(raw: RawSave): RawSave {
+  const state = raw.state && typeof raw.state === 'object'
+    ? clone(raw.state as Record<string, unknown>)
+    : raw.state;
+  if (state && typeof state === 'object') {
+    const body = state as Record<string, unknown>;
+    body.mapSize = mapSpec(typeof body.mapSize === 'string' ? body.mapSize : undefined).id;
+  }
+  return { ...raw, version: 6, state };
+}
+
 const MIGRATIONS: Migration[] = [
   { from: 1, to: 2, run: migrateV1ToV2 },
   { from: 2, to: 3, run: migrateV2ToV3 },
   { from: 3, to: 4, run: migrateV3ToV4 },
   { from: 4, to: 5, run: migrateV4ToV5 },
+  { from: 5, to: 6, run: migrateV5ToV6 },
 ];
 
 function validateSave(raw: RawSave): SaveEnvelope {

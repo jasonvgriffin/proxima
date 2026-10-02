@@ -21,7 +21,10 @@ export function mountGame(this: App) {
       <div class="game" data-testid="game-screen">
         <header class="topbar" id="topbar"></header>
         <aside class="side" id="left"></aside>
-        <div id="map-wrap"><canvas id="map-canvas" data-testid="map-canvas"></canvas></div>
+        <div id="map-wrap">
+          <canvas id="map-canvas" data-testid="map-canvas"></canvas>
+          <p class="ai-thinking" data-testid="ai-thinking" hidden>Rivals are thinking…</p>
+        </div>
         <aside class="side right" id="right"></aside>
         <section class="log" id="log"></section>
       </div>`;
@@ -44,6 +47,14 @@ export function mountGame(this: App) {
     this.gameMounted = true;
   }
   this.refreshGame();
+}
+
+export function showThinking(this: App, on: boolean) {
+  this.stage.querySelector('.game')?.classList.toggle('is-thinking', on);
+  const note = this.stage.querySelector<HTMLElement>('[data-testid="ai-thinking"]');
+  if (note) note.hidden = !on;
+  const end = this.stage.querySelector<HTMLButtonElement>('[data-testid="end-turn"]');
+  if (end) end.disabled = on;
 }
 
 export function refreshGame(this: App) {
