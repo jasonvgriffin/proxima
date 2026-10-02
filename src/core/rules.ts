@@ -141,8 +141,15 @@ export function planRoundOrder(player: FactionId, others: readonly FactionId[], 
   return [player, ...shuffle(others, rnd)];
 }
 
+/** Autosave spacing is 2 or 3 turns. Any other config value snaps into that range. */
+export function autosaveIntervalTurns(requested = CONFIG.autosaveEveryTurns): number {
+  const value = Math.round(Number(requested));
+  if (!Number.isFinite(value) || value <= 2) return 2;
+  return 3;
+}
+
 export function shouldAutosave(playerTurnsCompleted: number, enabled: boolean): boolean {
-  return enabled && playerTurnsCompleted > 0 && playerTurnsCompleted % CONFIG.autosaveEveryTurns === 0;
+  return enabled && playerTurnsCompleted > 0 && playerTurnsCompleted % autosaveIntervalTurns() === 0;
 }
 
 export function peaceWindow(aggression: string, difficulty: string): number {

@@ -251,7 +251,7 @@ export const CONFIG = {
     nutrients: 1,
   },
 
-  autosaveEveryTurns: 10,
+  autosaveEveryTurns: 3,
   logLimit: 80,
   moveDiagonalCost: 1,
   roughMoveCost: 2,

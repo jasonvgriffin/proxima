@@ -38,6 +38,27 @@ describe('AI worker orders', () => {
     }
   });
 
+  it('autosaves the board after rival orders are applied', async () => {
+    const options = { seed: 11, player: 'helm' as const, mapSize: 'small' as const, autosaveEnabled: true, randomEvents: true };
+    const direct = Game.newGame(options);
+    const off = Game.newGame(options);
+    let autosaved: ReturnType<Game['serialize']> | null = null;
+    for (let turn = 1; turn <= 3; turn++) {
+      const before = off.snapshot();
+      const ended = await off.endTurnWith(async (state, order) => computeRoundOrders(state, order));
+      direct.endTurn();
+      expect(ended.autosave).toBe(turn === 3);
+      expect(off.serialize()).toEqual(direct.serialize());
+      if (ended.autosave) {
+        autosaved = off.serialize();
+        expect(autosaved.round).toBe(before.round + 1);
+        expect(autosaved.playerTurnsCompleted).toBe(3);
+        expect(autosaved).not.toEqual(before);
+      }
+    }
+    expect(autosaved).not.toBeNull();
+  });
+
   it('leaves the direct endTurn path for Node sims', () => {
     const game = Game.newGame({ seed: 2, player: 'verdantia', mapSize: 'small' });
     const ended = game.endTurn();
