@@ -1224,7 +1224,7 @@ export class Game {
     const personality = this.state.setup.personalities[decider];
     if (
       (kind === 'peace' || kind === 'nap' || kind === 'alliance') &&
-      wantsToFight(personality, this.state.setup.difficulty, this.state.round) &&
+      wantsToFight(decider, this.state.setup.difficulty, this.state.round, personality) &&
       (personality.aggression === 'very-aggressive' ||
         personality.diplomacy === 'alone' ||
         this.state.setup.difficulty === 'hard' ||
@@ -1322,7 +1322,8 @@ export class Game {
             break;
           }
           const leftover: number = city.production.progress - city.production.cost;
-          const port = design.domain === 'sea' ? this.nearestSea(city.x, city.y, 8) : null;
+          const port = design.domain === 'sea' ? this.nearestOpenSea(city.x, city.y, 8) : null;
+          if (design.domain === 'sea' && !port) break;
           this.spawn(factionId, design, port?.x ?? city.x, port?.y ?? city.y, false);
           this.say(`${city.name} completes ${design.name}.`, factionId);
           if (faction.isHuman) {
@@ -1556,13 +1557,15 @@ export class Game {
     return Math.max(0, Math.round(scaled));
   }
 
-  private nearestSea(x: number, y: number, radius: number): { x: number; y: number } | null {
+  /** Closest water with no unit already standing on it. */
+  private nearestOpenSea(x: number, y: number, radius: number): { x: number; y: number } | null {
     let best: { x: number; y: number; d: number } | null = null;
     for (let dy = -radius; dy <= radius; dy++) {
       for (let dx = -radius; dx <= radius; dx++) {
         const nx = x + dx;
         const ny = y + dy;
         if (!this.inBounds(nx, ny) || !isSea(this.tile(nx, ny).terrain)) continue;
+        if (this.state.units.some((unit) => unit.aboard == null && unit.x === nx && unit.y === ny)) continue;
         const d = Math.max(Math.abs(dx), Math.abs(dy));
         if (!best || d < best.d) best = { x: nx, y: ny, d };
       }
