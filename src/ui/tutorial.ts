@@ -132,7 +132,7 @@ export function tutorialPages(): TutorialPage[] {
       id: 'events',
       title: 'Random events',
       paragraphs: [
-        'Game Options can turn random events on before the first week. The toggle is saved with the game. When it is off, none of these events fire.',
+        'Random events start on. The checkbox on the start menu can turn them off before the first week, and that choice is saved with the game. When they are off, none of these events fire.',
         'A solar flare scrambles comms and sensors. Intact ark wreckage can be salvaged for supplies, study, or a crew. A faction betrayal breaks an oath. A dust storm slows the band or wears units that push through. A seismic shift shakes a city. Each event rolls on the game\'s own seed, so a saved game repeats the same rolls.',
         'There is no schedule. Sometimes a warning arrives a week or more ahead, and sometimes the event just hits. When a choice is offered, pick it before the week can end. Escape does not dismiss that popup.',
       ],

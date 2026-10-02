@@ -18,6 +18,7 @@ Use Node 22 (what CI uses).
 | Unit tests (vitest, `tests/**/*.test.ts`) | `npm test` |
 | Build renderer | `npm run build` (outputs `dist/`) |
 | E2E smoke (Playwright, Chromium) | `npm run test:e2e` |
+| AI-only simulation | `npm run sim -- --games N --seed S` |
 | Electron against a build | `npm run build && npm run electron` |
 | Electron against dev server | `npx electron . --dev` (with `npm run dev` running) |
 | Windows package | `npm run dist:win` (Windows only; CI does this) |
@@ -41,11 +42,22 @@ The game targets desktop (1440x900 is the e2e viewport). Add a phone-size shot (
 
 ## Release flow
 
-The version players see is `package.json` `version` (0.2.0). Do not hard-code it in `src/config.ts`.
+The version players see is `package.json` `version` (0.3.0). Do not hard-code it in `src/config.ts`.
 
-`.github/workflows/windows.yml` ("Windows build") runs on pushes to `main` and `release/**`, on tags `v*.*.*`, on every pull request, and on manual dispatch. A concurrency group cancels an older run for the same ref. Each run does `npm ci`, `npm test`, `npm run build`, `electron-builder --win`, uploads the `.exe` files as the `proxima-windows` artifact, then runs the install/uninstall no-trace job against that artifact.
+`.github/workflows/windows.yml` ("Windows build") runs on pushes to `main` and `release/**`, on tags `v*.*.*`, on every pull request, and on manual dispatch. A concurrency group cancels an older run for the same ref. Each run does `npm ci`, `npm test`, `npm run build`, `electron-builder --win`, uploads the `.exe` files as the `proxima-windows` artifact, then runs two Windows checks against that artifact: install/uninstall leaves no trace, and an in-place upgrade keeps saves.
 
-Publishing is separate. A GitHub Release is created only for a `vX.Y.Z` tag whose name matches `package.json` (so 0.2.0 publishes as `v0.2.0`). The publish job waits until the install/uninstall check has passed, creates a new release with notes, and attaches the executables. It fails if the tag does not match, or if that release already exists. It does not upload with `--clobber` and it does not touch the existing `v0.1.0-test` release. Do not create or push a tag unless Jason asked for a release.
+Publishing is separate. A GitHub Release is created only for a `vX.Y.Z` tag whose name matches `package.json` (so 0.3.0 publishes as `v0.3.0`). The publish job waits until both Windows checks have passed, creates a new release with notes, and attaches the executables. It fails if the tag does not match, or if that release already exists. It does not upload with `--clobber` and it does not touch the existing `v0.1.0-test` release. Do not create or push a tag unless Jason asked for a release.
+
+### In-place updates
+
+This is permanent, for 0.3.0 and every release after it. Running a newer `Proxima-Setup-X.exe` over an existing install must upgrade that install. It must not ask for a manual uninstall. It must keep the install directory, the saves under `%APPDATA%\Proxima\saves`, and settings (including `%APPDATA%\Proxima\settings.json`).
+
+electron-builder does this by running the old uninstaller with `--updated`. Two deletes have to stay inside `${ifNot} ${isUpdated}`:
+
+- `build/installer.nsh` `customUnInstall`, which removes `%APPDATA%\Proxima`, local app data, and `HKCU\Software\Proxima` (and the appId key) on a real uninstall.
+- `deleteAppDataOnUninstall: true` in `package.json`. electron-builder already wraps that wipe in the same guard. Leave it on so a real uninstall still removes app data.
+
+A real uninstall must still leave no trace: install folder, shortcuts, app data, and those registry keys all go. The workflow job "In-place upgrade keeps saves" installs the last published setup (currently `v0.3.0`, `Proxima-Setup-0.3.0.exe`), writes `slot-1.json`, `settings.json`, and an `HKCU\Software\Proxima` marker, installs the new build silently, and checks that there is one uninstall entry, a higher version, the same directory, a replaced `Proxima.exe`, and the save. electron-builder leaves `InstallLocation` off the uninstall key, so the script searches HKCU and HKLM (including `WOW6432Node`) and falls back to `UninstallString`'s directory, then `%LOCALAPPDATA%\Programs\proxima`. While `package.json` is not already newer than 0.3.0, non-tag CI builds stamp `0.3.1-ci.<run id>` into the packaged installer only, so the upgrade is a real version change. Tag builds are not stamped, and the published exe still matches `package.json`. When a newer installer has been published, point `.github/scripts/verify-upgrade.ps1` at that release before the following one, so the job keeps testing the uninstaller players actually have.
 
 `npm test` and `npm run build` must pass before a pull request is opened.
 

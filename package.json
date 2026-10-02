@@ -13,6 +13,7 @@
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "sim": "vite-node scripts/sim-cli.ts",
     "electron": "electron .",
     "dist:win": "vite build && electron-builder --win --publish never"
   },

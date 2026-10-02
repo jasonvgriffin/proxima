@@ -62,7 +62,7 @@ export class App {
     faction: 'helm' as FactionId,
     difficulty: 'normal' as Difficulty,
     allied: false,
-    events: false,
+    events: true,
     personalities: defaultPersonalities(),
     axes: defaultAxes('helm'),
     seed: 1 + Math.floor(Math.random() * 999983),

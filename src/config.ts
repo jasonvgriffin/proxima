@@ -128,68 +128,6 @@ export const CONFIG = {
     bombardmentCityDamage: 4,
   },
 
-  peace: {
-    /** Faction personality sets the base quiet turns before that AI will attack. */
-    byAggression: {
-      'very-aggressive': 8,
-      normal: 12,
-      easy: 16,
-    } as Record<string, number>,
-    /** Global difficulty stretches or shortens every rival's window. */
-    difficultyAdjust: {
-      easy: 4,
-      normal: 0,
-      'very-aggressive': -4,
-    } as Record<string, number>,
-    minimum: 4,
-  },
-
-  ai: {
-    oddsThreshold: {
-      cautious: 0.62,
-      measured: 0.48,
-      bold: 0.3,
-    } as Record<string, number>,
-    /** Added to the personality odds threshold. Higher means a more cautious attack. */
-    oddsAdjust: {
-      easy: 0.04,
-      normal: 0,
-      hard: -0.06,
-      brutal: -0.12,
-    } as Record<string, number>,
-    /** Extra military units each rival wants, beyond one garrison per city. */
-    militaryExtra: {
-      easy: 3,
-      normal: 4,
-      hard: 6,
-      brutal: 8,
-    } as Record<string, number>,
-    /** How many cities the AI tries to found before it stops asking for colony pods. */
-    cityTarget: {
-      expansionist: 5,
-      balanced: 3,
-      builder: 2,
-    } as Record<string, number>,
-    cityTargetAdjust: {
-      easy: -1,
-      normal: 0,
-      hard: 1,
-      brutal: 2,
-    } as Record<string, number>,
-    /** Colony pods kept in the field, also capped by how many legal sites are left. */
-    podCap: {
-      expansionist: 1,
-      balanced: 1,
-      builder: 1,
-    } as Record<string, number>,
-    /** Added to every rival's attack chance once the peace window is over. Easy waits. */
-    aggressionOdds: {
-      'very-aggressive': 0,
-      normal: 0,
-      easy: 0.08,
-    } as Record<string, number>,
-  },
-
   scavenger: {
     chance: 0.18,
     searchArrayBonus: 0.12,
