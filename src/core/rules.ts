@@ -1,16 +1,17 @@
 import { CONFIG, type BiomeClass } from '../config';
-import { aggressionAdjust } from './difficulty';
 import { FACTIONS, socialOption } from './factions';
+import { peaceWindowFor } from './personalities';
 import { formerTechLevel } from './tech';
-import type {
-  FactionId,
-  GameState,
-  ImprovementId,
-  SocialAxes,
-  SocialStat,
-  TerrainId,
-  Tile,
-  Winner,
+import {
+  FACTION_IDS,
+  type FactionId,
+  type GameState,
+  type ImprovementId,
+  type SocialAxes,
+  type SocialStat,
+  type TerrainId,
+  type Tile,
+  type Winner,
 } from './types';
 import { shuffle } from './rng';
 
@@ -141,13 +142,20 @@ export function planRoundOrder(player: FactionId, others: readonly FactionId[], 
   return [player, ...shuffle(others, rnd)];
 }
 
+/** Autosave spacing is 2 or 3 turns. Any other config value snaps into that range. */
+export function autosaveIntervalTurns(requested = CONFIG.autosaveEveryTurns): number {
+  const value = Math.round(Number(requested));
+  if (!Number.isFinite(value) || value <= 2) return 2;
+  return 3;
+}
+
 export function shouldAutosave(playerTurnsCompleted: number, enabled: boolean): boolean {
-  return enabled && playerTurnsCompleted > 0 && playerTurnsCompleted % CONFIG.autosaveEveryTurns === 0;
+  return enabled && playerTurnsCompleted > 0 && playerTurnsCompleted % autosaveIntervalTurns() === 0;
 }
 
 export function peaceWindow(aggression: string, difficulty: string): number {
-  const base = CONFIG.peace.byAggression[aggression] ?? CONFIG.peace.byAggression.normal;
-  return Math.max(CONFIG.peace.minimum, base + aggressionAdjust(difficulty));
+  const id = FACTION_IDS.find((faction) => FACTIONS[faction].personality.aggression === aggression) ?? 'helm';
+  return peaceWindowFor(id, difficulty);
 }
 
 export function statMultiplier(faction: FactionId, axes: SocialAxes, stat: SocialStat): number {
@@ -267,11 +275,6 @@ export function formerLevelFromTechs(techs: readonly string[]): number {
 export function projectAllowed(project: ImprovementId, techs: readonly string[]): boolean {
   if (project === 'atmosphere') return techs.includes('atmosphere');
   return true;
-}
-
-/** Odds the AI needs before it will start a fight. */
-export function attackThreshold(risk: string): number {
-  return CONFIG.ai.oddsThreshold[risk] ?? CONFIG.ai.oddsThreshold.measured;
 }
 
 export function emptyExplored(width: number, height: number): boolean[] {

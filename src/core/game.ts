@@ -1,4 +1,4 @@
-import { CONFIG } from '../config';
+import { CONFIG, mapSpec } from '../config';
 import { chooseDesign, runAi, wantsToFight } from './ai';
 import { crisisTuning, economyRates, exposureDamage, normalizeDifficulty, scaleStarting } from './difficulty';
 import {
@@ -64,6 +64,7 @@ import type {
   FactionId,
   GameSetup,
   GameState,
+  MapSizeId,
   ImprovementId,
   Proposal,
   Relation,
@@ -102,6 +103,7 @@ export interface TileView {
 export interface NewGameOptions {
   seed: number;
   player: FactionId;
+  mapSize?: MapSizeId;
   difficulty?: Difficulty;
   alliedVictory?: boolean;
   randomEvents?: boolean;
@@ -132,7 +134,8 @@ export class Game {
     const seed = opts.seed >>> 0 || 1;
     const rng = makeRng(seed);
     const ids = Object.keys(FACTIONS) as FactionId[];
-    const map = generateMap(rng, ids, seed);
+    const spec = mapSpec(opts.mapSize);
+    const map = generateMap(rng, ids, seed, spec.id);
     const personalities = opts.personalities ?? defaultPersonalities();
     const difficulty = normalizeDifficulty(opts.difficulty ?? 'normal');
     const setup: GameSetup = {
@@ -176,6 +179,7 @@ export class Game {
       lastAiOrder: [],
       setup,
       autosaveEnabled: opts.autosaveEnabled !== false,
+      mapSize: spec.id,
       width: map.width,
       height: map.height,
       tiles: map.tiles,
@@ -221,6 +225,7 @@ export class Game {
 
   static fromState(state: GameState): Game {
     const copy = JSON.parse(JSON.stringify(state)) as GameState;
+    copy.mapSize = mapSpec(copy.mapSize).id;
     if (!copy.setup) {
       copy.setup = {
         difficulty: 'normal',
@@ -1126,13 +1131,60 @@ export class Game {
     return { ok: true, message: removed ? `${removed} spy removed.` : 'No spies found.', removed };
   }
 
-  endTurn(): EndTurnResult {
-    if (this.state.winner) return { ok: false, message: 'The game is already over.', autosave: false, aiOrder: [] };
-    if (this.state.playerDefeated) return { ok: false, message: 'Your faction is defeated.', autosave: false, aiOrder: [] };
-    if (this.state.events.prompt) return { ok: false, message: 'Choose a response to the event first.', autosave: false, aiOrder: [] };
-    if (this.state.whoseTurn !== this.state.playerFaction) {
-      return { ok: false, message: 'Not your turn.', autosave: false, aiOrder: [] };
+  /**
+   * Rng-synced copy for the AI worker. Does not refresh the player's sight record,
+   * so a rival turn decided off-thread starts from the same board as `runAi`.
+   */
+  snapshot(): GameState {
+    this.state.rngState = this.rng.getState();
+    return structuredClone(this.state);
+  }
+
+  /** Replace the board with orders computed elsewhere, and keep the saved rng in step. */
+  adoptSnapshot(state: GameState): void {
+    this.state = state;
+    this.rng = makeRng(state.seed || 1);
+    this.rng.setState(state.rngState || 1);
+    this.revision += 1;
+  }
+
+  /** One round of rival turns. The in-thread path and the worker both call this. */
+  playRivals(order: readonly FactionId[]): void {
+    for (const id of order) {
+      if (this.state.winner) break;
+      if (!this.unitsOf(id).length && !this.citiesOf(id).length) continue;
+      this.beginTurn(id);
+      runAi(this);
+      this.finishFactionTurn(id);
     }
+  }
+
+  endTurn(): EndTurnResult {
+    const opened = this.beginRound();
+    if (!opened.ok) return { ok: false, message: opened.message, autosave: false, aiOrder: [] };
+    this.playRivals(opened.order);
+    return this.finishRound(opened.autosave, opened.order);
+  }
+
+  /**
+   * Same round as `endTurn`, but rival decisions come back as orders.
+   * The UI posts `state` to a worker; Node tests pass `computeRoundOrders` directly.
+   */
+  async endTurnWith(
+    decide: (state: GameState, order: readonly FactionId[]) => Promise<{ state: GameState }>,
+  ): Promise<EndTurnResult> {
+    const opened = this.beginRound();
+    if (!opened.ok) return { ok: false, message: opened.message, autosave: false, aiOrder: [] };
+    const orders = await decide(this.snapshot(), opened.order);
+    this.adoptSnapshot(orders.state);
+    return this.finishRound(opened.autosave, opened.order);
+  }
+
+  private beginRound(): { ok: true; autosave: boolean; order: FactionId[] } | { ok: false; message: string } {
+    if (this.state.winner) return { ok: false, message: 'The game is already over.' };
+    if (this.state.playerDefeated) return { ok: false, message: 'Your faction is defeated.' };
+    if (this.state.events.prompt) return { ok: false, message: 'Choose a response to the event first.' };
+    if (this.state.whoseTurn !== this.state.playerFaction) return { ok: false, message: 'Not your turn.' };
     this.finishFactionTurn(this.state.playerFaction);
     this.state.playerTurnsCompleted += 1;
     const autosave = shouldAutosave(this.state.playerTurnsCompleted, this.state.autosaveEnabled);
@@ -1142,13 +1194,10 @@ export class Game {
       .sort((a, b) => a.roll - b.roll)
       .map((entry) => entry.id);
     this.state.lastAiOrder = order;
-    for (const id of order) {
-      if (this.state.winner) break;
-      if (!this.unitsOf(id).length && !this.citiesOf(id).length) continue;
-      this.beginTurn(id);
-      runAi(this);
-      this.finishFactionTurn(id);
-    }
+    return { ok: true, autosave, order };
+  }
+
+  private finishRound(autosave: boolean, order: FactionId[]): EndTurnResult {
     if (!this.state.winner) {
       this.state.round += 1;
       this.applyCrisis();
@@ -1224,7 +1273,7 @@ export class Game {
     const personality = this.state.setup.personalities[decider];
     if (
       (kind === 'peace' || kind === 'nap' || kind === 'alliance') &&
-      wantsToFight(personality, this.state.setup.difficulty, this.state.round) &&
+      wantsToFight(decider, this.state.setup.difficulty, this.state.round, personality) &&
       (personality.aggression === 'very-aggressive' ||
         personality.diplomacy === 'alone' ||
         this.state.setup.difficulty === 'hard' ||
@@ -1322,7 +1371,8 @@ export class Game {
             break;
           }
           const leftover: number = city.production.progress - city.production.cost;
-          const port = design.domain === 'sea' ? this.nearestSea(city.x, city.y, 8) : null;
+          const port = design.domain === 'sea' ? this.nearestOpenSea(city.x, city.y, 8) : null;
+          if (design.domain === 'sea' && !port) break;
           this.spawn(factionId, design, port?.x ?? city.x, port?.y ?? city.y, false);
           this.say(`${city.name} completes ${design.name}.`, factionId);
           if (faction.isHuman) {
@@ -1556,13 +1606,15 @@ export class Game {
     return Math.max(0, Math.round(scaled));
   }
 
-  private nearestSea(x: number, y: number, radius: number): { x: number; y: number } | null {
+  /** Closest water with no unit already standing on it. */
+  private nearestOpenSea(x: number, y: number, radius: number): { x: number; y: number } | null {
     let best: { x: number; y: number; d: number } | null = null;
     for (let dy = -radius; dy <= radius; dy++) {
       for (let dx = -radius; dx <= radius; dx++) {
         const nx = x + dx;
         const ny = y + dy;
         if (!this.inBounds(nx, ny) || !isSea(this.tile(nx, ny).terrain)) continue;
+        if (this.state.units.some((unit) => unit.aboard == null && unit.x === nx && unit.y === ny)) continue;
         const d = Math.max(Math.abs(dx), Math.abs(dy));
         if (!best || d < best.d) best = { x: nx, y: ny, d };
       }

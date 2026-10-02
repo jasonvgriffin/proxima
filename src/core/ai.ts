@@ -6,7 +6,8 @@ import type { Game } from './game';
 import { isHostileClimate, settleScore } from './geography';
 import { buildableDesigns } from './parts';
 import { nextQueuedResearch, pathToGoal } from './researchPath';
-import { attackThreshold, canFoundCity, isSea, peaceWindow, projectAllowed } from './rules';
+import { AI_RULES, factionAi, peaceWindowFor, type FactionAi } from './personalities';
+import { canFoundCity, isSea, projectAllowed } from './rules';
 import { TECHS, techAvailable, techById } from './tech';
 import { FACTION_IDS, type FactionId, type ImprovementId, type Personality, type TradeBundle, type Unit } from './types';
 
@@ -71,25 +72,19 @@ function tryTerraform(game: Game, unit: Unit): boolean {
   return game.startTerraform(unit.id, project).ok;
 }
 
-function oddsThreshold(personality: Personality, difficulty: string): number {
-  const base = attackThreshold(personality.risk);
-  const diff = CONFIG.ai.oddsAdjust[difficulty] ?? 0;
-  const agg = CONFIG.ai.aggressionOdds[personality.aggression] ?? 0;
-  return Math.max(0.28, Math.min(0.82, base + diff + agg));
+function oddsThreshold(profile: FactionAi, difficulty: string): number {
+  const diff = AI_RULES.oddsByDifficulty[difficulty] ?? 0;
+  return Math.max(AI_RULES.oddsFloor, Math.min(AI_RULES.oddsCeil, profile.oddsThreshold + diff + profile.oddsBias));
 }
 
-/** Difficulty decides who is willing to fight once the peace window ends. */
-export function wantsToFight(personality: Personality, difficulty: string, round: number): boolean {
-  const windowTurns = peaceWindow(personality.aggression, difficulty);
+/** Difficulty and this faction's row decide when it is willing to fight. */
+export function wantsToFight(factionId: FactionId, difficulty: string, round: number, personality?: Personality): boolean {
+  const profile = factionAi(factionId, personality);
+  const windowTurns = peaceWindowFor(factionId, difficulty, personality);
   if (round <= windowTurns) return false;
   if (difficulty === 'brutal' || difficulty === 'hard') return true;
-  if (difficulty === 'easy') {
-    if (personality.aggression === 'very-aggressive') return true;
-    if (personality.aggression === 'normal') return round > windowTurns + 10;
-    return round > windowTurns + 18;
-  }
-  if (personality.aggression === 'easy') return round > windowTurns + 14;
-  return true;
+  const delay = difficulty === 'easy' ? profile.fightDelayEasy : profile.fightDelayNormal;
+  return round > windowTurns + delay;
 }
 
 function supportOdds(game: Game, unit: Unit, x: number, y: number, odds: number): number {
@@ -104,7 +99,7 @@ function supportOdds(game: Game, unit: Unit, x: number, y: number, odds: number)
   return Math.min(0.92, odds + Math.min(0.16, edge * 0.04));
 }
 
-function tryAttack(game: Game, unit: Unit, threshold: number, bold: boolean): boolean {
+function tryAttack(game: Game, unit: Unit, threshold: number, bold: boolean, forceWar = false): boolean {
   let best: { x: number; y: number; rank: number } | null = null;
   for (let dy = -1; dy <= 1; dy++) {
     for (let dx = -1; dx <= 1; dx++) {
@@ -112,7 +107,7 @@ function tryAttack(game: Game, unit: Unit, threshold: number, bold: boolean): bo
       const preview = game.previewAttack(unit.id, unit.x + dx, unit.y + dy);
       if (!preview.ok) continue;
       const odds = supportOdds(game, unit, unit.x + dx, unit.y + dy, preview.odds);
-      const need = preview.city ? Math.min(threshold, 0.45) : threshold;
+      const need = preview.city ? Math.min(threshold, AI_RULES.cityOddsCap) : threshold;
       if (odds < need) continue;
       const rank = (bold ? (preview.city ? 3 : 1) : preview.city ? 2 : 0) + odds;
       if (!best || rank > best.rank) best = { x: unit.x + dx, y: unit.y + dy, rank };
@@ -122,10 +117,10 @@ function tryAttack(game: Game, unit: Unit, threshold: number, bold: boolean): bo
   const occupant = game.state.units.find((other) => other.x === best.x && other.y === best.y && other.factionId !== unit.factionId);
   const city = game.cityAt(best.x, best.y);
   const foe = occupant?.factionId ?? (city && city.factionId !== unit.factionId ? city.factionId : null);
-  const aggression = game.state.setup.personalities[unit.factionId].aggression;
+  const profile = factionAi(unit.factionId, game.state.setup.personalities[unit.factionId]);
   if (foe) {
     const stance = game.relation(unit.factionId, foe).stance;
-    if (aggression !== 'easy' && (stance === 'nap' || stance === 'alliance')) game.propose(foe, 'war');
+    if ((profile.breaksPacts || forceWar) && (stance === 'nap' || stance === 'alliance')) game.propose(foe, 'war');
   }
   return game.confirmAttack(unit.id, best.x, best.y).ok;
 }
@@ -156,10 +151,11 @@ function researchAgenda(factionId: FactionId, personality: Personality): string[
     'sealed-habitats',
     'field-clinics',
   ];
-  if (personality.expansion !== 'expansionist') practical.splice(6, 0, 'soil-knit');
-  if (personality.aggression !== 'easy') practical.push('coil-weapons');
-  if (personality.research === 'specialty') return [...specialty, ...practical];
-  if (personality.research === 'balanced') {
+  const profile = factionAi(factionId, personality);
+  if (profile.studySoilKnit) practical.splice(6, 0, 'soil-knit');
+  if (profile.studyCoil) practical.push('coil-weapons');
+  if (profile.research === 'capstone') return [...specialty, ...practical];
+  if (profile.research === 'mixed') {
     const mixed: string[] = [];
     const span = Math.max(practical.length, specialty.length);
     for (let i = 0; i < span; i++) {
@@ -230,6 +226,35 @@ function atWarWith(game: Game, factionId: FactionId): boolean {
   );
 }
 
+function powersLeftNow(game: Game): number {
+  return FACTION_IDS.filter((id) => game.citiesOf(id).length > 0).length;
+}
+
+function weakestRivalCity(game: Game, factionId: FactionId, unit: Unit): { x: number; y: number } | null {
+  const rivals = FACTION_IDS.filter((id) => id !== factionId && game.citiesOf(id).length > 0);
+  rivals.sort((a, b) => game.citiesOf(a).length - game.citiesOf(b).length || a.localeCompare(b));
+  const foe = rivals[0];
+  if (!foe) return null;
+  let best: { x: number; y: number; d: number } | null = null;
+  for (const city of game.citiesOf(foe)) {
+    const d = dist(unit, city);
+    if (!best || d < best.d) best = { x: city.x, y: city.y, d };
+  }
+  return best ? { x: best.x, y: best.y } : null;
+}
+
+function nearestRivalCity(game: Game, factionId: FactionId, unit: Unit): { x: number; y: number } | null {
+  let best: { x: number; y: number; d: number } | null = null;
+  for (const city of game.state.cities) {
+    if (city.factionId === factionId) continue;
+    const rel = game.relation(factionId, city.factionId);
+    if (rel.stance === 'nap' || rel.stance === 'alliance') continue;
+    const d = dist(unit, city);
+    if (!best || d < best.d) best = { x: city.x, y: city.y, d };
+  }
+  return best;
+}
+
 function mustFinishWar(game: Game, factionId: FactionId): boolean {
   if (game.state.setup.alliedVictory || game.state.round < 110) return false;
   const rivals = FACTION_IDS.filter((id) => id !== factionId && game.citiesOf(id).length > 0);
@@ -237,11 +262,8 @@ function mustFinishWar(game: Game, factionId: FactionId): boolean {
 }
 
 function cityGoal(game: Game, factionId: FactionId): number {
-  const personality = game.state.setup.personalities[factionId];
-  return Math.max(
-    2,
-    (CONFIG.ai.cityTarget[personality.expansion] ?? 3) + (CONFIG.ai.cityTargetAdjust[game.state.setup.difficulty] ?? 0),
-  );
+  const profile = factionAi(factionId, game.state.setup.personalities[factionId]);
+  return Math.max(2, profile.cityTarget + (AI_RULES.cityTargetByDifficulty[game.state.setup.difficulty] ?? 0));
 }
 
 /** Field a rifle replacement once coil, plasma, or doctrine weapons are known. */
@@ -287,15 +309,15 @@ export function chooseDesign(game: Game, factionId: FactionId): string | null {
   const armedShips = units.filter((unit) => unit.domain === 'sea' && unit.attack > 0).length;
   const transports = units.filter((unit) => unit.transport > 0).length;
   const sites = countFoundingSites(game, factionId);
-  const podCap = Math.min(CONFIG.ai.podCap[personality.expansion] ?? 1, sites);
+  const profile = factionAi(factionId, personality);
+  const podCap = Math.min(profile.podCap, sites);
   const cityTarget = cityGoal(game, factionId);
-  const aggressionBonus = personality.aggression === 'very-aggressive' ? 2 : personality.aggression === 'easy' ? 0 : 1;
-  const militaryTarget = cities.length + (CONFIG.ai.militaryExtra[difficulty] ?? 0) + aggressionBonus;
+  const militaryTarget = cities.length + (AI_RULES.militaryExtra[difficulty] ?? 0) + profile.militaryBonus;
   const formerTarget =
-    personality.expansion === 'builder' ? Math.max(1, cities.length) : Math.max(1, Math.ceil(cities.length / 2));
+    profile.formers === 'each-city' ? Math.max(1, cities.length) : Math.max(1, Math.ceil(cities.length / 2));
   const coast = cities.some((city) => nearSea(game, city.x, city.y));
   const fighting =
-    wantsToFight(personality, difficulty, game.state.round) || atWarWith(game, factionId) || mustFinishWar(game, factionId);
+    wantsToFight(factionId, difficulty, game.state.round, personality) || atWarWith(game, factionId) || mustFinishWar(game, factionId);
   const barge = designs.find((design) => design.domain === 'sea' && design.transport > 0 && design.attack <= 0);
 
   if (cities.length > 0 && military < cities.length) return (byRole('military') ?? byRole('scout'))?.id ?? null;
@@ -303,21 +325,26 @@ export function chooseDesign(game: Game, factionId: FactionId): string | null {
     (best, id) => (id === factionId ? best : Math.max(best, game.citiesOf(id).length)),
     0,
   );
-  const behind = leaderCities > cities.length && personality.aggression !== 'easy' && fighting;
+  const cityGap = leaderCities - cities.length;
+  const behind = fighting && cityGap > 0 && profile.catchUp;
   if (behind && military < Math.min(leaderCities, cities.length + 2)) {
     return (byRole('military') ?? byRole('scout'))?.id ?? null;
   }
-  if (pods < podCap && cities.length < cityTarget) return byRole('settler')?.id ?? null;
+  const defendFirst =
+    profile.defendSpare > 0 &&
+    atWarWith(game, factionId) &&
+    military < Math.min(militaryTarget, cities.length + profile.defendSpare);
+  if (!defendFirst && pods < podCap && cities.length < cityTarget) return byRole('settler')?.id ?? null;
   const bargesBuilding = barge ? cities.filter((city) => city.production?.designId === barge.id).length : 0;
   if (cutOff(game, factionId) && transports + bargesBuilding < 2 && barge) return barge.id;
   if (fighting && military < militaryTarget) return (byRole('military') ?? byRole('scout'))?.id ?? null;
-  if (formers < 1 || (formers < formerTarget && personality.expansion !== 'expansionist')) {
+  if (formers < 1 || (formers < formerTarget && !profile.fewFormers)) {
     return byRole('terraformer')?.id ?? null;
   }
   if (military < militaryTarget) return (byRole('military') ?? byRole('scout'))?.id ?? null;
   if (coast && transports < 1 && transport) return transport.id;
   if (coast && fighting && armedShips < 1 && gunboat) return gunboat.id;
-  if (personality.expansion === 'builder' && formers < formerTarget) return byRole('terraformer')?.id ?? null;
+  if (profile.formers === 'each-city' && formers < formerTarget) return byRole('terraformer')?.id ?? null;
   const powersLeft = FACTION_IDS.filter((id) => game.citiesOf(id).length > 0).length;
   if (powersLeft <= 2 && fighting && cities.length > 0) return (byRole('military') ?? byRole('scout'))?.id ?? null;
   return null;
@@ -648,7 +675,9 @@ function considerPolitics(game: Game, factionId: FactionId, personality: Persona
   const others = FACTION_IDS.filter((id) => id !== factionId);
   const met = others.filter((id) => game.inContact(factionId, id));
   const difficulty = game.state.setup.difficulty;
-  const fighting = wantsToFight(personality, difficulty, game.state.round);
+  const profile = factionAi(factionId, personality);
+  const fighting = wantsToFight(factionId, difficulty, game.state.round, personality);
+  let declaredWar = false;
   if (fighting) {
     const mine = game.citiesOf(factionId).length;
     const bestOther = others.reduce((best, id) => Math.max(best, game.citiesOf(id).length), 0);
@@ -659,11 +688,15 @@ function considerPolitics(game: Game, factionId: FactionId, personality: Persona
       const target = rotatePick(holdouts, game.state.round);
       if (target) {
         game.propose(target, 'war');
-        return;
+        declaredWar = true;
       }
     }
   }
-  if (fighting && (personality.aggression === 'very-aggressive' || personality.diplomacy === 'alone' || difficulty === 'hard' || difficulty === 'brutal')) {
+  if (
+    !declaredWar &&
+    fighting &&
+    (profile.opensWars || difficulty === 'hard' || difficulty === 'brutal')
+  ) {
     const target = rotatePick(
       met.map((id) => {
         const rel = game.relation(factionId, id);
@@ -675,21 +708,21 @@ function considerPolitics(game: Game, factionId: FactionId, personality: Persona
     );
     if (target && game.relation(factionId, target).stance !== 'war') {
       game.propose(target, 'war');
-      return;
+      declaredWar = true;
     }
   }
-  if (personality.diplomacy === 'treaty' && personality.aggression !== 'very-aggressive') {
+  if (!declaredWar && profile.seeksTreaties && !profile.opensWars) {
     const war = met.find((id) => game.relation(factionId, id).stance === 'war');
     if (war && !fighting) game.propose(war, 'peace');
     else if (!war) {
       const peace = met.find((id) => game.relation(factionId, id).stance === 'peace');
       if (peace) game.propose(peace, 'nap');
-      else if (personality.aggression === 'easy') {
+      else if (profile.offersAlliance) {
         const nap = met.find((id) => game.relation(factionId, id).stance === 'nap');
         if (nap) game.propose(nap, 'alliance');
       }
     }
-  } else if (personality.diplomacy === 'trader') {
+  } else if (profile.seeksResearch) {
     const partner = met.find((id) => {
       const rel = game.relation(factionId, id);
       return rel.stance !== 'war' && !rel.research;
@@ -700,6 +733,13 @@ function considerPolitics(game: Game, factionId: FactionId, personality: Persona
     const last = FACTION_IDS.find((id) => id !== factionId && game.citiesOf(id).length > 0);
     if (last && game.relation(factionId, last).stance !== 'war') game.propose(last, 'war');
   }
+  if (profile.offersExploration) {
+    const explorer = met.find((id) => {
+      const rel = game.relation(factionId, id);
+      return rel.stance !== 'war' && !rel.exploration;
+    });
+    if (explorer) game.propose(explorer, 'exploration');
+  }
   considerTrade(game, factionId, personality);
   considerSpies(game, factionId, personality);
 }
@@ -709,31 +749,33 @@ export function runAi(game: Game): void {
   const faction = game.state.factions[factionId];
   if (!faction || faction.isHuman) return;
   const personality = game.state.setup.personalities[factionId];
+  const profile = factionAi(factionId, personality);
   const difficulty = game.state.setup.difficulty;
   const fighting =
-    wantsToFight(personality, difficulty, game.state.round) || atWarWith(game, factionId) || mustFinishWar(game, factionId);
-  let threshold = oddsThreshold(personality, difficulty);
+    wantsToFight(factionId, difficulty, game.state.round, personality) || atWarWith(game, factionId) || mustFinishWar(game, factionId);
+  let threshold = oddsThreshold(profile, difficulty);
   const mineNow = game.citiesOf(factionId).length;
   const bestOtherNow = FACTION_IDS.reduce(
     (best, id) => (id === factionId ? best : Math.max(best, game.citiesOf(id).length)),
     0,
   );
-  if (fighting && mineNow + 1 < bestOtherNow && personality.aggression !== 'easy') {
-    threshold = Math.max(0.28, threshold - 0.14);
+  if (fighting && mineNow + 1 < bestOtherNow && profile.catchUp) {
+    threshold = Math.max(AI_RULES.oddsFloor, threshold - profile.behindOddsCut);
   }
   if (game.state.round > 80) {
-    const pressing =
-      mineNow > bestOtherNow ||
-      (mineNow === bestOtherNow && mineNow > 0 && (personality.aggression === 'very-aggressive' || personality.risk === 'bold'));
-    if (pressing) {
-      const cut = personality.risk === 'bold' || personality.aggression === 'very-aggressive' ? 0.12 : 0.04;
-      threshold = Math.max(0.28, threshold - cut);
-    }
+    const pressing = mineNow > bestOtherNow || (mineNow === bestOtherNow && mineNow > 0 && profile.pressesLead);
+    if (pressing) threshold = Math.max(AI_RULES.oddsFloor, threshold - profile.leadOddsCut);
     const powersLeft = FACTION_IDS.filter((id) => game.citiesOf(id).length > 0).length;
     if (fighting && powersLeft === 2 && game.state.round > 180) {
       threshold = Math.max(0.16, threshold - 0.4);
     }
   }
+  const powersLeft = powersLeftNow(game);
+  const endgame = powersLeft === 2 && game.state.round > AI_RULES.endgameRound;
+  const lateWar = powersLeft > 2 && game.state.round > AI_RULES.lateWarRound;
+  const press = endgame || lateWar;
+  if (endgame) threshold = AI_RULES.endgameOdds;
+  else if (lateWar) threshold = AI_RULES.lateWarOdds;
 
   if (!faction.researching) {
     const queued = nextQueuedResearch(faction.researchQueue, faction.techs);
@@ -820,11 +862,26 @@ export function runAi(game: Game): void {
       continue;
     }
     if (fighting && unit.attack > 0) {
-      if (guards.has(unit.id)) {
-        tryAttack(game, unit, threshold, personality.risk === 'bold');
+      if (!press && guards.has(unit.id)) {
+        tryAttack(game, unit, threshold, profile.boldAttacks);
         continue;
       }
-      if (tryAttack(game, unit, threshold, personality.risk === 'bold')) continue;
+      if (tryAttack(game, unit, threshold, profile.boldAttacks, press)) continue;
+      if (press) {
+        const lastCity = endgame ? nearestRivalCity(game, factionId, unit) : weakestRivalCity(game, factionId, unit);
+        if (lastCity) {
+          const ashore = unit.domain === 'land' && game.route(unit.id, lastCity.x, lastCity.y);
+          if (unit.domain === 'land' && !ashore) {
+            if (!seekShip(game, unit)) approach(game, unit, lastCity);
+          } else {
+            approach(game, unit, lastCity);
+          }
+          if (game.state.units.some((other) => other.id === unit.id)) {
+            tryAttack(game, unit, threshold, profile.boldAttacks, true);
+          }
+        }
+        continue;
+      }
       const crisisDamage = crisisTuning(game.state.round, game.state.setup.difficulty).damage;
       const sealed = faction.techs.includes('sealed-habitats');
       const powersLeft = FACTION_IDS.filter((id) => game.citiesOf(id).length > 0).length;
@@ -846,7 +903,7 @@ export function runAi(game: Game): void {
       if (closeCity) {
         approach(game, unit, closeCity);
         if (game.state.units.some((other) => other.id === unit.id)) {
-          tryAttack(game, unit, Math.max(0.22, threshold - 0.12), personality.risk === 'bold');
+          tryAttack(game, unit, Math.max(0.22, threshold - 0.12), profile.boldAttacks);
         }
         continue;
       }
@@ -859,7 +916,7 @@ export function runAi(game: Game): void {
         }
         approach(game, unit, target);
         if (game.state.units.some((other) => other.id === unit.id)) {
-          tryAttack(game, unit, threshold, personality.risk === 'bold');
+          tryAttack(game, unit, threshold, profile.boldAttacks);
         }
         continue;
       }

@@ -1,4 +1,4 @@
-import { CONFIG } from '../config';
+import { CONFIG, MAP_SIZES, mapSpec, type MapSizeId } from '../config';
 import { isHostileClimate, settleScore } from './geography';
 import type { Rng } from './rng';
 import { isSea } from './rules';
@@ -63,6 +63,42 @@ function saddle(nx: number, ny: number, a: Blob, b: Blob, width: number): number
   return Math.exp(-(dist * dist) / (width * width)) * along * 0.72;
 }
 
+/** Medium keeps the original three landmasses. Small uses two broader ones; large adds a fourth. */
+function continentBlobs(seed: number, count: number): Blob[] {
+  const broad = count <= 2;
+  const blobs: Blob[] = [
+    {
+      x: 0.4 + (hash(1, 2, seed) - 0.5) * 0.08,
+      y: 0.48 + (hash(2, 3, seed) - 0.5) * 0.08,
+      rx: broad ? 0.36 : 0.3,
+      ry: broad ? 0.42 : 0.36,
+    },
+    {
+      x: 0.72 + (hash(3, 4, seed) - 0.5) * 0.05,
+      y: 0.3 + (hash(4, 5, seed) - 0.5) * 0.06,
+      rx: broad ? 0.22 : 0.16,
+      ry: broad ? 0.24 : 0.18,
+    },
+  ];
+  if (count >= 3) {
+    blobs.push({
+      x: 0.22 + (hash(5, 6, seed) - 0.5) * 0.05,
+      y: 0.74 + (hash(6, 7, seed) - 0.5) * 0.05,
+      rx: 0.15,
+      ry: 0.16,
+    });
+  }
+  if (count >= 4) {
+    blobs.push({
+      x: 0.78 + (hash(7, 8, seed) - 0.5) * 0.04,
+      y: 0.72 + (hash(8, 9, seed) - 0.5) * 0.04,
+      rx: 0.15,
+      ry: 0.16,
+    });
+  }
+  return blobs;
+}
+
 function seaTerrain(temperature: number): TerrainId {
   if (temperature > 0.72) return 'hot-sea';
   if (temperature < 0.28) return 'frozen-sea';
@@ -93,14 +129,11 @@ export interface GeneratedMap {
   starts: { faction: FactionId; x: number; y: number }[];
 }
 
-export function generateMap(rng: Rng, factions: readonly FactionId[], seed: number): GeneratedMap {
-  const width = CONFIG.map.width;
-  const height = CONFIG.map.height;
-  const blobs: Blob[] = [
-    { x: 0.4 + (hash(1, 2, seed) - 0.5) * 0.08, y: 0.48 + (hash(2, 3, seed) - 0.5) * 0.08, rx: 0.3, ry: 0.36 },
-    { x: 0.72 + (hash(3, 4, seed) - 0.5) * 0.05, y: 0.3 + (hash(4, 5, seed) - 0.5) * 0.06, rx: 0.16, ry: 0.18 },
-    { x: 0.22 + (hash(5, 6, seed) - 0.5) * 0.05, y: 0.74 + (hash(6, 7, seed) - 0.5) * 0.05, rx: 0.15, ry: 0.16 },
-  ];
+export function generateMap(rng: Rng, factions: readonly FactionId[], seed: number, size?: MapSizeId): GeneratedMap {
+  const spec = mapSpec(size);
+  const width = spec.width;
+  const height = spec.height;
+  const blobs = continentBlobs(seed, spec.continents);
   const tiles: Tile[] = [];
   for (let y = 0; y < height; y++) {
     for (let x = 0; x < width; x++) {
@@ -108,8 +141,9 @@ export function generateMap(rng: Rng, factions: readonly FactionId[], seed: numb
       const ny = y / (height - 1);
       let mask = 0;
       for (const blob of blobs) mask = Math.max(mask, blobHeight(nx, ny, blob));
-      mask = Math.max(mask, saddle(nx, ny, blobs[0], blobs[1], 0.07));
-      mask = Math.max(mask, saddle(nx, ny, blobs[0], blobs[2], 0.065));
+      if (blobs.length >= 2) mask = Math.max(mask, saddle(nx, ny, blobs[0], blobs[1], 0.07));
+      if (blobs.length >= 3) mask = Math.max(mask, saddle(nx, ny, blobs[0], blobs[2], 0.065));
+      if (blobs.length >= 4) mask = Math.max(mask, saddle(nx, ny, blobs[0], blobs[3], 0.06));
       const edge = Math.min(nx, 1 - nx, ny, 1 - ny);
       const shore = Math.min(1, edge / 0.07);
       const n = fbm(x * 0.085, y * 0.085, seed);
@@ -144,12 +178,15 @@ export function generateMap(rng: Rng, factions: readonly FactionId[], seed: numb
       tile.terrain = 'coast';
     }
   }
-  carveRivers(tiles, width, height, seed);
+  const medium = width === MAP_SIZES.medium.width && height === MAP_SIZES.medium.height;
+  const riverLimit = medium ? 22 : Math.max(10, Math.round((22 * width * height) / (MAP_SIZES.medium.width * MAP_SIZES.medium.height)));
+  const riverSteps = medium ? 70 : Math.max(40, Math.round((70 * Math.max(width, height)) / MAP_SIZES.medium.width));
+  carveRivers(tiles, width, height, seed, riverLimit, riverSteps);
   for (const tile of tiles) {
     if (isSea(tile.terrain)) continue;
     rollDeposit(rng, tile);
   }
-  const starts = placeStarts(tiles, width, height, factions, rng);
+  const starts = placeStarts(tiles, width, height, factions, rng, spec.minStartDistance);
   connectStarts(tiles, width, height, starts);
   for (const start of starts) prepareStart(tiles, width, height, start.x, start.y);
   return { width, height, tiles, starts };
@@ -196,16 +233,16 @@ function rollSpecial(rng: Rng, terrain: TerrainId): SpecialId {
   return 'vent';
 }
 
-function carveRivers(tiles: Tile[], width: number, height: number, seed: number) {
+function carveRivers(tiles: Tile[], width: number, height: number, seed: number, limit: number, steps: number) {
   const sources = tiles.filter(
     (tile) => !isSea(tile.terrain) && tile.elevation > 0.6 && tile.rainfall > 0.55 && hash(tile.x, tile.y, seed + 7) > 0.62,
   );
   sources.sort((a, b) => b.elevation - a.elevation || a.y - b.y || a.x - b.x);
-  for (const source of sources.slice(0, 22)) {
+  for (const source of sources.slice(0, limit)) {
     let x = source.x;
     let y = source.y;
     const seen = new Set<string>();
-    for (let step = 0; step < 70; step++) {
+    for (let step = 0; step < steps; step++) {
       const tile = at(tiles, width, x, y);
       if (isSea(tile.terrain)) break;
       tile.river = true;
@@ -230,6 +267,7 @@ function placeStarts(
   height: number,
   factions: readonly FactionId[],
   rng: Rng,
+  minStartDistance: number = CONFIG.map.minStartDistance,
 ): { faction: FactionId; x: number; y: number }[] {
   const candidates = tiles.filter((tile) => settleScore(tile) >= 4 && !isHostileClimate(tile.terrain));
   const poolSource = candidates.length >= factions.length ? candidates : tiles.filter((tile) => !isSea(tile.terrain) && tile.terrain !== 'mountain' && tile.terrain !== 'lava');
@@ -240,7 +278,7 @@ function placeStarts(
     order[i] = order[j];
     order[j] = tmp;
   }
-  let minDist = CONFIG.map.minStartDistance;
+  let minDist = minStartDistance;
   let chosen: Tile[] = [];
   while (minDist >= 4 && chosen.length < factions.length) {
     chosen = [];
@@ -265,8 +303,25 @@ function placeStarts(
     }
     if (chosen.length < factions.length) minDist -= 1;
   }
+  const used = new Set(chosen.map((tile) => `${tile.x},${tile.y}`));
   while (chosen.length < factions.length) {
-    chosen.push(poolSource[rng.int(poolSource.length)]);
+    let best: Tile | null = null;
+    let bestSep = -1;
+    let bestScore = -1;
+    for (const tile of poolSource) {
+      const key = `${tile.x},${tile.y}`;
+      if (used.has(key)) continue;
+      const sep = chosen.length ? Math.min(...chosen.map((other) => chebyshev(other, tile))) : width + height;
+      const score = settleScore(tile);
+      if (sep > bestSep || (sep === bestSep && score > bestScore)) {
+        best = tile;
+        bestSep = sep;
+        bestScore = score;
+      }
+    }
+    if (!best) break;
+    used.add(`${best.x},${best.y}`);
+    chosen.push(best);
   }
   return chosen.slice(0, factions.length).map((tile, i) => ({ faction: order[i], x: tile.x, y: tile.y }));
 }

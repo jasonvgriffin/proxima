@@ -115,6 +115,7 @@ if (!gotLock) {
         throw error;
       }
     }));
+    ipcMain.handle('saves:next-autosave', trusted(() => saveStore().nextAutosaveSlot()));
     ipcMain.handle('saves:write', trusted(async (_event, slot, data) => {
       try {
         await saveStore().write(Number(slot), data);
