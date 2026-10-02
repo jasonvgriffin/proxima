@@ -1,6 +1,6 @@
 # Proxima 0.3.0 review
 
-This is a review of the build that shipped as v0.3.0. It does not change how factions fight, expand, or research. The one product change in this branch is the Windows installer: a newer setup upgrades an existing install in place and keeps saves.
+This file started as a review of the build that shipped as v0.3.0. The tables in "Who wins" are that build. Balance passes were run for 0.4.0 and then set aside: the faction numbers in the game are still the 0.3.0 numbers, collected in `src/core/personalities.ts`. "Balance iterations" at the end is the record of those passes. The Windows installer still upgrades an existing install in place and keeps saves.
 
 ## How this was judged
 
@@ -118,7 +118,7 @@ I did not play a full game by hand to the victory screen. The 240-game batch is 
 
 ## What to change
 
-Ordered by how much they matter. Size is S (a local change), M (a system, still one area), or L (several systems). None of the balance items below are in this branch. They need another batch of at least this size before they ship.
+Ordered by how much they matter. Size is S (a local change), M (a system, still one area), or L (several systems). The notes below are the 0.3.0 recommendations as they were written. "Balance iterations" records the passes that were tried afterward. Those number changes were not shipped.
 
 ### 1. Make Verdantia and Genesis able to win a conquest. Must. Size M
 
@@ -191,3 +191,139 @@ Ordered by how much they matter. Size is S (a local change), M (a system, still 
 - `README.md` still describes the game as 0.2.0 and tells a player to publish `v0.2.0`. The version players see is `package.json`, which is 0.3.0. Size S, docs only.
 - The design notes still leave map size open. 0.3.0 has one 60×40 map, and this review used only that map. A small map would shorten the 131-round median. That is a feature, not the balance fix. Size L if it grows into several maps.
 - The menu music is the exploration set. A short piece that only plays on the start menu would give the title screen its own cue. Size S, audio only.
+
+## Balance iterations
+
+These passes were run for 0.4.0 and then reverted. The faction rows in `src/core/personalities.ts` are the 0.3.0 numbers again. Nothing in this section is in the build.
+
+Same method as the review: 240 games, seeds 1000–1239, events off, allied victory off, max 400 rounds, player seat rotating, stockpiles equalized. A cell is inside the band at 5–17 wins of 60 on one difficulty, and a faction is inside overall at 10–25% of 240. No pass put every cell inside that band. Tuning stopped there.
+
+Wins are Ironclad, Helm, Clio, Mnemosyne, Verdantia, Genesis.
+
+### What each pass changed
+
+1. Builder city goal 2 → 4. Very-aggressive peace window 8 → 12. Coil weapons added for easy aggression. Shorter waits before an attack. Easy aggression builds troops when behind. A ship waits instead of stacking. Treaty and trader factions offer exploration. After round 200 with two empires, attack at 5% and march.
+2. Bold attack bar 0.30 → 0.46. On Easy, very-aggressive factions wait like a normal one. Easy aggression waits less. At war, easy aggression fills the army before the next colony pod. After round 250 with three or more empires, march on the smallest at 10%.
+3. The "already ahead" odds cut is 0.04 for everyone, was 0.12 for bold. Very-aggressive extra armies 2 → 1. Specialty factions study salvage and coil before the capstone.
+4. Easy-aggression odds bias +0.08 → −0.08. A trailing easy faction lowers its attack bar by 0.10. Every faction's extra armies are 1.
+5. Expansionist city goal 5 → 4. While at war, hold only a couple of spare soldiers before the next colony pod, not the whole Brutal army.
+6. Numbers moved into `src/core/personalities.ts`. Ironclad peace window 14. Mnemosyne city goal 4.
+7. Helm city goal 4. Verdantia attack bar 0.58. Clio odds bias −0.04.
+8. Verdantia attack bar 0.58 → 0.54. This made Brutal Verdantia worse and knocked Clio off the band on Normal.
+9. Verdantia peace window 12, and formers before the rest of the army. Brutal Verdantia reached 6 wins. Easy Clio fell to 4 and Hard Ironclad rose to 19.
+10. Only Verdantia's Brutal peace window was shortened, by 4 rounds. Easy, Normal, and Hard matched pass 7 exactly. Brutal Mnemosyne rose to 19 and Verdantia fell to 3.
+
+### Results
+
+Pass 1. 237 finished, 3 still going at round 401 (seeds 1022, 1107, 1208). No shared sea tiles.
+
+| | Ironclad | Helm | Clio | Mnemosyne | Verdantia | Genesis |
+| --- | --- | --- | --- | --- | --- | --- |
+| Overall | 99 | 39 | 38 | 41 | 9 | 11 |
+| Easy | 32 | 5 | 9 | 9 | 2 | 2 |
+| Normal | 27 | 13 | 8 | 8 | 2 | 2 |
+| Hard | 22 | 12 | 8 | 10 | 4 | 3 |
+| Brutal | 18 | 9 | 13 | 14 | 1 | 4 |
+
+Pass 2. All 240 finished. Longest game 305 rounds.
+
+| | Ironclad | Helm | Clio | Mnemosyne | Verdantia | Genesis |
+| --- | --- | --- | --- | --- | --- | --- |
+| Overall | 91 | 46 | 39 | 27 | 20 | 17 |
+| Easy | 24 | 13 | 10 | 3 | 7 | 3 |
+| Normal | 24 | 10 | 6 | 8 | 7 | 5 |
+| Hard | 22 | 15 | 7 | 7 | 3 | 6 |
+| Brutal | 21 | 8 | 16 | 9 | 3 | 3 |
+
+Pass 3. All finished. Longest 282.
+
+| | Ironclad | Helm | Clio | Mnemosyne | Verdantia | Genesis |
+| --- | --- | --- | --- | --- | --- | --- |
+| Overall | 87 | 36 | 39 | 37 | 20 | 21 |
+| Easy | 25 | 9 | 10 | 7 | 5 | 4 |
+| Normal | 24 | 6 | 9 | 10 | 7 | 4 |
+| Hard | 18 | 13 | 9 | 11 | 5 | 4 |
+| Brutal | 20 | 8 | 11 | 9 | 3 | 9 |
+
+Pass 4. All finished. Longest 303.
+
+| | Ironclad | Helm | Clio | Mnemosyne | Verdantia | Genesis |
+| --- | --- | --- | --- | --- | --- | --- |
+| Overall | 74 | 46 | 33 | 29 | 28 | 30 |
+| Easy | 19 | 13 | 10 | 6 | 8 | 4 |
+| Normal | 19 | 9 | 7 | 9 | 7 | 9 |
+| Hard | 16 | 18 | 4 | 6 | 9 | 7 |
+| Brutal | 20 | 6 | 12 | 8 | 4 | 10 |
+
+Pass 5. All finished. Longest 295. Closest overall, still outside on Normal: Ironclad 18, Mnemosyne 4.
+
+| | Ironclad | Helm | Clio | Mnemosyne | Verdantia | Genesis |
+| --- | --- | --- | --- | --- | --- | --- |
+| Overall | 57 | 35 | 35 | 42 | 28 | 43 |
+| Easy | 12 | 6 | 11 | 13 | 7 | 11 |
+| Normal | 18 | 9 | 8 | 4 | 8 | 13 |
+| Hard | 12 | 13 | 8 | 10 | 8 | 9 |
+| Brutal | 15 | 7 | 8 | 15 | 5 | 10 |
+
+Pass 5 again, seeds 2000–2239, same rules. All finished. Longest 297. Helm on Hard 4, Ironclad on Brutal 18, Genesis on Brutal 3.
+
+| | Ironclad | Helm | Clio | Mnemosyne | Verdantia | Genesis |
+| --- | --- | --- | --- | --- | --- | --- |
+| Overall | 57 | 33 | 36 | 42 | 48 | 24 |
+| Easy | 12 | 9 | 9 | 6 | 17 | 7 |
+| Normal | 14 | 9 | 8 | 9 | 14 | 6 |
+| Hard | 13 | 4 | 12 | 15 | 8 | 8 |
+| Brutal | 18 | 11 | 7 | 12 | 9 | 3 |
+
+Pass 6. All finished. Longest 292.
+
+| | Ironclad | Helm | Clio | Mnemosyne | Verdantia | Genesis |
+| --- | --- | --- | --- | --- | --- | --- |
+| Overall | 58 | 29 | 32 | 53 | 29 | 39 |
+| Easy | 10 | 9 | 10 | 13 | 10 | 8 |
+| Normal | 15 | 4 | 7 | 14 | 8 | 12 |
+| Hard | 17 | 10 | 4 | 11 | 7 | 11 |
+| Brutal | 16 | 6 | 11 | 15 | 4 | 8 |
+
+Pass 7. All finished. Longest 305. One cell outside: Brutal Verdantia 4.
+
+| | Ironclad | Helm | Clio | Mnemosyne | Verdantia | Genesis |
+| --- | --- | --- | --- | --- | --- | --- |
+| Overall | 42 | 41 | 43 | 48 | 31 | 35 |
+| Easy | 11 | 9 | 11 | 14 | 7 | 8 |
+| Normal | 7 | 15 | 8 | 13 | 8 | 9 |
+| Hard | 12 | 9 | 10 | 9 | 12 | 8 |
+| Brutal | 12 | 8 | 14 | 12 | 4 | 10 |
+
+Pass 8. All finished. Longest 305. Normal Clio 2, Brutal Verdantia 3.
+
+| | Ironclad | Helm | Clio | Mnemosyne | Verdantia | Genesis |
+| --- | --- | --- | --- | --- | --- | --- |
+| Overall | 47 | 49 | 33 | 44 | 28 | 39 |
+| Easy | 13 | 11 | 7 | 10 | 10 | 9 |
+| Normal | 11 | 17 | 2 | 12 | 10 | 8 |
+| Hard | 10 | 13 | 10 | 10 | 5 | 12 |
+| Brutal | 13 | 8 | 14 | 12 | 3 | 10 |
+
+Pass 9. All finished. Longest 302. Easy Clio 4, Hard Ironclad 19.
+
+| | Ironclad | Helm | Clio | Mnemosyne | Verdantia | Genesis |
+| --- | --- | --- | --- | --- | --- | --- |
+| Overall | 59 | 48 | 27 | 49 | 28 | 29 |
+| Easy | 17 | 14 | 4 | 13 | 7 | 5 |
+| Normal | 11 | 13 | 9 | 14 | 6 | 7 |
+| Hard | 19 | 12 | 6 | 9 | 9 | 5 |
+| Brutal | 12 | 9 | 8 | 13 | 6 | 12 |
+
+Pass 10. All finished. Longest 297. Easy, Normal, and Hard were the same games as pass 7. Brutal Mnemosyne 19, Brutal Verdantia 3.
+
+| | Ironclad | Helm | Clio | Mnemosyne | Verdantia | Genesis |
+| --- | --- | --- | --- | --- | --- | --- |
+| Overall | 43 | 42 | 36 | 55 | 30 | 34 |
+| Easy | 11 | 9 | 11 | 14 | 7 | 8 |
+| Normal | 7 | 15 | 8 | 13 | 8 | 9 |
+| Hard | 12 | 9 | 10 | 9 | 12 | 8 |
+| Brutal | 13 | 9 | 7 | 19 | 3 | 9 |
+
+A one-line edit in `src/core/personalities.ts` is enough to try the next pass. Do not ship a pass until both seed sets, 1000–1239 and 2000–2239, sit inside the band. Map size and a separate title-music track were left for the owner.
+

@@ -1,19 +1,19 @@
 # Proxima
 
-Proxima is a single-player, turn-based game about six factions stranded on a tidally locked world. You play one faction. The others are played by the computer. This is version 0.2.0: a Windows desktop app, with a browser view used for development and tests.
+Proxima is a single-player, turn-based game about six factions stranded on a tidally locked world. You play one faction. The others are played by the computer. This is version 0.3.0: a Windows desktop app, with a browser view used for development and tests.
 
 ## Download the Windows app
 
-The executable is built by GitHub Actions on `windows-latest`. It is not signed. Version 0.2.0 is the number in `package.json`. The game reads that number. It is not copied into `src/config.ts`.
+The executable is built by GitHub Actions on `windows-latest`. It is not signed. Version 0.3.0 is the number in `package.json`. The game reads that number. It is not copied into `src/config.ts`.
 
 Pushes and pull requests build the app, run the tests, run the install/uninstall check, and upload the `.exe` files as workflow artifacts. They do not publish a release.
 
 1. Open the pull request or the Actions run.
 2. Open the **Windows build** workflow.
 3. Download the **proxima-windows** artifact.
-4. Unzip it. You get `Proxima-Setup-0.2.0.exe` (installer) and `Proxima-Portable-0.2.0.exe` (no install).
+4. Unzip it. You get `Proxima-Setup-0.3.0.exe` (installer) and `Proxima-Portable-0.3.0.exe` (no install).
 
-A GitHub Release is created only when a tag named `vX.Y.Z` is pushed, and only when that tag matches `package.json`. For this version the tag is `v0.2.0`. The workflow writes a new release and its notes, then attaches the executables from the build that passed the install/uninstall check. If that release already exists, the job fails and leaves it alone. Nothing is uploaded with `--clobber`.
+A GitHub Release is created only when a tag named `vX.Y.Z` is pushed, and only when that tag matches `package.json`. For this version the tag is `v0.3.0`. The workflow writes a new release and its notes, then attaches the executables from the build that passed the install/uninstall check. If that release already exists, the job fails and leaves it alone. Nothing is uploaded with `--clobber`. A newer setup upgrades an existing install in place and keeps saves.
 
 The older test release is still here and is not replaced by this process:
 
@@ -26,7 +26,7 @@ The app is unsigned, so SmartScreen may say it prevented an unrecognized app fro
 1. Click **More info**.
 2. Click **Run anyway**.
 
-That warning is expected. The app does not need a network connection. Saves are files under `%APPDATA%\Proxima\saves` (one autosave and nine manual slots). Overwriting a slot first copies the old file to the same name with `.bak`. A save from 0.1.0 (schema version 1) loads in 0.2.0. If a file is missing or unreadable, the game says so and stays open. Save and Exit does not leave the game when the write fails. Audio on/off and volume stay in the app's local settings, separate from those save files. The update choice is `%APPDATA%\Proxima\settings.json`. Problems are appended under `%APPDATA%\Proxima\logs`, and old logs are rotated.
+That warning is expected. The app does not need a network connection. Saves are files under `%APPDATA%\Proxima\saves` (one autosave and nine manual slots). Overwriting a slot first copies the old file to the same name with `.bak`. A save from 0.1.0 (schema version 1) still loads. If a file is missing or unreadable, the game says so and stays open. Save and Exit does not leave the game when the write fails. Audio on/off and volume stay in the app's local settings, separate from those save files. The update choice is `%APPDATA%\Proxima\settings.json`. Problems are appended under `%APPDATA%\Proxima\logs`, and old logs are rotated. An in-place upgrade keeps that folder. A real uninstall removes it.
 
 ## Updates
 
@@ -88,7 +88,7 @@ It starts a game, moves a unit, founds a city, starts a terraform project, ends 
 2. **New Game**. Pick one of the six factions. Each has a free starting technology and a short profile. Social choices that match the faction give +10% to the related output.
 3. The map is continents and oceans. Cities are founded on hospitable land. Scorched, frozen, toxic, thin-air, and volcanic ground damages a unit each turn until it leaves, is destroyed, or you have Sealed Habitats. Geothermal Wells later add energy on rocky ground. Unexplored ground is dark; ground you have seen stays dim until a unit is near.
 4. Your colony pod is consumed to found a city. A terraformer works one tile at a time (farm, trees, mine, solar, road, or atmosphere). Atmosphere work needs that technology. One terraformer to a tile. Time depends on the project and how advanced your formers are. The credit fee is higher on harsh ground.
-5. **End Turn**. You go first. Then each rival takes a turn, in an order that changes every week. The top bar shows `Year 2460, Week 1`. One week passes per full round. There is no turn limit.
+5. **End Turn**. You go first. Then each rival takes a turn, in an order that changes every week. The top bar shows `Year 2460, Week 1`. One week passes per full round. There is no turn limit. Random events start on. The checkbox on the start menu can turn them off before the first week, and that choice is saved with the game.
 6. Cities gather minerals, nutrients, energy, research, and credits. Credit income starts at 1 per population plus 2. Rush-buy spends 1 credit per remaining production point, and at least 10.
 7. An attack shows the odds before you confirm. Terrain changes the defender's odds. Cities can be captured. A ship can bombard a city and cannot capture it.
 8. **Diplomacy** starts as a choice of faction. You cannot talk to one until a unit or city of yours has seen one of theirs. The ladder is war, peace, non-aggression pact, then alliance. Research and exploration treaties can be signed when you are not at war. Rivals follow the same contact rule. Game Options on the start menu edits their personalities. Back to start on that screen sits in the top-left corner.
@@ -100,7 +100,6 @@ The buried ark core, the Waking Reactor, starts to press on open ground after a 
 
 ## What this build does not do
 
-- Random events can be switched on at the start. The choice is saved. Events do not fire.
 - There is no multiplayer and no hotseat.
 - Ships can move on water and bombard. They do not transport land units.
 - Diplomacy does not trade piles of minerals or credits, only the stances and the two treaties above.

@@ -643,10 +643,7 @@ export function writeReports(outDir: string, records: GameRecord[], label: strin
   mkdirSync(outDir, { recursive: true });
   const summary = summarize(records);
   writeFileSync(resolve(outDir, `${label}-games.csv`), recordsToCsv(records));
-  writeFileSync(
-    resolve(outDir, `${label}-summary.json`),
-    JSON.stringify({ generatedAt: new Date().toISOString(), summary, games: records }, null, 2),
-  );
+  writeFileSync(resolve(outDir, `${label}-summary.json`), JSON.stringify({ generatedAt: new Date().toISOString(), summary }));
 }
 
 function workerArgv(extra: string[]): string[] {
