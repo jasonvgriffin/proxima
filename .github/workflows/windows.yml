@@ -32,6 +32,29 @@ jobs:
         run: npm test
       - name: Build the renderer
         run: npm run build
+      - name: Stamp a CI prerelease when this build is not newer than v0.3.0
+        if: github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = 'Stop'
+          $pkg = Get-Content -Raw package.json | ConvertFrom-Json
+          $core = ($pkg.version -split '[-+]', 2)[0]
+          $parts = $core.Split('.')
+          if ($parts.Length -lt 3) { throw "package.json version '$($pkg.version)' is not major.minor.patch" }
+          $major = [int]$parts[0]
+          $minor = [int]$parts[1]
+          $patch = [int]$parts[2]
+          $newer = ($major -gt 0) -or ($major -eq 0 -and $minor -gt 3) -or ($major -eq 0 -and $minor -eq 3 -and $patch -gt 0)
+          if ($newer) {
+            Write-Host "package.json $($pkg.version) is already newer than 0.3.0. Leaving it."
+            exit 0
+          }
+          $stamped = "0.3.1-ci.$($env:GITHUB_RUN_ID)"
+          $raw = Get-Content -Raw package.json
+          $updated = [regex]::Replace($raw, '("version"\s*:\s*")[^"]+"', "`${1}$stamped`"", 1)
+          if ($updated -eq $raw) { throw 'Could not stamp package.json version' }
+          Set-Content -Path package.json -Value $updated -NoNewline
+          Write-Host "Stamped installer version $stamped so the upgrade test is newer than published v0.3.0. This file is not committed. Tag builds are not stamped."
       - name: Package the Windows app
         run: npx electron-builder --win --publish never
         env:

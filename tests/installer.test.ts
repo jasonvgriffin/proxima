@@ -34,5 +34,13 @@ describe('in-place upgrade', () => {
     expect(script).toContain('Proxima-Setup-0.3.0.exe');
     expect(script).toContain('slot-1.json');
     expect(script).toContain('UpgradeMarker');
+    expect(script).toContain('HKLM:\\Software\\Microsoft\\Windows\\CurrentVersion\\Uninstall');
+    expect(script).toContain('WOW6432Node');
+    expect(script).toContain('UninstallString directory');
+    expect(script).toContain('Programs\\proxima');
+    expect(script).toContain('Get-FileHash');
+    expect(script).toContain('Test-VersionNewer');
+    expect(workflow).toContain('0.3.1-ci.');
+    expect(workflow).toContain('refs/tags/v');
   });
 });
