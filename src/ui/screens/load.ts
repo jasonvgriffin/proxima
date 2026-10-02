@@ -2,6 +2,7 @@ import type { App } from '../app';
 import { FACTIONS } from '../../core/factions';
 import { Game } from '../../core/game';
 import { type SaveEnvelope } from '../../core/types';
+import { isAutosaveSlot, loadEntryLabel, newestAutosave, orderedLoadEntries } from '../../platform/autosave';
 import { migrateSave, SAVE_VERSION } from '../../platform/saveMigrate';
 import { esc } from '../text';
 
@@ -11,9 +12,9 @@ export async function openSave(this: App, purpose: string) {
     this.overlay.innerHTML = `
       <div class="modal-back"><div class="modal narrow" data-testid="save-list">
         <h2>Save game</h2>
-        <p class="muted">Nine manual slots. The autosave is separate and always listed first when you load.</p>
+        <p class="muted">Nine manual slots. Three autosaves rotate on their own and are listed first when you load.</p>
         <div class="stack">
-          ${list.filter((slot) => slot.slot !== 0).map((slot) => `<button class="btn" data-action="save-slot" data-testid="save-slot-${slot.slot}" data-slot="${slot.slot}" data-purpose="${purpose}">Slot ${slot.slot}${slot.empty ? ' · empty' : ` · ${esc(slot.label ?? '')}`}${slot.corrupt ? ' · unreadable' : ''}</button>`).join('')}
+          ${list.filter((slot) => !isAutosaveSlot(slot.slot)).map((slot) => `<button class="btn" data-action="save-slot" data-testid="save-slot-${slot.slot}" data-slot="${slot.slot}" data-purpose="${purpose}">Slot ${slot.slot}${slot.empty ? ' · empty' : ` · ${esc(slot.label ?? '')}`}${slot.corrupt ? ' · unreadable' : ''}</button>`).join('')}
         </div>
         <button class="btn" data-action="close">Cancel</button>
       </div></div>`;
@@ -25,11 +26,14 @@ export async function openSave(this: App, purpose: string) {
 export async function openLoad(this: App, _fromGame: boolean) {
   try {
     const list = await this.saves.list();
+    const newest = newestAutosave(list);
+    const rows = orderedLoadEntries(list);
     this.overlay.innerHTML = `
-      <div class="modal-back"><div class="modal narrow">
+      <div class="modal-back"><div class="modal narrow" data-testid="load-screen">
         <h2>Load game</h2>
         <div class="stack" data-testid="load-list">
-          ${list.map((slot) => `<button class="btn" data-action="load-slot" data-testid="load-slot-${slot.slot}" data-slot="${slot.slot}" ${slot.empty && !slot.corrupt ? 'disabled' : ''}>${slot.slot === 0 ? 'Autosave' : `Slot ${slot.slot}`}${slot.corrupt ? ' · unreadable' : slot.empty ? ' · empty' : ` · ${esc(slot.label ?? '')}`}</button>`).join('')}
+          <button class="btn primary" data-action="continue" data-testid="load-continue" ${newest ? '' : 'disabled'}>Continue</button>
+          ${rows.map((slot) => `<button class="btn" data-action="load-slot" data-testid="load-slot-${slot.slot}" data-slot="${slot.slot}" ${slot.empty && !slot.corrupt ? 'disabled' : ''}>${esc(loadEntryLabel(slot))}</button>`).join('')}
         </div>
         <button class="btn" data-action="close">Close</button>
       </div></div>`;
@@ -44,7 +48,7 @@ export async function writeSlot(this: App, slot: number, purpose: string) {
     const envelope = this.envelope(slot);
     await this.saves.write(slot, envelope);
     this.audio.play('save');
-    this.toast(slot === 0 ? 'Autosaved.' : `Saved to slot ${slot}.`);
+    this.toast(isAutosaveSlot(slot) ? 'Autosaved.' : `Saved to slot ${slot}.`);
     if (purpose === 'then-new' || purpose === 'then-exit') await this.finishPending(true);
     else if (purpose === 'manual') this.openPause();
   } catch (error) {
@@ -119,6 +123,21 @@ export function envelope(this: App, slot: number): SaveEnvelope {
     factionId: game.state.playerFaction,
     state: game.serialize(),
   };
+}
+
+export async function writeAutosave(this: App) {
+  const slot = await this.saves.nextAutosaveSlot();
+  await this.writeSlot(slot, 'autosave');
+}
+
+export async function continueAutosave(this: App) {
+  const list = await this.saves.list();
+  const newest = newestAutosave(list);
+  if (!newest) {
+    this.showSaveError('There is no autosave yet.');
+    return;
+  }
+  await this.readSlot(newest.slot);
 }
 
 export async function runSave(this: App, work: () => Promise<void>, fallback: string) {

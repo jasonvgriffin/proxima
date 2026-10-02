@@ -18,7 +18,7 @@ import { renderOptions as renderOptionsScreen, openPause as openPauseScreen, ope
 import { mountGame as mountGameScreen, refreshGame as refreshGameScreen, unitIcon as unitIconScreen, inspector as inspectorScreen, tilePanel as tilePanelScreen, openTile as openTileScreen, onTile as onTileScreen, openCombat as openCombatScreen, openTerraform as openTerraformScreen, adjacentFoe as adjacentFoeScreen, openVictory as openVictoryScreen, openDefeat as openDefeatScreen, openEvent as openEventScreen } from './screens/hud';
 import { openDiplomacy as openDiplomacyScreen, openSpies as openSpiesScreen, openSocial as openSocialScreen, openTrade as openTradeScreen, sendTrade as sendTradeScreen } from './screens/diplomacy';
 import { pickTech as pickTechScreen, openTechTree as openTechTreeScreen, applyTreeCam as applyTreeCamScreen, fitTree as fitTreeScreen, onTreeHover as onTreeHoverScreen, onTreePointerDown as onTreePointerDownScreen, onTreePointerMove as onTreePointerMoveScreen, onTreePointerUp as onTreePointerUpScreen, onTreeWheel as onTreeWheelScreen, maybePromptResearch as maybePromptResearchScreen, openDesign as openDesignScreen, paintDesignPreview as paintDesignPreviewScreen, saveDesign as saveDesignScreen } from './screens/tech';
-import { openSave as openSaveScreen, openLoad as openLoadScreen, writeSlot as writeSlotScreen, readSlot as readSlotScreen, finishPending as finishPendingScreen, exitDesktop as exitDesktopScreen, envelope as envelopeScreen, runSave as runSaveScreen, showSaveError as showSaveErrorScreen } from './screens/load';
+import { openSave as openSaveScreen, openLoad as openLoadScreen, writeSlot as writeSlotScreen, readSlot as readSlotScreen, finishPending as finishPendingScreen, exitDesktop as exitDesktopScreen, envelope as envelopeScreen, runSave as runSaveScreen, showSaveError as showSaveErrorScreen, writeAutosave as writeAutosaveScreen, continueAutosave as continueAutosaveScreen } from './screens/load';
 import { debugDefeat as debugDefeatScreen, debugTrade as debugTradeScreen, debugEvent as debugEventScreen, debugTransport as debugTransportScreen, debugFinishTerraform as debugFinishTerraformScreen, debugMidgame as debugMidgameScreen, showPortraitSheet as showPortraitSheetScreen, showUnitSheet as showUnitSheetScreen, debugDiplomacy as debugDiplomacyScreen, seedDiplomacyOffer as seedDiplomacyOfferScreen, spawnRaider as spawnRaiderScreen, debugRecap as debugRecapScreen } from './debug';
 import { paintBanner as paintBannerScreen, bootUpdates as bootUpdatesScreen, persistUpdateCheck as persistUpdateCheckScreen, pollUpdates as pollUpdatesScreen, handleUpdateAction as handleUpdateActionScreen, answerUpdatePrompt as answerUpdatePromptScreen, openDownloadConsent as openDownloadConsentScreen, runDownload as runDownloadScreen, previewUpdate as previewUpdateScreen, previewDownloadConsent as previewDownloadConsentScreen } from './updatesFlow';
 import { paintEmblems as paintEmblemsScreen, paintMarks as paintMarksScreen } from './paint';
@@ -204,6 +204,7 @@ export class App {
       this.setup.axes[axis] = node.dataset.option ?? this.setup.axes[axis];
       this.render();
     } else if (action === 'start-game') this.startGame();
+    else if (action === 'continue') await this.runSave(() => this.continueAutosave(), 'Could not load the autosave.');
     else if (action === 'load-game') await this.runSave(() => this.openLoad(false), 'Could not open the save list.');
     else if (action === 'toggle-grid') {
       this.map?.toggleGrid();
@@ -384,7 +385,13 @@ export class App {
     playLoggedCues(this.audio, logBefore, game.state.log, game.state.playerFaction);
     this.toast(ended.message);
     this.refreshGame();
-    if (ended.autosave) await this.runSave(() => this.writeSlot(0, 'autosave'), 'Autosave failed. Your game is still running.');
+    if (ended.autosave) {
+      // Let the new week paint before the save is serialized, so end turn does not hitch first.
+      await new Promise<void>((resolve) => {
+        requestAnimationFrame(() => requestAnimationFrame(() => resolve()));
+      });
+      await this.runSave(() => this.writeAutosave(), 'Autosave failed. Your game is still running.');
+    }
     this.maybePromptResearch(researchBefore);
   }
 
@@ -627,6 +634,12 @@ export class App {
   }
   showSaveError(message: string, error?: unknown) {
     return showSaveErrorScreen.call(this, message, error);
+  }
+  writeAutosave() {
+    return writeAutosaveScreen.call(this);
+  }
+  continueAutosave() {
+    return continueAutosaveScreen.call(this);
   }
 
   debugDefeat() {

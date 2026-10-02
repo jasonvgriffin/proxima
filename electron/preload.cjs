@@ -6,6 +6,7 @@ contextBridge.exposeInMainWorld('proxima', {
   listSaves: () => ipcRenderer.invoke('saves:list'),
   readSave: (slot) => ipcRenderer.invoke('saves:read', slot),
   writeSave: (slot, data) => ipcRenderer.invoke('saves:write', slot, data),
+  nextAutosaveSlot: () => ipcRenderer.invoke('saves:next-autosave'),
   quit: () => ipcRenderer.invoke('app:quit'),
   getVersion: () => ipcRenderer.invoke('app:version'),
   reportError: (message) => ipcRenderer.invoke('app:report-error', String(message ?? '')),

@@ -51,6 +51,7 @@ interface ProximaBridge {
   >;
   readSave(slot: number): Promise<unknown | null>;
   writeSave(slot: number, data: unknown): Promise<void>;
+  nextAutosaveSlot(): Promise<number>;
   quit(): Promise<void>;
   getVersion(): Promise<string>;
   reportError(message: string): Promise<void>;

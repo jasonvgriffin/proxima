@@ -84,6 +84,15 @@ describe('save migration', () => {
     }
   });
 
+  it('keeps schema version 5 and accepts the extra autosave slot numbers', () => {
+    const migrated = migrateSave(v1Envelope());
+    expect(SAVE_VERSION).toBe(5);
+    for (const slot of [0, 9, 10, 11]) {
+      expect(migrateSave({ ...migrated, slot }).slot).toBe(slot);
+    }
+    expect(() => migrateSave({ ...migrated, slot: 12 })).toThrow(/slot/);
+  });
+
   it('rejects a save with no version, a newer version, or a broken file', () => {
     expect(() => migrateSave({ slot: 1, state: {} })).toThrow(/no version/);
     expect(() => migrateSave({ version: 9, slot: 1, label: 'x', factionId: 'helm', state: {} })).toThrow(/newer Proxima/);

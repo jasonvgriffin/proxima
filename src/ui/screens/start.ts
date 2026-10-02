@@ -2,8 +2,6 @@ import type { App } from '../app';
 import { drawPlanet, drawStar, drawStarfield } from '../../art/draw';
 import { difficultyProfile } from '../../core/difficulty';
 import { DIFFICULTIES } from '../../core/factions';
-import { Game } from '../../core/game';
-import { type Difficulty } from '../../core/types';
 import { IntroPlayer, INTRO_SCENES } from '../../render/intro';
 import { esc } from '../text';
 
@@ -28,6 +26,7 @@ export function renderMenu(this: App) {
         <div class="stack">
           <button class="btn primary" data-action="play-intro" data-testid="play-intro">Play Introduction</button>
           <button class="btn" data-action="new-game" data-testid="new-game">New Game</button>
+          <button class="btn" data-action="continue" data-testid="continue">Continue</button>
           <button class="btn" data-action="load-game" data-testid="load-game">Load Game</button>
           <button class="btn" data-action="game-options" data-testid="game-options">Game Options</button>
           <button class="btn" data-action="menu-audio" data-testid="menu-audio">Audio</button>

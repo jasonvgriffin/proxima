@@ -1,10 +1,9 @@
 import type { App } from '../app';
 import { APP_VERSION } from '../../version';
-import { CONFIG } from '../../config';
 import { difficultyLabel, difficultyProfile } from '../../core/difficulty';
 import { FACTIONS, PERSONALITY_LEVELS } from '../../core/factions';
-import { Game } from '../../core/game';
-import { FACTION_IDS, type Difficulty } from '../../core/types';
+import { autosaveIntervalTurns } from '../../core/rules';
+import { FACTION_IDS } from '../../core/types';
 import { esc } from '../text';
 import { renderAudioSettings } from '../audioSettings';
 
@@ -36,7 +35,7 @@ export function openPause(this: App) {
       <h3>Audio</h3>
       ${renderAudioSettings(this.audio)}
       <h3>Saves</h3>
-      <label class="row" data-testid="autosave-toggle"><input type="checkbox" data-setting="autosave" ${autosave ? 'checked' : ''}/> Autosave every ${CONFIG.autosaveEveryTurns} turns</label>
+      <label class="row" data-testid="autosave-toggle"><input type="checkbox" data-setting="autosave" ${autosave ? 'checked' : ''}/> Autosave every ${autosaveIntervalTurns()} turns</label>
       <h3>Updates</h3>
       <label class="row" data-testid="update-check-toggle"><input type="checkbox" data-setting="updates" ${this.updateCheck ? 'checked' : ''}/> Check for updates when Proxima starts</label>
       <p class="muted">Off unless you turn it on. Proxima only notifies you. It never downloads or installs anything unless you ask.</p>
