@@ -40,6 +40,10 @@
 
     ; Make sure the install folder itself goes (the uninstaller runs from a
     ; temp copy, so the folder is not locked by it).
+    ; Temp update downloads and the apply-update helper live here. This stays
+    ; inside the isUpdated guard so an upgrade does not delete the setup it is
+    ; running, or the saves and settings the helper is keeping.
+    RMDir /r "$TEMP\Proxima"
     SetOutPath $TEMP
     RMDir /r "$INSTDIR"
   ${endif}

@@ -97,6 +97,10 @@ export async function finishPending(this: App, saved: boolean) {
 }
 
 export async function exitDesktop(this: App) {
+  if (this.updateReady) {
+    await this.restartToApplyUpdate();
+    return;
+  }
   if (window.proxima?.quit) await window.proxima.quit();
   else {
     this.screen = 'menu';

@@ -21,7 +21,7 @@ import { openDiplomacy as openDiplomacyScreen, openSpies as openSpiesScreen, ope
 import { pickTech as pickTechScreen, openTechTree as openTechTreeScreen, applyTreeCam as applyTreeCamScreen, fitTree as fitTreeScreen, onTreeHover as onTreeHoverScreen, onTreePointerDown as onTreePointerDownScreen, onTreePointerMove as onTreePointerMoveScreen, onTreePointerUp as onTreePointerUpScreen, onTreeWheel as onTreeWheelScreen, maybePromptResearch as maybePromptResearchScreen, openDesign as openDesignScreen, paintDesignPreview as paintDesignPreviewScreen, saveDesign as saveDesignScreen } from './screens/tech';
 import { openSave as openSaveScreen, openLoad as openLoadScreen, writeSlot as writeSlotScreen, readSlot as readSlotScreen, finishPending as finishPendingScreen, exitDesktop as exitDesktopScreen, envelope as envelopeScreen, runSave as runSaveScreen, showSaveError as showSaveErrorScreen, writeAutosave as writeAutosaveScreen, continueAutosave as continueAutosaveScreen } from './screens/load';
 import { debugDefeat as debugDefeatScreen, debugTrade as debugTradeScreen, debugEvent as debugEventScreen, debugTransport as debugTransportScreen, debugFinishTerraform as debugFinishTerraformScreen, debugMidgame as debugMidgameScreen, showPortraitSheet as showPortraitSheetScreen, showUnitSheet as showUnitSheetScreen, debugDiplomacy as debugDiplomacyScreen, seedDiplomacyOffer as seedDiplomacyOfferScreen, spawnRaider as spawnRaiderScreen, debugRecap as debugRecapScreen } from './debug';
-import { paintBanner as paintBannerScreen, bootUpdates as bootUpdatesScreen, persistUpdateCheck as persistUpdateCheckScreen, pollUpdates as pollUpdatesScreen, handleUpdateAction as handleUpdateActionScreen, answerUpdatePrompt as answerUpdatePromptScreen, openDownloadConsent as openDownloadConsentScreen, runDownload as runDownloadScreen, previewUpdate as previewUpdateScreen, previewDownloadConsent as previewDownloadConsentScreen } from './updatesFlow';
+import { paintBanner as paintBannerScreen, bootUpdates as bootUpdatesScreen, persistUpdateCheck as persistUpdateCheckScreen, pollUpdates as pollUpdatesScreen, handleUpdateAction as handleUpdateActionScreen, answerUpdatePrompt as answerUpdatePromptScreen, openDownloadConsent as openDownloadConsentScreen, runDownload as runDownloadScreen, restartToApplyUpdate as restartToApplyUpdateScreen, previewUpdate as previewUpdateScreen, previewDownloadConsent as previewDownloadConsentScreen, previewUpdateReady as previewUpdateReadyScreen } from './updatesFlow';
 import { paintEmblems as paintEmblemsScreen, paintMarks as paintMarksScreen } from './paint';
 
 type Screen = 'menu' | 'intro' | 'setup' | 'options' | 'profile' | 'game' | 'recap';
@@ -35,6 +35,8 @@ export class App {
   updateCheck = false;
   updateNotice: UpdateNotice | null = null;
   updateDismissed = false;
+  updateReady: { version: string } | null = null;
+  applyingUpdate = false;
   screen: Screen = 'menu';
   game: Game | null = null;
   introIndex = 0;
@@ -108,6 +110,7 @@ export class App {
         tilePoint: (x: number, y: number) => this.map?.clientPoint(x, y) ?? null,
         showUpdateBanner: () => this.previewUpdate(),
         showDownloadConsent: () => this.previewDownloadConsent(),
+        showUpdateReady: () => this.previewUpdateReady(),
         showSaveError: () => this.showSaveError('Could not save the game, so Proxima stayed open.', new Error('Save file is unreadable (slot-1.json).')),
       };
     }
@@ -729,6 +732,12 @@ export class App {
   }
   previewDownloadConsent() {
     return previewDownloadConsentScreen.call(this);
+  }
+  previewUpdateReady() {
+    return previewUpdateReadyScreen.call(this);
+  }
+  async restartToApplyUpdate() {
+    return restartToApplyUpdateScreen.call(this);
   }
 
   paintEmblems() {

@@ -32,29 +32,39 @@ jobs:
         run: npm test
       - name: Build the renderer
         run: npm run build
-      - name: Stamp a CI prerelease when this build is not newer than v0.3.0
+      - name: Stamp a CI prerelease when this build is not newer than v0.4.0
         if: github.event_name != 'push' || !startsWith(github.ref, 'refs/tags/v')
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
+          function Test-VersionNewer([string]$Candidate, [string]$Baseline) {
+            function Get-Parts([string]$Text) {
+              if ($Text -notmatch '^(\d+)\.(\d+)\.(\d+)(?:[-+]([0-9A-Za-z.-]+))?$') {
+                throw "Not a Proxima version: '$Text'"
+              }
+              [pscustomobject]@{ Major = [int]$Matches[1]; Minor = [int]$Matches[2]; Patch = [int]$Matches[3]; Pre = $Matches[4] }
+            }
+            $next = Get-Parts $Candidate
+            $prev = Get-Parts $Baseline
+            if ($next.Major -ne $prev.Major) { return $next.Major -gt $prev.Major }
+            if ($next.Minor -ne $prev.Minor) { return $next.Minor -gt $prev.Minor }
+            if ($next.Patch -ne $prev.Patch) { return $next.Patch -gt $prev.Patch }
+            if (-not $prev.Pre -and $next.Pre) { return $false }
+            if ($prev.Pre -and -not $next.Pre) { return $true }
+            if (-not $next.Pre -and -not $prev.Pre) { return $false }
+            return [string]::Compare($next.Pre, $prev.Pre, [StringComparison]::Ordinal) -gt 0
+          }
           $pkg = Get-Content -Raw package.json | ConvertFrom-Json
-          $core = ($pkg.version -split '[-+]', 2)[0]
-          $parts = $core.Split('.')
-          if ($parts.Length -lt 3) { throw "package.json version '$($pkg.version)' is not major.minor.patch" }
-          $major = [int]$parts[0]
-          $minor = [int]$parts[1]
-          $patch = [int]$parts[2]
-          $newer = ($major -gt 0) -or ($major -eq 0 -and $minor -gt 3) -or ($major -eq 0 -and $minor -eq 3 -and $patch -gt 0)
-          if ($newer) {
-            Write-Host "package.json $($pkg.version) is already newer than 0.3.0. Leaving it."
+          if (Test-VersionNewer $pkg.version '0.4.0') {
+            Write-Host "package.json $($pkg.version) is already newer than 0.4.0. Leaving it."
             exit 0
           }
-          $stamped = "0.3.1-ci.$($env:GITHUB_RUN_ID)"
+          $stamped = "0.4.1-ci.$($env:GITHUB_RUN_ID)"
           $raw = Get-Content -Raw package.json
           $updated = [regex]::Replace($raw, '("version"\s*:\s*")[^"]+"', "`${1}$stamped`"", 1)
           if ($updated -eq $raw) { throw 'Could not stamp package.json version' }
           Set-Content -Path package.json -Value $updated -NoNewline
-          Write-Host "Stamped installer version $stamped so the upgrade test is newer than published v0.3.0. This file is not committed. Tag builds are not stamped."
+          Write-Host "Stamped installer version $stamped so the self-update test is newer than published v0.4.0. This file is not committed. Tag builds are not stamped."
       - name: Package the Windows app
         run: npx electron-builder --win --publish never
         env:
@@ -123,6 +133,10 @@ jobs:
           Set-Content -Path (Join-Path $appData 'saves\slot-1.json') -Value '{"fake":true}'
           New-Item -ItemType Directory -Force -Path (Join-Path $env:LOCALAPPDATA 'Proxima\Crashpad') | Out-Null
           New-Item -ItemType Directory -Force -Path (Join-Path $env:LOCALAPPDATA 'proxima-updater\pending') | Out-Null
+          $tempUpdates = Join-Path $env:TEMP 'Proxima\updates'
+          New-Item -ItemType Directory -Force -Path $tempUpdates | Out-Null
+          Set-Content -Path (Join-Path $tempUpdates 'apply-update.ps1') -Value 'leftover helper'
+          Set-Content -Path (Join-Path $tempUpdates 'Proxima-Setup-leftover.exe') -Value 'leftover installer'
           New-Item -Force -Path 'HKCU:\Software\com.jasonvgriffin.proxima' | Out-Null
           New-Item -Force -Path 'HKCU:\Software\Proxima' | Out-Null
           Write-Host 'User data before uninstall:'
@@ -144,7 +158,7 @@ jobs:
 
           # ---- assert ----
           $leftovers = @()
-          foreach ($path in @($installDir, $appData, $desktopLnk, $startMenuLnk, (Join-Path $env:APPDATA 'com.jasonvgriffin.proxima'))) {
+          foreach ($path in @($installDir, $appData, $desktopLnk, $startMenuLnk, (Join-Path $env:APPDATA 'com.jasonvgriffin.proxima'), (Join-Path $env:TEMP 'Proxima'))) {
             if (Test-Path -LiteralPath $path) { $leftovers += $path }
           }
           Get-ChildItem -Force -Path $env:LOCALAPPDATA -Filter 'Proxima*' -ErrorAction SilentlyContinue | ForEach-Object { $leftovers += $_.FullName }
@@ -171,12 +185,15 @@ jobs:
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
       - name: Download the new executables
         uses: actions/download-artifact@v4
         with:
           name: proxima-windows
           path: release
-      - name: Install v0.3.0, then upgrade in place
+      - name: Install v0.4.0, then self-update with the helper
         shell: pwsh
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
