@@ -85,6 +85,11 @@ test('starts a game, moves, founds, terraforms, saves, and opens diplomacy', asy
   await expect(page.getByTestId('start-menu')).toBeVisible();
 
   await page.getByTestId('new-game').click();
+  await expect(page.getByTestId('map-size-medium')).toHaveClass(/\bon\b/);
+  await page.getByTestId('map-size-large').click();
+  await expect(page.getByTestId('map-size-large')).toHaveClass(/\bon\b/);
+  await page.getByTestId('map-size-medium').click();
+  await expect(page.getByTestId('map-size-medium')).toHaveClass(/\bon\b/);
   await page.getByTestId('faction-helm').click();
   await page.getByTestId('open-profile').click();
   await expect(page.getByTestId('profile-screen')).toContainText('The Helm');
@@ -117,6 +122,8 @@ test('starts a game, moves, founds, terraforms, saves, and opens diplomacy', asy
 
   await page.getByTestId('end-turn').click();
   await expect(page.getByTestId('calendar')).toHaveText('Year 2460, Week 2');
+  await expect(page.getByTestId('ai-thinking')).toHaveCount(1);
+  await expect(page.getByTestId('ai-thinking')).toBeHidden();
   await dismissTechTree(page);
 
   await page.keyboard.press('Escape');

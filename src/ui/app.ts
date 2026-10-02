@@ -1,5 +1,6 @@
 import { APP_VERSION } from '../version';
-import { CONFIG } from '../config';
+import { CONFIG, MAP_SIZE_IDS, MAP_SIZES } from '../config';
+import { requestRoundOrders } from '../ai/client';
 import { paintArkCanvas } from '../art/ark';
 import { drawEmblem, drawPlanet, drawStar, drawStarfield } from '../art/draw';
 import { LEADERS, leaderGreeting } from '../art/leaders';
@@ -21,7 +22,7 @@ import { historyActor } from '../core/tilelog';
 import { formerTechLevel, TECHS, techAvailable, techById } from '../core/tech';
 import { renderTechTree } from './techtree';
 import { starterDesigns, CHASSIS, WEAPONS, ARMORS, SPECIALS, partKnown } from '../core/parts';
-import { FACTION_IDS, type Difficulty, type DiplomaticOffer, type FactionId, type Proposal, type SaveEnvelope, type SocialAxis, type Stance, type TradeBundle, type Unit } from '../core/types';
+import { FACTION_IDS, type Difficulty, type DiplomaticOffer, type FactionId, type MapSizeId, type Proposal, type SaveEnvelope, type SocialAxis, type Stance, type TradeBundle, type Unit } from '../core/types';
 import { migrateSave, SAVE_VERSION } from '../platform/saveMigrate';
 import { createSaveStore, type SaveStore } from '../platform/saves';
 import { createPlatform, type PlatformClient, type UpdateNotice } from '../platform/updates';
@@ -59,6 +60,7 @@ export class App {
   private customizeOpen = false;
   private diplomacyFocus: FactionId | null = null;
   private pending: { mode: 'new' | 'exit' } | null = null;
+  private thinking = false;
   private treeCam = { x: 16, y: 12, zoom: 0.38 };
   private treeSelected: string | null = null;
   private treeNotice = '';
@@ -72,6 +74,7 @@ export class App {
     personalities: defaultPersonalities(),
     axes: defaultAxes('helm'),
     seed: 1 + Math.floor(Math.random() * 999983),
+    mapSize: 'medium' as MapSizeId,
   };
 
   constructor(root: HTMLElement) {
@@ -222,6 +225,15 @@ export class App {
           <p class="eyebrow">New expedition</p>
           <h2>Choose a faction</h2>
           <p class="muted">Difficulty: ${esc(difficultyLabel(this.setup.difficulty))}. Seed ${this.setup.seed}.</p>
+          <div>
+            <p class="muted">Map size</p>
+            <div class="row" data-testid="map-size">
+              ${MAP_SIZE_IDS.map((id) => {
+                const spec = MAP_SIZES[id];
+                return `<button class="btn small ${this.setup.mapSize === id ? 'on' : ''}" data-action="map-size" data-map-size="${id}" data-testid="map-size-${id}">${esc(spec.label)} · ${spec.width}×${spec.height}</button>`;
+              }).join('')}
+            </div>
+          </div>
           <div class="stack" data-testid="faction-list">
             ${FACTION_IDS.map((id) => this.factionButton(id)).join('')}
           </div>
@@ -317,7 +329,10 @@ export class App {
         <div class="game" data-testid="game-screen">
           <header class="topbar" id="topbar"></header>
           <aside class="side" id="left"></aside>
-          <div id="map-wrap"><canvas id="map-canvas" data-testid="map-canvas"></canvas></div>
+          <div id="map-wrap">
+            <canvas id="map-canvas" data-testid="map-canvas"></canvas>
+            <p class="ai-thinking" data-testid="ai-thinking" hidden>Rivals are thinking…</p>
+          </div>
           <aside class="side right" id="right"></aside>
           <section class="log" id="log"></section>
         </div>`;
@@ -582,6 +597,7 @@ export class App {
   }
 
   private async onClick(event: MouseEvent) {
+    if (this.thinking) return;
     const node = (event.target as HTMLElement).closest('[data-action]') as HTMLElement | null;
     if (!node) return;
     const action = node.dataset.action;
@@ -617,6 +633,7 @@ export class App {
     } else if (action === 'menu-audio') this.openAudioPanel();
     else if (action === 'quit') void this.exitDesktop();
     else if (action === 'difficulty') this.setup.difficulty = normalizeDifficulty(node.dataset.difficulty);
+    else if (action === 'map-size') this.setup.mapSize = MAP_SIZES[node.dataset.mapSize as MapSizeId] ? node.dataset.mapSize as MapSizeId : 'medium';
     else if (action === 'pick-faction') {
       this.setup.faction = node.dataset.faction as FactionId;
       this.setup.axes = defaultAxes(this.setup.faction);
@@ -769,7 +786,7 @@ export class App {
       this.screen = 'recap';
       this.render();
     }
-    if (action === 'difficulty') this.render();
+    if (action === 'difficulty' || action === 'map-size') this.render();
     this.afterActionRefresh(action);
   }
 
@@ -822,6 +839,7 @@ export class App {
       personalities: this.setup.personalities,
       axes: this.setup.axes,
       autosaveEnabled: true,
+      mapSize: this.setup.mapSize,
     });
     this.selectedUnit = this.game.unitsOf(this.setup.faction).find((unit) => unit.canFound)?.id ?? null;
     this.selectedCity = null;
@@ -832,21 +850,37 @@ export class App {
     this.syncSoundscape();
   }
 
+  private showThinking(on: boolean) {
+    this.stage.querySelector('.game')?.classList.toggle('is-thinking', on);
+    const note = this.stage.querySelector<HTMLElement>('[data-testid="ai-thinking"]');
+    if (note) note.hidden = !on;
+    const end = this.stage.querySelector<HTMLButtonElement>('[data-testid="end-turn"]');
+    if (end) end.disabled = on;
+  }
+
   private async endTurn() {
     const game = this.game;
-    if (!game) return;
+    if (!game || this.thinking) return;
     const player = game.state.factions[game.state.playerFaction];
     const researchBefore = { techs: [...player.techs], researching: player.researching };
     const logBefore = snapshotLog(game.state.log);
     const workBefore = snapshotTerraform(game.state.units, game.state.playerFaction);
-    const ended = game.endTurn();
-    this.audio.play('turn');
-    playTerraformProgress(this.audio, workBefore, snapshotTerraform(game.state.units, game.state.playerFaction));
-    playLoggedCues(this.audio, logBefore, game.state.log, game.state.playerFaction);
-    this.toast(ended.message);
-    this.refreshGame();
-    if (ended.autosave) await this.runSave(() => this.writeSlot(0, 'autosave'), 'Autosave failed. Your game is still running.');
-    this.maybePromptResearch(researchBefore);
+    this.thinking = true;
+    this.showThinking(true);
+    try {
+      const ended = await game.endTurnWith((state, order) => requestRoundOrders(state, order));
+      this.showThinking(false);
+      this.audio.play('turn');
+      playTerraformProgress(this.audio, workBefore, snapshotTerraform(game.state.units, game.state.playerFaction));
+      playLoggedCues(this.audio, logBefore, game.state.log, game.state.playerFaction);
+      this.toast(ended.message);
+      this.refreshGame();
+      if (ended.autosave) await this.runSave(() => this.writeSlot(0, 'autosave'), 'Autosave failed. Your game is still running.');
+      this.maybePromptResearch(researchBefore);
+    } finally {
+      this.thinking = false;
+      this.showThinking(false);
+    }
   }
 
   private act(fn: () => { ok: boolean; message: string }, sound: 'click' | 'found' | 'terraform' | 'attack') {
@@ -1336,6 +1370,7 @@ export class App {
   }
 
   private onKey(event: KeyboardEvent) {
+    if (this.thinking) return;
     if (event.key === 'Escape') {
       if (this.screen === 'game') {
         if (this.game?.state.winner || this.game?.state.playerDefeated) return;
