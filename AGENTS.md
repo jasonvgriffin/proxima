@@ -82,3 +82,6 @@ The workflow job "In-place upgrade keeps saves" installs the last published setu
 - A "Vite dev server" terminal runs `npm run dev -- --host 127.0.0.1` on port 5173. Playwright reuses it. If port 5173 is busy because of a stale server, stop it before starting another (the port is strict).
 - Electron and Windows packaging are not testable on the Linux VM. Verify with `npm test`, `npm run build`, and the browser build. The Actions "Windows build" check on the PR is the packaging test.
 - Put screenshots for the report in `/opt/cursor/artifacts/`.
+
+## Lessons
+Before building anything, read LESSONS.md. After each change, add any new lessons to it.
